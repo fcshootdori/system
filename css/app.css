@@ -368,3 +368,7 @@ h3.sec { margin: 16px 0 6px; font-size: 15px; padding: 6px 10px; background: var
   .nav-brand { display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .nav-brand img { width: 120px; height: auto; }
 }
+
+/* ── 0.1.7: 회차 ── */
+.rb-title .no { background: var(--brand); color: #fff; font-size: 12px; padding: 2px 7px; border-radius: 6px; vertical-align: 2px; }
+.no-hint { margin: -6px 0 0; }

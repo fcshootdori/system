@@ -183,3 +183,33 @@ export function allStats() {
     .map((r) => ({ ...r, name: memberById(r.id).name, games: r.w + r.d + r.l, rate: winRate(r), pts: r.w * 3 + r.d,
       history: r.history.sort((a, b) => (b.date || '').localeCompare(a.date || '')) }));
 }
+
+// ── 회차 ──
+//  · 경기 하나에 회차를 넣으면(기준 회차) 그 앞뒤 경기는 날짜 순서대로 자동으로 매겨짐
+//  · 취소된 경기와 "회차 제외" 경기(설날 같은 이벤트 경기)는 회차에 들어가지 않음
+//  · 승률계산기에서 가져온 경기는 시트의 Game_id(718, 719 …)를 기준 회차로 씀 (숫자가 아니면 제외)
+const sheetNo = (m) => (m.sheetGameId != null && /^\d+$/.test(String(m.sheetGameId)) ? +m.sheetGameId : null);
+export const explicitNo = (m) => (m.no != null && m.no !== '' && Number.isFinite(+m.no) ? +m.no : sheetNo(m));
+export const countsForNo = (m) => !m.cancelled && !m.noExclude && !(m.source === 'sheet' && sheetNo(m) == null && m.no == null);
+
+export function matchNumbers(extra) {
+  const list = [...S.matchdays, ...(extra ? [extra] : [])]
+    .filter((m) => m.date && countsForNo(m))
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.createdAt || 0) - (b.createdAt || 0));
+  const out = new Map();
+  let last = null;
+  list.forEach((m, i) => {
+    const e = explicitNo(m);
+    if (e != null) { last = { no: e, i }; out.set(m.id, { no: e, auto: false }); }
+    else if (last) out.set(m.id, { no: last.no + (i - last.i), auto: true });
+  });
+  let next = null;
+  for (let i = list.length - 1; i >= 0; i--) {
+    const m = list[i], e = explicitNo(m);
+    if (e != null) next = { no: e, i };
+    else if (!out.has(m.id) && next) out.set(m.id, { no: next.no - (next.i - i), auto: true });
+  }
+  return out;
+}
+export const matchNo = (md) => (md ? matchNumbers().get(md.id)?.no ?? null : null);
+export const noLabel = (md) => { const n = matchNo(md); return n != null ? `${n}회` : ''; };

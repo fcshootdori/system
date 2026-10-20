@@ -4,6 +4,7 @@ import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state
 import { db } from '../store.js';
 import { STATUS } from '../config.js';
 import { esc, fmtDate, toast } from '../util.js';
+import { noLabel } from '../domain.js';
 import { empty } from '../ui.js';
 import { fmtSummary, editMatchday, cancelMatchday } from './home.js';
 import * as apply from './apply.js';
@@ -43,7 +44,7 @@ export function render(root) {
     <div class="runbar card">
       <div class="rb-top">
         <button class="navb" data-to="${prev?.id || ''}" ${prev ? '' : 'disabled'} aria-label="이전 경기">‹</button>
-        <div class="rb-title"><b>${fmtDate(md.date)}${md.time ? ` <small>${esc(md.time)}</small>` : ''}</b>
+        <div class="rb-title"><b>${noLabel(md) ? `<span class="no">${noLabel(md)}</span> ` : ''}${fmtDate(md.date)}${md.time ? ` <small>${esc(md.time)}</small>` : ''}</b>
           <small>${esc([md.venue, fmtSummary(md)].filter(Boolean).join(' · '))} · <span class="st ${md.cancelled ? 'st-cancel' : ''}">${statusLabel(md, STATUS)}</span></small></div>
         <button class="navb" data-to="${next?.id || ''}" ${next ? '' : 'disabled'} aria-label="이후 경기">›</button>
       </div>

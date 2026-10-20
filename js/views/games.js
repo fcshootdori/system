@@ -1,6 +1,6 @@
 import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js';
 import { db, newId } from '../store.js';
-import { rosters, schedule, dayStandings, fmtOf, totals } from '../domain.js';
+import { rosters, schedule, dayStandings, fmtOf, totals, noLabel } from '../domain.js';
 import { esc, fmtDate, toast } from '../util.js';
 import { modal, empty, teamChip, teamLabel } from '../ui.js';
 import { fmtSummary } from './home.js';
@@ -16,7 +16,7 @@ export function render(root, ctx = {}) {
   const ros = rosters(md);
   const games = S.games.filter((g) => g.matchdayId === md.id);
   const head = ctx.embedded ? '' : `${ctx.live ? '' : '<a class="back" href="#/results">‹ 경기결과</a>'}<section class="card"><div class="eyebrow">${esc(md.venue || '')}${md.source === 'sheet' ? ' 승률계산기 기록' : ''}</div>
-    <h1>${fmtDate(md.date)} 경기</h1><p class="muted small">${esc(fmtSummary(md))}</p></section>`;
+    <h1>${noLabel(md) ? noLabel(md) + ' · ' : ''}${fmtDate(md.date)} 경기</h1><p class="muted small">${esc(fmtSummary(md))}</p></section>`;
   if (!md.teams?.length) {
     root.innerHTML = head + `<section class="card">${empty('팀이 확정되면 경기 결과를 기록할 수 있어요.')}</section>`; return;
   }

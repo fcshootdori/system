@@ -1,6 +1,6 @@
 import { S, currentMatchday, matchdayById, nameOf } from '../state.js';
 import { APP_NAME, APP_VERSION } from '../config.js';
-import { applicants, rosters, dayStandings, teamColor, fmtOf, totals } from '../domain.js';
+import { applicants, rosters, dayStandings, teamColor, fmtOf, totals, noLabel } from '../domain.js';
 import { renderApplyImage, renderTeamsImage, renderResultImage, renderMatchImage, downloadCanvas, shareCanvas } from '../notice-image.js';
 import { esc, fmtDate, copyText, toast } from '../util.js';
 import { empty, teamLabel } from '../ui.js';
@@ -15,7 +15,7 @@ export function render(root) {
   if (!kind) kind = md.status === 'played' ? 'result' : md.teams?.length ? 'teams' : 'apply';
   root.innerHTML = `<section class="card">
     <h1>공지 이미지</h1>
-    <label class="inline">경기일 <select data-md>${S.matchdays.slice(0, 40).map((m) => `<option value="${m.id}" ${m.id === md.id ? 'selected' : ''}>${fmtDate(m.date)} ${esc(m.venue || '')}</option>`).join('')}</select></label>
+    <label class="inline">경기일 <select data-md>${S.matchdays.slice(0, 40).map((m) => `<option value="${m.id}" ${m.id === md.id ? 'selected' : ''}>${noLabel(m) ? noLabel(m) + ' · ' : ''}${fmtDate(m.date)} ${esc(m.venue || '')}</option>`).join('')}</select></label>
     <div class="seg">${Object.entries(KINDS).map(([k, l]) => `<button class="${k === kind ? 'on' : ''}" data-kind="${k}">${l}</button>`).join('')}</div>
     <div class="preview" data-preview><div class="muted center">만드는 중…</div></div>
     <div class="row wrap">
@@ -91,7 +91,7 @@ async function draw(root, md) {
 }
 
 function textNotice(md) {
-  const head = `[${S.team.name}] ${fmtDate(md.date)} ${md.time || ''} ${md.venue || ''}`.replace(/\s+/g, ' ').trim();
+  const head = `[${S.team.name}] ${noLabel(md) ? noLabel(md) + ' ' : ''}${fmtDate(md.date)} ${md.time || ''} ${md.venue || ''}`.replace(/\s+/g, ' ').trim();
   if (kind === 'apply') {
     const list = applicants(md), f = fmtOf(md);
     const main = list.filter((a) => !a.wait), wait = list.filter((a) => a.wait);

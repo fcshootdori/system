@@ -6,6 +6,7 @@ import { empty } from '../ui.js';
 import * as games from './games.js';
 import * as records from './records.js';
 import { fmtSummary } from './home.js';
+import { noLabel } from '../domain.js';
 
 let tab = 'res', cur = null;
 
@@ -24,7 +25,7 @@ export function render(root) {
       root.innerHTML = nav + `
         <section class="card rdnav">
           <button class="navb" data-to="${older || ''}" ${older ? '' : 'disabled'} aria-label="이전 경기">‹<small>이전</small></button>
-          <div class="rdt"><b>${fmtDate(md.date)}</b><small>${esc([md.time, md.venue].filter(Boolean).join(' · ') || fmtSummary(md))}</small></div>
+          <div class="rdt"><b>${noLabel(md) ? noLabel(md) + ' · ' : ''}${fmtDate(md.date)}</b><small>${esc([md.time, md.venue].filter(Boolean).join(' · ') || fmtSummary(md))}</small></div>
           <button class="navb" data-to="${newer || ''}" ${newer ? '' : 'disabled'} aria-label="이후 경기"><small>이후</small>›</button>
         </section>
         <p class="muted small center">${i + 1} / ${ids.length}번째 최근 경기 · 좌우로 밀어서 넘겨요</p>

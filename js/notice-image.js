@@ -1,6 +1,7 @@
 // 카페 공지용 이미지 생성 (canvas → PNG)
 import { TEAM_COLORS } from './config.js';
 import { fmtDate } from './util.js';
+import { noLabel } from './domain.js';
 
 const FONT = '"Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 const W = 1080, PAD = 64;
@@ -33,7 +34,7 @@ async function drawHeader(ctx, team, title, md) {
   }
   ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.font = f(600, 34); ctx.fillText(team.name || '', x, 118);
   ctx.fillStyle = '#fff'; ctx.font = f(800, 68); ctx.fillText(fit(ctx, title, W - x - PAD), x, 196);
-  const sub = [fmtDate(md?.date), md?.time, md?.venue].filter(Boolean).join('  ·  ');
+  const sub = [noLabel(md), fmtDate(md?.date), md?.time, md?.venue].filter(Boolean).join('  ·  ');
   ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.font = f(500, 32); ctx.fillText(fit(ctx, sub, W - x - PAD), x, 250);
 }
 function drawFooter(ctx, H, text) {

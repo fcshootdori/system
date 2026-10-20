@@ -2,7 +2,7 @@
 import { S, go, mdPath, today, statusLabel } from '../state.js';
 import { db } from '../store.js';
 import { STATUS } from '../config.js';
-import { applicants, fmtOf } from '../domain.js';
+import { applicants, fmtOf, noLabel } from '../domain.js';
 import { esc, fmtDate, toast } from '../util.js';
 import { empty } from '../ui.js';
 import { editMatchday, fmtSummary, reviewCard, cancelMatchday } from './home.js';
@@ -38,8 +38,8 @@ export function render(root, { sub }) {
 
   if (op && view === 'list') {
     const all = [...S.matchdays].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-    root.innerHTML = head + `<section class="card"><div class="tbl-wrap"><table class="tbl plan"><thead><tr><th>날짜</th><th>시간</th><th>장소</th><th>상태</th><th>참가</th></tr></thead><tbody>
-      ${all.map((m) => `<tr data-edit="${m.id}"><td class="nm">${fmtDate(m.date)}</td><td>${esc(m.time || '')}</td><td>${esc(m.venue || '')}</td>
+    root.innerHTML = head + `<section class="card"><div class="tbl-wrap"><table class="tbl plan"><thead><tr><th>회차</th><th>날짜</th><th>시간</th><th>장소</th><th>상태</th><th>참가</th></tr></thead><tbody>
+      ${all.map((m) => `<tr data-edit="${m.id}"><td>${noLabel(m) || '-'}</td><td class="nm">${fmtDate(m.date)}</td><td>${esc(m.time || '')}</td><td>${esc(m.venue || '')}</td>
         <td><span class="st st-${kindOf(m)}">${statusLabel(m, STATUS)}</span></td><td>${m.source === 'sheet' ? '-' : applicants(m).filter((a) => !a.wait).length}</td></tr>`).join('')}
       </tbody></table></div><p class="muted small">줄을 누르면 수정할 수 있어요.</p></section>`;
     bindCommon(root);
@@ -83,11 +83,11 @@ function detail(md, op) {
   const n = applicants(md).filter((a) => !a.wait).length;
   const played = md.status === 'played';
   if (md.cancelled) return `<div class="eyebrow cancel-t">경기 취소</div>
-    <h2 class="dt struck">${fmtDate(md.date)} ${md.time ? `<small>${esc(md.time)}</small>` : ''}</h2>
+    <h2 class="dt struck">${fmtDate(md.date)}${md.no ? ` <small>(${md.no}회 지정)</small>` : ''} ${md.time ? `<small>${esc(md.time)}</small>` : ''}</h2>
     <p class="muted small">${[md.venue, fmtSummary(md)].filter(Boolean).map(esc).join(' · ')}</p>
     <p class="cancel-box">이 경기는 취소됐어요${md.cancelReason ? ` — ${esc(md.cancelReason)}` : ''}.</p>
     ${op ? `<div class="row wrap"><button class="btn ghost" data-cancel>취소 철회</button><button class="btn ghost" data-editmd>수정</button><button class="btn ghost danger" data-delmd>삭제</button></div>` : ''}`;
-  return `<div class="eyebrow">${STATUS[md.status]?.label || ''}</div>
+  return `<div class="eyebrow">${[noLabel(md), STATUS[md.status]?.label].filter(Boolean).join(' · ')}</div>
     <h2 class="dt">${fmtDate(md.date)} ${md.time ? `<small>${esc(md.time)}</small>` : ''}</h2>
     <p class="muted small">${[md.venue, fmtSummary(md)].filter(Boolean).map(esc).join(' · ')}</p>
     ${md.note ? `<p class="note">${esc(md.note)}</p>` : ''}

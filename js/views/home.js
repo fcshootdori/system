@@ -2,7 +2,7 @@
 import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js';
 import { db, newId } from '../store.js';
 import { STATUS } from '../config.js';
-import { applicants, rosters, draftState, fmtOf, totals, dayStandings } from '../domain.js';
+import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel } from '../domain.js';
 import { esc, fmtDate, todayISO, toast } from '../util.js';
 import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js';
 import { formatFields, bindFormatFields, readFormat } from './format-form.js';
@@ -54,7 +54,7 @@ export function render(root) {
     const short = f.minPlayers && nIn < f.minPlayers ? f.minPlayers - nIn : 0;
     if (md.status === 'open') dock = `<div class="dock"><button class="btn full" data-go="apply/${md.id}">${mine ? (mine.wait ? `대기 ${mine.no}번 · 신청 현황` : `신청 완료 (${mine.no}번) · 신청 현황`) : '참가 신청하기'}</button></div>`;
     next = `<section class="card day">
-      <div class="eyebrow">${STATUS[md.status]?.label || ''}</div>
+      <div class="eyebrow">${[noLabel(md), STATUS[md.status]?.label].filter(Boolean).join(' · ')}</div>
       <h1>${fmtDate(md.date)}${md.time ? ` <small>${esc(md.time)}</small>` : ''}</h1>
       <p class="muted">${[md.venue, fmtSummary(md)].filter(Boolean).map(esc).join(' · ')}</p>
       ${stepper(md.status)}
@@ -82,7 +82,7 @@ export function render(root) {
     ${capMd ? `<a class="card cap-strip" href="#/draft">👑 <b>${fmtDate(capMd.date)} 드래프트</b>에 주장으로 참여 중이에요 — 입장하기 ›</a>` : ''}
     <div class="homegrid">
       <div>
-        <div class="sec-lab"><span>MATCH REVIEW</span>${last ? `<small>${fmtDate(last.date)}</small>` : ''}</div>
+        <div class="sec-lab"><span>MATCH REVIEW</span>${last ? `<small>${[noLabel(last), fmtDate(last.date)].filter(Boolean).join(' · ')}</small>` : ''}</div>
         ${last ? `<a class="card review" href="#/games/${last.id}">${reviewCard(last)}<span class="more">결과 자세히 ›</span></a>`
           : `<section class="card">${empty('아직 끝난 경기가 없어요.')}</section>`}
       </div>
@@ -103,7 +103,12 @@ export function editMatchday(md, presetDate) {
   const custom = !!md?.format;
   const { el, close } = modal(isNew ? '경기 추가' : '경기일 수정', `
     <form class="stack">
-      <label>날짜<input type="date" name="date" required value="${esc(md?.date || presetDate || todayISO())}"></label>
+      <div class="row">
+        <label>날짜<input type="date" name="date" required value="${esc(md?.date || presetDate || todayISO())}"></label>
+        <label>회차<input type="number" name="no" min="1" inputmode="numeric" value="${md?.no ?? ''}" placeholder="자동"></label>
+      </div>
+      <p class="tiny muted no-hint" data-nohint></p>
+      <label class="inline"><input type="checkbox" name="noExclude" ${md?.noExclude ? 'checked' : ''}> 회차에서 제외 <small class="muted">(친선·이벤트 경기)</small></label>
       <label>시간<input name="time" placeholder="예: 07:00~09:00" value="${esc(md?.time || '')}"></label>
       <label>장소<input name="venue" placeholder="구장 이름" value="${esc(md?.venue || '')}"></label>
       <label>메모<textarea name="note" rows="2" placeholder="회비, 준비물 등">${esc(md?.note || '')}</textarea></label>
@@ -116,11 +121,28 @@ export function editMatchday(md, presetDate) {
     </form>`);
   const form = el.querySelector('form');
   bindFormatFields(form);
+  // 회차 미리보기: 비워 두면 앞뒤 경기 기준으로 자동
+  const hint = () => {
+    const probe = { ...(md || {}), id: md?.id || '__new', date: form.date.value, no: form.no.value === '' ? null : +form.no.value,
+      noExclude: form.noExclude.checked, cancelled: md?.cancelled, createdAt: md?.createdAt || Date.now() };
+    const others = md ? null : probe;
+    const nums = md ? (() => { const keep = S.matchdays; S.matchdays = keep.map((m) => (m.id === md.id ? probe : m)); const r = matchNumbers(); S.matchdays = keep; return r; })() : matchNumbers(others);
+    const n = nums.get(probe.id);
+    const box = form.querySelector('[data-nohint]');
+    if (probe.cancelled) box.textContent = '취소된 경기는 회차에 들어가지 않아요.';
+    else if (probe.noExclude) box.textContent = '회차에 들어가지 않고, 다음 경기부터 이어서 매겨져요.';
+    else if (form.no.value !== '') box.textContent = `${form.no.value}회로 지정 — 앞뒤 경기 회차가 이 번호를 기준으로 자동으로 맞춰져요.`;
+    else box.textContent = n ? `자동: ${n.no}회 (앞뒤 경기 기준)` : '회차를 한 번 입력하면 앞뒤 경기는 자동으로 매겨져요.';
+    form.no.placeholder = n && form.no.value === '' ? `자동 ${n.no}` : '자동';
+  };
+  ['input', 'change'].forEach((ev) => form.addEventListener(ev, (e) => { if (['date', 'no', 'noExclude'].includes(e.target.name)) hint(); }));
+  hint();
   let touched = false;
   form.querySelector('details').addEventListener('change', () => { touched = true; });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const base = { date: form.date.value, time: form.time.value, venue: form.venue.value, note: form.note.value };
+    const base = { date: form.date.value, time: form.time.value, venue: form.venue.value, note: form.note.value,
+      no: form.no.value === '' ? null : +form.no.value, noExclude: form.noExclude.checked };
     if (!isNew) base.status = form.status.value;
     let format = md?.format || null;
     if (form.reset?.checked) format = null;
