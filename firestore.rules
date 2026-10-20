@@ -1,11 +1,12 @@
 rules_version = '2';
-// WD_FUTSAL Firestore 보안 규칙
-// - 앱에 접속한 사용자(익명 로그인 포함)만 읽고 쓸 수 있어요.
-// - "테스트 모드"처럼 날짜가 지나면 막히는 일이 없어요.
+// v0.1 초기 규칙 — 읽기는 누구나, 쓰기는 앱을 통해 접속한 사용자(익명 로그인)만.
+// 운영진 권한(PIN)은 앱 화면에서만 구분하므로, 정식 운영 전에 운영진 계정 기반 규칙으로 강화할 예정.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
+    match /meta/{doc}      { allow read: if true; allow write: if request.auth != null; }
+    match /members/{id}    { allow read: if true; allow write: if request.auth != null; }
+    match /matchdays/{id}  { allow read: if true; allow write: if request.auth != null; }
+    match /games/{id}      { allow read: if true; allow write: if request.auth != null; }
+    match /{path=**}       { allow read, write: if false; }
   }
 }

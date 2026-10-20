@@ -1,0 +1,63 @@
+// 앱 전역 상태 — 저장소를 구독해 화면이 항상 최신 데이터를 보도록 함
+import { db } from './store.js';
+import { DEFAULT_TEAM, DEFAULT_FORMAT } from './config.js';
+import { byName } from './util.js';
+
+export const S = {
+  team: { ...DEFAULT_TEAM },
+  members: [],
+  matchdays: [],
+  games: [],
+  ready: false,
+  operator: sessionStorage.getItem('teamapp:op') === '1',
+  captainToken: null,
+};
+
+const listeners = new Set();
+export const onChange = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
+let raf = 0;
+const emit = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => listeners.forEach((f) => f())); };
+
+export function startSync() {
+  db.watchDoc('meta/team', (d) => {
+    S.team = { ...DEFAULT_TEAM, ...(d || {}), format: { ...DEFAULT_FORMAT, ...(d?.format || {}) },
+      legacySheet: { ...DEFAULT_TEAM.legacySheet, ...(d?.legacySheet || {}) } };
+    emit();
+  });
+  db.watchCol('members', (list) => { S.members = list.sort(byName); S.ready = true; emit(); });
+  db.watchCol('matchdays', (list) => {
+    S.matchdays = list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
+    emit();
+  });
+  db.watchCol('games', (list) => { S.games = list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); emit(); });
+}
+
+export function setOperator(on) {
+  S.operator = on;
+  if (on) sessionStorage.setItem('teamapp:op', '1'); else sessionStorage.removeItem('teamapp:op');
+  emit();
+}
+export const refresh = emit;
+
+// 이 기기의 "내 이름" (로그인 없이 이름 선택 방식)
+export const me = {
+  get id() { return localStorage.getItem('teamapp:me') || ''; },
+  set(id) { if (id) localStorage.setItem('teamapp:me', id); else localStorage.removeItem('teamapp:me'); emit(); },
+};
+export const go = (path) => { location.hash = '#/' + path; };
+export const mdPath = (id) => 'matchdays/' + id;
+
+// ── 조회 도우미 ──
+export const memberById = (id) => S.members.find((m) => m.id === id);
+export function nameOf(id, md) {
+  const m = memberById(id);
+  if (m) return m.name;
+  const g = md?.guests?.[id];
+  return g ? `${g.name}(게)` : '(알 수 없음)';
+}
+// 진행 중인 경기일: 완료되지 않은 것 중 가장 이른 날짜, 없으면 가장 최근
+export function currentMatchday() {
+  const live = S.matchdays.filter((m) => m.status !== 'played').sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  return live[0] || S.matchdays[0] || null;
+}
+export const matchdayById = (id) => S.matchdays.find((m) => m.id === id);
