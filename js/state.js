@@ -62,24 +62,29 @@ export function nameOf(id, md) {
 }
 // 진행 중인 경기일: 완료되지 않은 것 중 가장 이른 날짜, 없으면 가장 최근
 export function currentMatchday() {
-  const live = S.matchdays.filter((m) => m.status !== 'played').sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const live = S.matchdays.filter((m) => m.status !== 'played' && !m.cancelled).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   return live[0] || S.matchdays[0] || null;
 }
 export const matchdayById = (id) => S.matchdays.find((m) => m.id === id);
 
 const todayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
 // 끝난 경기일 (기록이 있는 것), 최근 순
-export const playedDays = () => S.matchdays.filter((m) => S.games.some((g) => g.matchdayId === m.id && g.done))
+export const playedDays = () => S.matchdays.filter((m) => !m.cancelled && S.games.some((g) => g.matchdayId === m.id && g.done))
   .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 // 다음 경기: 오늘 이후의 끝나지 않은 경기일 중 가장 빠른 것
 export function nextMatchday() {
   const t = todayStr();
-  const up = S.matchdays.filter((m) => m.status !== 'played' && (m.date || '') >= t).sort((a, b) => a.date.localeCompare(b.date));
-  return up[0] || S.matchdays.filter((m) => m.status !== 'played').sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] || null;
+  const up = S.matchdays.filter((m) => m.status !== 'played' && !m.cancelled && (m.date || '') >= t).sort((a, b) => a.date.localeCompare(b.date));
+  return up[0] || S.matchdays.filter((m) => m.status !== 'played' && !m.cancelled).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] || null;
 }
 // 이 기기가 주장 링크로 들어온 진행 중 드래프트
 export function captainMatchday() {
   if (!S.captainToken) return null;
-  return S.matchdays.find((m) => (m.captains || []).some((c) => c.token === S.captainToken) && ['captains', 'drafting'].includes(m.status)) || null;
+  return S.matchdays.find((m) => !m.cancelled && (m.captains || []).some((c) => c.token === S.captainToken) && ['captains', 'drafting'].includes(m.status)) || null;
 }
 export const today = todayStr;
+
+// 경기 취소 — 일정에는 남기고 "취소"로 표시
+export const statusLabel = (md, STATUS) => (md?.cancelled ? '경기 취소' : STATUS[md?.status]?.label || '');
+// 앞으로 있을 경기 중 취소된 것 (홈 안내용)
+export const upcomingCancelled = () => S.matchdays.filter((m) => m.cancelled && (m.date || '') >= todayStr()).sort((a, b) => a.date.localeCompare(b.date));

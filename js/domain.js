@@ -151,7 +151,7 @@ export function allStats() {
   });
   byDay.forEach((games, mdId) => {
     const md = matchdayById(mdId);
-    if (!md) return;
+    if (!md || md.cancelled) return;
     const ros = rosters(md);
     const day = new Map(); // 이 경기일 개인 기록
     const rec = (id) => { if (!day.has(id)) day.set(id, { w: 0, d: 0, l: 0, goals: 0, og: 0 }); return day.get(id); };

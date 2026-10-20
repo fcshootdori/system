@@ -6,7 +6,7 @@ import * as games from './games.js';
 
 export function liveMatchday() {
   const t = today();
-  const withTeams = S.matchdays.filter((m) => m.teams?.length && m.source !== 'sheet');
+  const withTeams = S.matchdays.filter((m) => m.teams?.length && m.source !== 'sheet' && !m.cancelled);
   return withTeams.find((m) => m.date === t)
     || withTeams.filter((m) => m.status === 'teams').sort((a, b) => a.date.localeCompare(b.date))[0]
     || null;

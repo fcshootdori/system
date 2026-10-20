@@ -27,7 +27,7 @@ export function render(root, ctx = {}) {
       <h1>참가 신청 <small>${main.length}${cap ? ` / ${cap}` : ''}명</small></h1>
       ${f.minPlayers ? `<div class="meter ${short ? '' : 'ok'}"><i style="width:${Math.min(100, main.length / f.minPlayers * 100)}%"></i></div>
         <p class="small ${short ? 'warn-t' : 'ok-t'}">${short ? `최소 ${f.minPlayers}명까지 ${short}명 더 필요해요` : `최소 인원 ${f.minPlayers}명 충족`}</p>` : ''}
-      ${open ? (me.id
+      ${md.cancelled ? `<p class="cancel-box">취소된 경기예요${md.cancelReason ? ` — ${esc(md.cancelReason)}` : ''}.</p>` : open ? (me.id
         ? `<button class="btn full ${mine ? 'ghost danger' : ''}" data-toggle>${mine ? '신청 취소' : `${esc(memberById(me.id)?.name || '')}(으)로 참가 신청`}</button>`
         : `<button class="btn full" data-me>내 이름 선택 후 신청하기</button>`)
         : `<p class="muted">신청이 마감됐어요.</p>`}

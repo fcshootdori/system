@@ -346,3 +346,17 @@ h3.sec { margin: 16px 0 6px; font-size: 15px; padding: 6px 10px; background: var
 .toggle { align-items: flex-start; }
 .toggle span { display: flex; flex-direction: column; font-weight: 600; }
 .apps .btn.sm { padding: 5px 10px; }
+
+/* ── 0.1.5: 경기 취소 ── */
+.scd.k-cancel em { background: #ef4444; }
+.scd.k-cancel .dn { text-decoration: line-through; text-decoration-color: #ef4444; }
+.legend .k-cancel::before { background: #ef4444; }
+.st-cancel { background: #fee2e2; color: #b91c1c; }
+.cancel-t { color: #b91c1c; }
+.struck { text-decoration: line-through; text-decoration-color: #ef4444; color: var(--sub); }
+.cancel-box { background: #fef2f2; color: #b91c1c; border-radius: 10px; padding: 10px 12px; font-size: 14px; font-weight: 600; margin: 8px 0; }
+.cancel-card { border-color: #fecaca; background: #fff7f7; }
+.cancel-strip { background: #fef2f2; border-color: #fecaca; color: #b91c1c; font-size: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.btn.danger-fill { background: #dc2626; }
+.link.danger { color: #dc2626; }

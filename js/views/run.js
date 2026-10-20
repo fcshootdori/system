@@ -1,11 +1,11 @@
 // 운영 > 경기 — 위쪽에 선택한 경기(날짜·장소·상태, 이전/이후)와 단계 막대를 고정하고
 //  신청 → 주장 → 드래프트 → 팀 확정 → 경기 → 결과 단계 화면을 보여 줌 (WD_FUTSAL 경기 메뉴와 같은 구성)
-import { S, nextMatchday, matchdayById, mdPath, go } from '../state.js';
+import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state.js';
 import { db } from '../store.js';
 import { STATUS } from '../config.js';
 import { esc, fmtDate, toast } from '../util.js';
 import { empty } from '../ui.js';
-import { fmtSummary, editMatchday } from './home.js';
+import { fmtSummary, editMatchday, cancelMatchday } from './home.js';
 import * as apply from './apply.js';
 import * as draft from './draft.js';
 import * as games from './games.js';
@@ -44,17 +44,23 @@ export function render(root) {
       <div class="rb-top">
         <button class="navb" data-to="${prev?.id || ''}" ${prev ? '' : 'disabled'} aria-label="이전 경기">‹</button>
         <div class="rb-title"><b>${fmtDate(md.date)}${md.time ? ` <small>${esc(md.time)}</small>` : ''}</b>
-          <small>${esc([md.venue, fmtSummary(md)].filter(Boolean).join(' · '))} · <span class="st">${STATUS[md.status]?.label || ''}</span></small></div>
+          <small>${esc([md.venue, fmtSummary(md)].filter(Boolean).join(' · '))} · <span class="st ${md.cancelled ? 'st-cancel' : ''}">${statusLabel(md, STATUS)}</span></small></div>
         <button class="navb" data-to="${next?.id || ''}" ${next ? '' : 'disabled'} aria-label="이후 경기">›</button>
       </div>
       <ol class="stages">${STAGES.map(([k, l], n) => `<li><button data-step="${k}" class="${n < idx(auto) ? 'done' : ''} ${k === auto ? 'now' : ''} ${k === step ? 'sel' : ''}">${l}</button></li>`).join('')}</ol>
-      <div class="rb-tools"><button class="link" data-edit>경기일·경기 방식 수정</button><button class="link" data-notice>공지 이미지</button></div>
+      <div class="rb-tools"><button class="link" data-edit>경기일·경기 방식 수정</button><button class="link" data-notice>공지 이미지</button>${md.status === 'played' ? '' : `<button class="link danger" data-cancelmd>${md.cancelled ? '취소 철회' : '경기 취소'}</button>`}</div>
     </div>
     <div data-body></div>`;
 
   const body = root.querySelector('[data-body]');
   const ctx = { md, embedded: true };
-  if (step === 'apply') apply.render(body, ctx);
+  root.querySelector('[data-cancelmd]')?.addEventListener('click', () => cancelMatchday(md));
+  if (md.cancelled) {
+    body.innerHTML = `<section class="card cancel-card"><h2>취소된 경기예요</h2>
+      <p class="small">${md.cancelReason ? esc(md.cancelReason) + ' · ' : ''}일정에는 "경기 취소"로 표시되고, 회원 홈에도 안내가 떠요. 신청 명단은 그대로 보관돼요.</p>
+      <button class="btn ghost" data-uncancel>취소 철회</button></section>`;
+    body.querySelector('[data-uncancel]').addEventListener('click', () => cancelMatchday(md));
+  } else if (step === 'apply') apply.render(body, ctx);
   else if (step === 'captain' || step === 'draft' || step === 'teams') {
     draft.render(body, ctx);
     if (step === 'teams' && md.status === 'teams') body.insertAdjacentHTML('beforeend', `<section class="card op"><h2>다음 단계</h2>

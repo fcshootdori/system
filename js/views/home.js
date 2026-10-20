@@ -1,5 +1,5 @@
 // 회원 홈 — MATCH REVIEW(지난 경기) + NEXT MATCH(다음 경기)  (WD_FUTSAL 홈과 같은 구성)
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday } from '../state.js';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js';
 import { db, newId } from '../store.js';
 import { STATUS } from '../config.js';
 import { applicants, rosters, draftState, fmtOf, totals, dayStandings } from '../domain.js';
@@ -76,7 +76,9 @@ export function render(root) {
     </section>`;
   }
 
+  const cancels = upcomingCancelled();
   root.innerHTML = `
+    ${cancels.map((c) => `<a class="card cancel-strip" href="#/sched"><b>${fmtDate(c.date)} 경기 취소</b>${c.cancelReason ? ` · ${esc(c.cancelReason)}` : ''}</a>`).join('')}
     ${capMd ? `<a class="card cap-strip" href="#/draft">👑 <b>${fmtDate(capMd.date)} 드래프트</b>에 주장으로 참여 중이에요 — 입장하기 ›</a>` : ''}
     <div class="homegrid">
       <div>
@@ -132,5 +134,26 @@ export function editMatchday(md, presetDate) {
       await db.set(mdPath(md.id), { ...base, format }, { merge: true }); toast('저장했어요');
     }
     close();
+  });
+}
+
+// 경기 취소 / 취소 철회 (운영진) — 취소해도 일정에는 남고 "경기 취소"로 표시
+const REASONS = ['우천', '구장 사정', '인원 부족', '운영진 사정'];
+export function cancelMatchday(md) {
+  if (md.cancelled) {
+    if (!confirm(`${fmtDate(md.date)} 경기 취소를 철회하고 원래대로 되돌릴까요?`)) return;
+    db.set(mdPath(md.id), { cancelled: false, cancelReason: '', cancelledAt: null }, { merge: true }).then(() => toast('경기 취소를 철회했어요'));
+    return;
+  }
+  const { el, close } = modal('경기 취소', `<form class="stack">
+    <p class="small">${fmtDate(md.date)}${md.time ? ' ' + esc(md.time) : ''} ${esc(md.venue || '')} 경기를 취소해요. 일정에는 남고 "경기 취소"로 표시되며, 신청 명단은 그대로 보관돼요.</p>
+    <div class="chips">${REASONS.map((r) => `<button type="button" class="xchip" data-r="${r}">${r}</button>`).join('')}</div>
+    <label>취소 사유 (선택)<input name="reason" placeholder="예: 우천으로 구장 폐쇄"></label>
+    <button class="btn danger-fill">경기 취소</button></form>`);
+  el.querySelectorAll('[data-r]').forEach((b) => b.addEventListener('click', () => { el.querySelector('[name=reason]').value = b.dataset.r; }));
+  el.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await db.set(mdPath(md.id), { cancelled: true, cancelReason: e.target.reason.value.trim(), cancelledAt: Date.now() }, { merge: true });
+    close(); toast(`${fmtDate(md.date)} 경기를 취소로 표시했어요`);
   });
 }
