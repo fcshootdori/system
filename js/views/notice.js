@@ -1,9 +1,9 @@
-import { S, currentMatchday, matchdayById, nameOf } from '../state.js?v=0.1.29';
-import { APP_NAME, APP_VERSION } from '../config.js?v=0.1.29';
-import { applicants, rosters, dayStandings, teamColor, fmtOf, totals, noLabel } from '../domain.js?v=0.1.29';
-import { renderApplyImage, renderTeamsImage, renderResultImage, renderMatchImage, downloadCanvas, shareCanvas } from '../notice-image.js?v=0.1.29';
-import { esc, fmtDate, copyText, toast } from '../util.js?v=0.1.29';
-import { empty, teamLabel } from '../ui.js?v=0.1.29';
+import { S, currentMatchday, matchdayById, nameOf } from '../state.js?v=0.1.30';
+import { APP_NAME, APP_VERSION } from '../config.js?v=0.1.30';
+import { applicants, rosters, dayStandings, teamColor, fmtOf, totals, noLabel } from '../domain.js?v=0.1.30';
+import { renderApplyImage, renderTeamsImage, renderResultImage, renderMatchImage, downloadCanvas, shareCanvas } from '../notice-image.js?v=0.1.30';
+import { esc, fmtDate, copyText, toast } from '../util.js?v=0.1.30';
+import { empty, teamLabel } from '../ui.js?v=0.1.30';
 
 let kind = null, mdId = null, lastCanvas = null;
 const KINDS = { apply: '신청 명단', teams: '팀 구성', result: '경기 결과' };

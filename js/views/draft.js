@@ -1,11 +1,11 @@
-import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.29';
-import { db } from '../store.js?v=0.1.29';
-import { TEAM_COLORS } from '../config.js?v=0.1.29';
-import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.29';
-import { TEAM_COLORS as TC } from '../config.js?v=0.1.29';
-import { modal } from '../ui.js?v=0.1.29';
-import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.29';
-import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.29';
+import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.30';
+import { db } from '../store.js?v=0.1.30';
+import { TEAM_COLORS } from '../config.js?v=0.1.30';
+import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.30';
+import { TEAM_COLORS as TC } from '../config.js?v=0.1.30';
+import { modal } from '../ui.js?v=0.1.30';
+import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.30';
+import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.30';
 
 let lastCtx = {};
 export function render(root, ctx = {}) {
@@ -13,7 +13,7 @@ export function render(root, ctx = {}) {
   const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || captainMatchday() || nextMatchday();
   if (!md) { root.innerHTML = `<section class="card">${empty('진행 중인 경기일이 없어요.')}</section>`; return; }
   const caps = md.captains || [];
-  const myCap = caps.findIndex((c) => (S.auth?.pid && c.id === S.auth.pid) || (S.captainToken && c.token === S.captainToken));
+  const myCap = caps.findIndex((c) => (S.auth?.pid && (c.id === S.auth.pid || (c.co || []).includes(S.auth.pid))) || (S.captainToken && c.token === S.captainToken));
   const head = ctx.embedded ? '' : `<a class="back" href="#/home">‹ 홈</a><section class="card"><div class="eyebrow">${fmtDate(md.date)} ${esc(md.venue || '')}</div>
     <h1>${md.status === 'teams' || md.status === 'played' ? '팀 구성' : '주장 · 드래프트'}</h1>
     ${myCap >= 0 ? `<p class="mine">이 기기는 <b>${esc(nameOf(caps[myCap].id, md))}</b> 주장으로 참여 중이에요.</p>` : ''}</section>`;
@@ -32,57 +32,66 @@ export function render(root, ctx = {}) {
 }
 
 // ── 1. 주장 선정 ──
-let capSel = [];
+//  위: A팀 · B팀 박스(좌우로 크게) → 팀 박스를 누른 뒤 아래 신청자 명단에서 주장을 고름
+//  팀마다 기본 1명, 여러 명(공동 주장)도 가능. 첫 주장은 팀 이름("닉네임+팀")과 드래프트 대표가 됨
+let capTeams = null, capFor = null, activeTeam = 0;
+const LETTER = (i) => String.fromCharCode(65 + i);   // A, B, C …
 function captainPicker(md) {
-  const f = fmtOf(md), n = f.teams;
-  const capName = (i) => (n === 2 ? ['왼쪽 팀 주장', '오른쪽 팀 주장'][i] : f.teamMode === 'fixed' ? `${teamLabel(md, i)} 주장` : `${i + 1}번 주장`);
+  const n = fmtOf(md).teams;
   const list = confirmed(md);
-  const pre = (md.captains || []).map((c) => c.id);
-  if (!capSel.length && pre.length) capSel = pre;
-  capSel = capSel.filter((id) => list.some((a) => a.id === id));
+  if (capFor !== md.id || !capTeams || capTeams.length !== n) {
+    capFor = md.id; activeTeam = 0;
+    capTeams = Array.from({ length: n }, (_, i) => { const c = md.captains?.[i]; return c ? [c.id, ...(c.co || [])] : []; });
+  }
+  capTeams = capTeams.map((ids) => ids.filter((id) => list.some((a) => a.id === id)));
+  const teamOf = (id) => capTeams.findIndex((ids) => ids.includes(id));
   const groups = appGroups(md);
   const groupCard = groups.size >= 2 ? `<section class="card op"><h2>카페 댓글 구역대로 팀 나누기</h2>
     <p class="muted small">${[...groups].map(([g, ids]) => `<b>${esc(g)}</b> ${ids.length}명`).join(' · ')} — 드래프트 없이 댓글 구역 그대로 팀을 만들고, 팀 확정 단계에서 선수를 옮겨 밸런스를 맞출 수 있어요.</p>
     <button class="btn" data-groupsplit>구역대로 팀 만들기</button></section>` : '';
-  return groupCard + `<section class="card op">
-    <h2>주장 ${n}명 선택 <small>${capSel.length}/${n}</small></h2>
-    <p class="muted small">${n === 2 ? '1번 주장은 축구장 왼쪽, 2번 주장은 오른쪽 팀이에요.' : '누른 순서대로 1번·2번… 팀 주장이에요.'} 지명 순서는 드래프트에서 우선순위 추첨으로 정해요.</p>
-    ${list.length ? `<div class="name-grid">${list.map((a) => {
-      const k = capSel.indexOf(a.id);
-      return `<button class="name-btn ${k >= 0 ? 'on' : ''}" data-cap="${a.id}">${k >= 0 ? `<b>${k + 1}</b> ` : ''}${esc(nameOf(a.id, md))}</button>`;
-    }).join('')}</div>` : empty('확정된 참가자가 없어요.')}
-    ${capSel.length ? `<ol class="order">${capSel.map((id, i) => `<li><span>${i + 1}. ${esc(nameOf(id, md))} <small class="muted">${capName(i)}</small></span>
-      <button class="icon-btn" data-up="${i}" ${i ? '' : 'disabled'}>↑</button><button class="icon-btn" data-down="${i}" ${i < capSel.length - 1 ? '' : 'disabled'}>↓</button></li>`).join('')}</ol>` : ''}
-    <div class="row wrap">
-      <button class="btn ghost" data-shuffle ${capSel.length > 1 ? '' : 'disabled'}>좌우 바꾸기</button>
-      <button class="btn" data-start ${capSel.length === n ? '' : 'disabled'}>주장 확정 · 드래프트 시작</button>
-    </div></section>`;
+  const ready = capTeams.every((ids) => ids.length);
+  return groupCard + `<section class="card op cappick">
+    <h2>주장 선정</h2>
+    <div class="ctbar n${n}">${capTeams.map((ids, i) => `<button class="ct ${activeTeam === i ? 'on' : ''} ${ids.length ? 'set' : ''}" data-ct="${i}">
+      <span class="ct-l">${LETTER(i)}팀 <small>${n === 2 ? (i ? '오른쪽' : '왼쪽') : ''}</small></span>
+      ${ids.length ? `<b class="ct-n">${ids.map((id, k) => `<span>${k ? '' : '👑 '}${esc(nameOf(id, md))}</span>`).join('')}</b>` : '<b class="ct-n empty">주장을 고르세요</b>'}
+      <small class="ct-s">${activeTeam === i ? '▼ 아래 명단에서 고르는 중' : ids.length ? `${ids.length}명 · 눌러서 고치기` : '눌러서 고르기'}</small>
+    </button>`).join('')}</div>
+    <p class="muted small">팀 박스를 누른 뒤 아래 명단에서 주장을 눌러요. 기본 1명이고, 여러 명 고르면 공동 주장(첫 번째가 대표·팀 이름)이 돼요. 다시 누르면 빠져요.</p>
+    ${list.length ? `<div class="name-grid cap-grid">${list.map((a) => { const t = teamOf(a.id);
+      return `<button class="name-btn ${t >= 0 ? `on t${t}` : ''}" data-cap="${a.id}">${t >= 0 ? `<b class="ctag">${LETTER(t)}</b> ` : ''}${esc(nameOf(a.id, md))}</button>`; }).join('')}</div>` : empty('확정된 참가자가 없어요.')}
+    <button class="btn full" data-start ${ready ? '' : 'disabled'}>${ready ? '주장 확정 · 드래프트 시작' : `${capTeams.map((ids, i) => (ids.length ? '' : LETTER(i) + '팀')).filter(Boolean).join('·')} 주장을 골라 주세요`}</button>
+  </section>`;
 }
 function bindCaptainPicker(root, md) {
   root.querySelector('[data-groupsplit]')?.addEventListener('click', () => groupSplit(md));
-  const n = fmtOf(md).teams;
   const rer = () => render(root, lastCtx);
+  root.querySelectorAll('[data-ct]').forEach((b) => b.addEventListener('click', () => { activeTeam = +b.dataset.ct; rer(); }));
   root.querySelectorAll('[data-cap]').forEach((b) => b.addEventListener('click', () => {
     const id = b.dataset.cap;
-    capSel = capSel.includes(id) ? capSel.filter((x) => x !== id) : capSel.length < n ? [...capSel, id] : capSel;
+    const cur = capTeams.findIndex((ids) => ids.includes(id));
+    capTeams = capTeams.map((ids) => ids.filter((x) => x !== id));
+    if (cur !== activeTeam) {
+      capTeams[activeTeam].push(id);
+      // 이 팀 첫 주장을 고르면, 주장이 없는 다음 팀으로 자동으로 넘어감
+      if (capTeams[activeTeam].length === 1) { const nx = capTeams.findIndex((ids) => !ids.length); if (nx >= 0) activeTeam = nx; }
+    }
     rer();
   }));
-  root.querySelectorAll('[data-up]').forEach((b) => b.addEventListener('click', () => { const i = +b.dataset.up; [capSel[i - 1], capSel[i]] = [capSel[i], capSel[i - 1]]; rer(); }));
-  root.querySelectorAll('[data-down]').forEach((b) => b.addEventListener('click', () => { const i = +b.dataset.down; [capSel[i + 1], capSel[i]] = [capSel[i], capSel[i + 1]]; rer(); }));
-  root.querySelector('[data-shuffle]')?.addEventListener('click', () => { capSel = shuffle(capSel); rer(); });
   root.querySelector('[data-start]')?.addEventListener('click', async (ev) => {
     const btn = ev.currentTarget; btn.disabled = true;
     const early = !!closeTime(md) && !closePassed(md);
+    const sel = capTeams.map((ids) => [...ids]);
     const ok = await db.tx(mdPath(md.id), (cur) => {
-      if (!cur) return null;
+      if (!cur || sel.some((ids) => !ids.length)) return null;
       if (early) cur.earlyTeams = true;   // 운영진이 마감 전에 일부러 시작
-      cur.captains = capSel.map((id) => ({ id, token: randomToken(), color: null }));
-      cur.teamNames = capSel.map((id) => `${nameOf(id, cur)}팀`);   // 기본 팀 이름: 주장 닉네임 + 팀 (운영진이 바꿀 수 있음)
+      cur.captains = sel.map((ids) => ({ id: ids[0], co: ids.slice(1), token: randomToken(), color: null }));
+      cur.teamNames = sel.map((ids) => `${nameOf(ids[0], cur)}팀`);   // 기본 팀 이름: 대표 주장 닉네임 + 팀 (주장 카드에서 고칠 수 있음)
       cur.picks = []; cur.teams = []; cur.order = null; cur.cards = null; cur.pending = null; cur.status = 'drafting'; cur.draftStarted = true;
       return cur;
     }).catch((e) => { btn.disabled = false; throw e; });
     if (!ok) { btn.disabled = false; return toast('경기를 찾지 못했어요 — 화면을 새로 고쳐 주세요'); }
-    capSel = []; toast('드래프트를 시작했어요 — 주장들이 팀 색을 고를 차례예요');
+    capTeams = null; toast('드래프트를 시작했어요 — 주장들이 팀 색을 고를 차례예요');
   });
 }
 
@@ -199,7 +208,7 @@ function capCard(md, i, { ph, ds, myCap }) {
   return `<div class="capcard h${i} ${turn ? 'turn' : ''} ${mine ? 'mine' : ''} ${col ? '' : 'nocolor'}" data-k="${i}" style="${col ? `--tc:${col.hex};--ti:${col.text}` : ''}">
     <div class="h-hd">
       ${rank >= 0 && ph !== 'order' && ph !== 'color' ? `<em class="rank">${rank + 1}순위</em>` : ''}
-      ${capId ? `<span class="hcap">👑 ${esc(nameOf(capId, md))}</span>` : ''}
+      ${capId ? `<span class="hcap">👑 ${captainIds(md, i).map((x) => esc(nameOf(x, md))).join(' · ')}</span>` : ''}
       ${editName ? `<input class="tn tn-edit" data-tname="${i}" value="${esc(md.teamNames?.[i] || teamLabel(md, i))}" aria-label="팀 이름" title="팀 이름 (눌러서 고치기)">`
         : `<span class="tn">${esc(teamLabel(md, i))}${col && md.teamNames?.[i] ? ` · ${col.label}` : ''}</span>`}
       <span class="cnt"><b>${ids.length}</b>명</span>
@@ -216,8 +225,8 @@ function half(md, i, { ph, ds, myCap, final }) {
   const mine = myCap === i;
   const pend = !final && md.pending && md.pending.team === i ? md.pending.id : null;
   const last = (md.picks || []).slice(-1)[0];
-  const capId = captainOf(md, i);
-  const others = ids.filter((x) => x !== capId);   // 주장은 위 카드에, 나머지 선수만
+  const capIds = captainIds(md, i);
+  const others = ids.filter((x) => !capIds.includes(x));   // 주장(공동 주장 포함)은 위 카드에, 나머지 선수만
   const nTeams = rosters(md).length;
   const player = (id) => {
     const key = md.id + ':' + id; const nw = !seen.has(key); seen.add(key);

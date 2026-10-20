@@ -1,13 +1,13 @@
 // 회원 홈 — MATCH REVIEW(지난 경기) + NEXT MATCH(다음 경기)  (WD_FUTSAL 홈과 같은 구성)
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.29';
-import { db, newId } from '../store.js?v=0.1.29';
-import { STATUS } from '../config.js?v=0.1.29';
-import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel } from '../domain.js?v=0.1.29';
-import { TEAM_COLORS } from '../config.js?v=0.1.29';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.29';
-import { norm } from '../cafe-parser.js?v=0.1.29';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.29';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.29';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.30';
+import { db, newId } from '../store.js?v=0.1.30';
+import { STATUS } from '../config.js?v=0.1.30';
+import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel } from '../domain.js?v=0.1.30';
+import { TEAM_COLORS } from '../config.js?v=0.1.30';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.30';
+import { norm } from '../cafe-parser.js?v=0.1.30';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.30';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.30';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);

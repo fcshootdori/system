@@ -777,3 +777,22 @@ details.tnote[open] { padding-bottom: 4px; }
 .pitch { min-height: 260px; }
 .half { padding-top: 14px; }
 @media (max-width: 420px) { .capbar { gap: 5px; } .swapside { padding: 6px 4px; font-size: 16px; } .swapside small { font-size: 9px; } }
+
+/* ── 0.1.30 주장 선정: A팀·B팀 박스 + 신청자 명단 ── */
+.ctbar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 8px; }
+.ctbar.n3 { grid-template-columns: repeat(3, 1fr); } .ctbar.n4 { grid-template-columns: repeat(2, 1fr); }
+.ct { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 120px; padding: 12px 14px; border-radius: 16px; border: 2px dashed #cbd5e1; background: #fff;
+  text-align: left; cursor: pointer; font: inherit; color: var(--ink); transition: border-color .15s, box-shadow .15s; min-width: 0; }
+.ct .ct-l { font-size: 20px; font-weight: 900; letter-spacing: -.02em; }
+.ct .ct-l small { font-size: 11px; font-weight: 600; color: var(--sub); margin-left: 4px; }
+.ct .ct-n { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 800; min-width: 0; }
+.ct .ct-n span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ct .ct-n.empty { color: #94a3b8; font-weight: 600; font-size: 14px; }
+.ct .ct-s { margin-top: auto; font-size: 11px; color: var(--sub); }
+.ct.set { border-style: solid; border-color: #e2e8f0; }
+.ct.on { border: 2px solid var(--brand); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 18%, transparent); background: color-mix(in srgb, var(--brand) 4%, #fff); }
+.ct.on .ct-s { color: var(--brand); font-weight: 700; }
+.cap-grid .name-btn .ctag { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; background: #fff; color: var(--brand); font-size: 11px; margin-right: 2px; }
+.cap-grid .name-btn.on.t1 { background: #0f766e; border-color: #0f766e; }
+.cap-grid .name-btn.on.t1 .ctag { color: #0f766e; }
+.cappick > .btn.full { margin-top: 12px; }

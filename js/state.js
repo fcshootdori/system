@@ -1,7 +1,7 @@
 // 앱 전역 상태 — 저장소를 구독해 화면이 항상 최신 데이터를 보도록 함
-import { db } from './store.js?v=0.1.29';
-import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.29';
-import { byName } from './util.js?v=0.1.29';
+import { db } from './store.js?v=0.1.30';
+import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.30';
+import { byName } from './util.js?v=0.1.30';
 
 export const S = {
   team: { ...DEFAULT_TEAM },
@@ -100,7 +100,7 @@ export function captainMatchday() {
   // 로그인한 회원이 주장이거나, 주장 링크로 들어온 기기
   const pid = S.auth?.pid;
   if (!pid && !S.captainToken) return null;
-  return S.matchdays.find((m) => !m.cancelled && (m.captains || []).some((c) => (pid && c.id === pid) || (S.captainToken && c.token === S.captainToken)) && ['captains', 'drafting'].includes(m.status)) || null;
+  return S.matchdays.find((m) => !m.cancelled && (m.captains || []).some((c) => (pid && (c.id === pid || (c.co || []).includes(pid))) || (S.captainToken && c.token === S.captainToken)) && ['captains', 'drafting'].includes(m.status)) || null;
 }
 export const today = todayStr;
 

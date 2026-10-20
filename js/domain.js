@@ -1,7 +1,7 @@
 // 경기 운영 규칙 — 경기 방식, 신청 순서, 드래프트 순번, 대진, 결과, 개인 기록
 //  승률계산기 시트와 같은 규칙: 승률 = 승 ÷ (승+패), 승점 = 승×3 + 무
-import { S, memberById, matchdayById } from './state.js?v=0.1.29';
-import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.29';
+import { S, memberById, matchdayById } from './state.js?v=0.1.30';
+import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.30';
 
 // ── 경기 방식: 팀 기본값 + 경기일별 변경값 ──
 export function fmtOf(md) {
@@ -69,7 +69,7 @@ export function pickSequence(nTeams, nPicks, mode = 'snake') {
   return seq;
 }
 export function draftPool(md) {
-  const caps = new Set((md.captains || []).map((c) => c.id));
+  const caps = new Set((md.captains || []).flatMap((c) => [c.id, ...(c.co || [])]));   // 공동 주장도 제외
   return confirmed(md).map((a) => a.id).filter((id) => !caps.has(id));
 }
 // 지명 순서: 우선순위 추첨 결과(md.order = [1순위 팀, 2순위 팀])로 1-2-2-1-1-2-2-1 … (스네이크)
@@ -96,7 +96,7 @@ export function draftPhase(md) {
 }
 export function rosters(md) {
   if (md?.teams?.length) return md.teams.map((t) => t.members || []);
-  return (md?.captains || []).map((c, i) => [c.id, ...(md.picks || []).filter((p) => p.team === i).map((p) => p.id)]);
+  return (md?.captains || []).map((c, i) => [c.id, ...(c.co || []), ...(md.picks || []).filter((p) => p.team === i).map((p) => p.id)]);
 }
 export function teamColor(md, i) {
   if (md?.teams?.[i]?.color) return md.teams[i].color;
@@ -301,6 +301,8 @@ export const teamEvent = (md) => (eventMode(md) === 'teams' ? eventTeams(md) : n
 export const capEvent = (md) => (eventMode(md) === 'captains' ? eventTeams(md) : null);
 // 팀 i의 주장: 드래프트 주장 → 이벤트 경기에 미리 정한 주장
 export const captainOf = (md, i) => md?.captains?.[i]?.id || eventTeams(md)?.[i]?.captain || null;
+// 팀 i의 주장 전원 (대표 + 공동 주장)
+export const captainIds = (md, i) => { const c = md?.captains?.[i]; return c ? [c.id, ...(c.co || [])] : [captainOf(md, i)].filter(Boolean); };
 export const teamName = (md, i) => md?.teamNames?.[i] || eventTeams(md)?.[i]?.name || null;
 
 // 참석·불참·협의 정리 (+ 이벤트 경기면 팀별로)
