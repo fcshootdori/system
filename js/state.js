@@ -37,15 +37,24 @@ export function startSync() {
     S.ready = true; emit();
   });
   db.watchCol('matchdays', (list) => {
-    S.matchdays = list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
-    emit();
+    S.allMatchdays = list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
+    applySampleFilter(); emit();
   });
   db.watchCol('authset', (list) => { S.authset = Object.fromEntries(list.map((d) => [d.id, d])); emit(); });
   db.watchCol('games', (list) => { S.games = list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); emit(); });
 }
 
+// 베타 테스트 샘플 경기(md.sample): 운영모드이거나 '이 기기에서 샘플 보기'를 켠 기기에서만 보임. 기록·출석·회차에는 들어가지 않음
+export const samplesOnDevice = () => { try { return localStorage.getItem('teamapp:samples') === '1'; } catch { return false; } };
+export const samplesVisible = () => S.operator || samplesOnDevice();
+export function applySampleFilter() {
+  const all = S.allMatchdays || [];
+  S.matchdays = samplesVisible() ? all : all.filter((m) => !m.sample);
+}
+export function setSamplesOnDevice(on) { try { on ? localStorage.setItem('teamapp:samples', '1') : localStorage.removeItem('teamapp:samples'); } catch {} applySampleFilter(); emit(); }
+
 export function setOperator(on) {
-  S.operator = on;
+  S.operator = on; applySampleFilter();
   if (on) { sessionStorage.setItem('teamapp:op', '1'); localStorage.setItem('teamapp:opdev', '1'); }
   else sessionStorage.removeItem('teamapp:op');
   emit();
@@ -83,7 +92,7 @@ export const playedDays = () => S.matchdays.filter((m) => !m.cancelled && S.game
 // 다음 경기: 오늘 이후의 끝나지 않은 경기일 중 가장 빠른 것
 export function nextMatchday() {
   const t = todayStr();
-  const up = S.matchdays.filter((m) => m.status !== 'played' && !m.cancelled && (m.date || '') >= t).sort((a, b) => a.date.localeCompare(b.date));
+  const up = S.matchdays.filter((m) => m.status !== 'played' && !m.cancelled && (m.date || '') >= t).sort((a, b) => !!a.sample - !!b.sample || a.date.localeCompare(b.date));
   return up[0] || S.matchdays.filter((m) => m.status !== 'played' && !m.cancelled).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] || null;
 }
 // 이 기기가 주장 링크로 들어온 진행 중 드래프트

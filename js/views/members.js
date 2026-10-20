@@ -26,7 +26,7 @@ let tab = 'list', q = '', filt = 'all', sort = { k: 'grank', d: 1 }, sel = new S
 
 // ── 회원별 출석 ──
 function attendance(fromDate = '') {
-  const days = playedDays().filter((m) => (m.date || '') >= fromDate);
+  const days = playedDays().filter((m) => !m.sample && (m.date || '') >= fromDate);
   const rec = new Map();
   days.forEach((md) => rosters(md).flat().forEach((id) => {
     if (String(id).startsWith('g_')) return;

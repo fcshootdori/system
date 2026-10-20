@@ -1,8 +1,9 @@
-import { S, memberById } from '../state.js';
+import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js';
+import { S, memberById, samplesOnDevice, setSamplesOnDevice } from '../state.js';
 import { db, newId } from '../store.js';
 import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js';
 import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js';
-import { esc, toast, fileToDataUrl, todayISO, byName } from '../util.js';
+import { esc, toast, fileToDataUrl, todayISO, byName, fmtDate } from '../util.js';
 import { modal, empty } from '../ui.js';
 import { formatFields, bindFormatFields, readFormat } from './format-form.js';
 
@@ -61,6 +62,7 @@ function editMember(id) {
 function settings(root) {
   const t = S.team;
   root.innerHTML = `
+  ${betaCard()}
   <section class="card"><h1>설정</h1>
     <form class="stack" data-team>
       <label>팀 이름<input name="name" value="${esc(t.name)}"></label>
@@ -121,6 +123,7 @@ function settings(root) {
     await db.importAll(JSON.parse(await file.text())); toast('복원했어요');
   });
   root.querySelector('[data-sample]')?.addEventListener('click', seedSample);
+  bindBeta(root);
   root.querySelector('[data-wipe]')?.addEventListener('click', async () => {
     if (!confirm('이 브라우저의 모든 데이터를 지울까요?')) return;
     await db.importAll({}); toast('초기화했어요');
@@ -252,4 +255,39 @@ async function seedSample() {
   await db.set('matchdays/' + newId(), { date: todayISO(), time: '07:00~09:00', venue: '체험 구장', note: '체험용 경기일', status: 'open', format: null,
     apps, guests: {}, captains: [], picks: [], teams: [], mom: [], late: {}, createdAt: now });
   toast('체험용 경기일을 만들었어요');
+}
+
+// ── 베타 테스트: 샘플 경기 ──
+let bStage = 'open', bKind = 'normal';
+function betaCard() {
+  const list = sampleList().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  const stLabel = (m) => (m.status === 'played' ? '경기 결과까지' : m.status === 'teams' ? '팀 확정' : ['drafting', 'captains'].includes(m.status) ? '드래프트 중' : m.status === 'closed' ? '신청 마감' : '신청 중');
+  const kLabel = (m) => (m.event ? (m.eventMode === 'captains' ? '이벤트(주장만)' : '이벤트(팀원까지)') : '일반');
+  return `<section class="card beta"><h2>🧪 베타 테스트 <small>샘플 경기</small></h2>
+    <p class="muted small">원하는 단계까지 진행된 샘플 경기를 만들어 신청 → 주장 → 드래프트 → 팀 확정 → 경기 → 결과를 직접 시험해 보세요.
+      샘플 경기는 <b>운영모드에서만</b> 보이고(회원 화면은 '이 기기에서 샘플 보기'를 켠 기기만), <b>개인 기록·출석·회차에는 들어가지 않아요.</b> 참가자는 실제 회원 중에서 무작위로 골라요.</p>
+    <div class="fld"><span class="fl">시작 단계</span><div class="bopts">${SAMPLE_STAGES.map(([k, l, d]) => { const na = bKind === 'teams' && k === 'drafting';
+      return `<button type="button" class="${bStage === k && !na ? 'on' : ''}" data-bstage="${k}" ${na ? 'disabled' : ''}><b>${l}</b><small>${na ? '팀원까지 미리 정하는 이벤트 경기는 드래프트가 없어요' : d}</small></button>`; }).join('')}</div></div>
+    <div class="fld"><span class="fl">경기 종류</span><div class="seg">${SAMPLE_KINDS.map(([k, l]) => `<button type="button" class="${bKind === k ? 'on' : ''}" data-bkind="${k}">${l}</button>`).join('')}</div></div>
+    <button class="btn full" data-bmake>샘플 경기 만들기</button>
+    ${list.length ? `<h3 class="bh">만든 샘플 ${list.length}개</h3><ul class="list blist">${list.map((m) => `<li><span><b>${esc(stLabel(m))}</b> <small class="muted">${esc(kLabel(m))} · ${fmtDate(m.date, false)}</small></span>
+      <button class="btn ghost sm" data-bgo="${m.id}">경기 메뉴에서 보기</button></li>`).join('')}</ul>
+      <div class="row wrap"><button class="btn ghost danger" data-bclear>샘플 모두 지우기</button></div>` : ''}
+    <label class="inline small"><input type="checkbox" data-bdevice ${samplesOnDevice() ? 'checked' : ''}> 이 기기에서는 운영모드를 꺼도 샘플 경기 보기 <small class="muted">(회원·주장 화면 시험용)</small></label>
+  </section>`;
+}
+function bindBeta(root) {
+  root.querySelectorAll('[data-bstage]').forEach((b) => b.addEventListener('click', () => { bStage = b.dataset.bstage; settings(root); }));
+  root.querySelectorAll('[data-bkind]').forEach((b) => b.addEventListener('click', () => { bKind = b.dataset.bkind; if (bKind === 'teams' && bStage === 'drafting') bStage = 'teams'; settings(root); }));
+  root.querySelector('[data-bmake]')?.addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    try { const id = await createSample({ stage: bStage, kind: bKind }); toast('샘플 경기를 만들었어요 — 경기 메뉴에서 이어서 진행해 보세요'); S.sel = id; S.step = null; location.hash = '#/run'; }
+    catch (err) { console.error(err); toast('샘플을 만들지 못했어요: ' + (err.message || err)); e.target.disabled = false; }
+  });
+  root.querySelectorAll('[data-bgo]').forEach((b) => b.addEventListener('click', () => { S.sel = b.dataset.bgo; S.step = null; location.hash = '#/run'; }));
+  root.querySelector('[data-bclear]')?.addEventListener('click', async () => {
+    if (!confirm('샘플 경기와 그 경기 기록을 모두 지울까요? (실제 경기는 그대로예요)')) return;
+    const n = await clearSamples(); toast(`샘플 경기 ${n}개를 지웠어요`);
+  });
+  root.querySelector('[data-bdevice]')?.addEventListener('change', (e) => { setSamplesOnDevice(e.target.checked); toast(e.target.checked ? '이 기기에서 샘플 경기를 보여요' : '샘플 경기를 숨겨요'); });
 }

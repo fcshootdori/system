@@ -190,7 +190,7 @@ export function allStats() {
   });
   byDay.forEach((games, mdId) => {
     const md = matchdayById(mdId);
-    if (!md || md.cancelled) return;
+    if (!md || md.cancelled || md.sample) return;   // 샘플 경기는 기록에 넣지 않음
     const ros = rosters(md);
     const day = new Map(); // 이 경기일 개인 기록
     const rec = (id) => { if (!day.has(id)) day.set(id, { w: 0, d: 0, l: 0, goals: 0, og: 0 }); return day.get(id); };
@@ -229,7 +229,7 @@ export function allStats() {
 //  · 승률계산기에서 가져온 경기는 시트의 Game_id(718, 719 …)를 기준 회차로 씀 (숫자가 아니면 제외)
 const sheetNo = (m) => (m.sheetGameId != null && /^\d+$/.test(String(m.sheetGameId)) ? +m.sheetGameId : null);
 export const explicitNo = (m) => (m.no != null && m.no !== '' && Number.isFinite(+m.no) ? +m.no : sheetNo(m));
-export const countsForNo = (m) => !m.cancelled && !m.noExclude && !(m.source === 'sheet' && sheetNo(m) == null && m.no == null);
+export const countsForNo = (m) => !m.cancelled && !m.noExclude && !m.sample && !(m.source === 'sheet' && sheetNo(m) == null && m.no == null);
 
 export function matchNumbers(extra) {
   const list = [...S.matchdays, ...(extra ? [extra] : [])]
@@ -260,7 +260,7 @@ export function matchNumbers(extra) {
   return out;
 }
 export const matchNo = (md) => (md ? matchNumbers().get(md.id)?.no ?? null : null);
-export const noLabel = (md) => { const n = matchNo(md); return n != null ? `${n}회` : ''; };
+export const noLabel = (md) => { if (md?.sample) return '샘플'; const n = matchNo(md); return n != null ? `${n}회` : ''; };
 
 // 카페 댓글 구역대로 팀 만들기 — picks: [{ group, color }]
 //  구역 없이 들어온 참가자(협의 승인 등)는 인원이 적은 팀부터 넣음 (748회: 협의 토토로 → 핑크 15명)

@@ -1,5 +1,5 @@
 // 내 정보 — 내 이름, 내 기록 요약, 앱 정보, 운영모드 입구 (WD_FUTSAL 내 정보와 같은 위치)
-import { S, me, memberById, opDevice, refresh } from '../state.js';
+import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js';
 import { changePin, saveSession, isRemembered, validPin } from '../auth.js';
 import { modal } from '../ui.js';
 import { toast } from '../util.js';
@@ -31,6 +31,10 @@ export function render(root) {
       <p class="muted small">안드로이드 크롬: 메뉴 ⋮ → <b>홈 화면에 추가</b> · 아이폰 사파리: 공유 → <b>홈 화면에 추가</b> 하면 앱처럼 아이콘이 생겨요.</p>
       ${S.team.cafeUrl ? `<a class="btn ghost full" href="${esc(S.team.cafeUrl)}" target="_blank" rel="noopener">다음 카페 열기 ↗</a>` : ''}
     </section>
+    ${(S.allMatchdays || []).some((x) => x.sample) ? `<section class="card beta">
+      <h2>🧪 베타 테스트</h2>
+      <label class="inline small"><input type="checkbox" data-samples ${samplesOnDevice() ? 'checked' : ''}> 이 기기에서 샘플 경기 보기 <small class="muted">(신청·드래프트 시험용, 기록에는 안 들어가요)</small></label>
+    </section>` : ''}
     <section class="card op-entry">
       <h2>운영진</h2>
       <p class="muted small">운영진은 비밀번호로 운영모드에 들어가요.${opDevice() ? ' 이 기기는 오른쪽 위 버튼으로도 들어갈 수 있어요.' : ''}</p>
@@ -38,6 +42,7 @@ export function render(root) {
     </section>
     <p class="muted tiny center">${APP_NAME} Ver.${APP_VERSION} · ${db.mode === 'demo' ? '데모 모드' : '서버 연결됨'}</p>`;
   root.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => pickMe()));
+  root.querySelector('[data-samples]')?.addEventListener('change', (e) => { setSamplesOnDevice(e.target.checked); toast(e.target.checked ? '샘플 경기를 보여요' : '샘플 경기를 숨겨요'); });
   root.querySelector('[data-logout]')?.addEventListener('click', () => {
     if (!confirm('로그아웃할까요? 다음에는 닉네임과 비밀번호를 다시 입력해야 해요.')) return;
     S.auth = null; saveSession(null); toast('로그아웃했어요'); location.hash = '#/login'; refresh();

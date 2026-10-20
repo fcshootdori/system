@@ -32,7 +32,7 @@ export function render(root, { params }) {
   let rows = allStats().filter((r) => r.games >= minGames && (showAll || memberById(r.id).active !== false || r.games));
   rows.sort((a, b) => sortKey === 'name' ? a.name.localeCompare(b.name, 'ko')
     : ((b[sortKey] ?? -1) - (a[sortKey] ?? -1)) || b.pts - a.pts || a.name.localeCompare(b.name, 'ko'));
-  const days = new Set(S.games.filter((g) => g.done).map((g) => g.matchdayId)).size;
+  const days = new Set(S.games.filter((g) => g.done && !matchdayById(g.matchdayId)?.sample && !String(g.matchdayId).startsWith('sample_')).map((g) => g.matchdayId)).size;
 
   root.innerHTML = `<section class="card">
     <h1>기록 <small>${days}경기일</small></h1>
