@@ -160,13 +160,13 @@ function draftFly(root, md) {
 // 차례 공: 차례인 팀 이름표 위에서 튀고, 차례가 바뀌면 포물선으로 다음 팀에 패스
 let ballPrev = null;
 function placeBall(root) {
-  const pitchEl = root.querySelector('.pitch');
+  const pitchEl = root.querySelector('.dboard');
   const el = pitchEl?.querySelector('.tball');
   if (!el) return;
-  const tgt = pitchEl.querySelector('.half.turn .h-hd');
+  const tgt = pitchEl.querySelector('.capcard.turn .h-hd');
   if (!tgt) { el.style.display = 'none'; ballPrev = null; return; }
   const P = pitchEl.getBoundingClientRect(), r = tgt.getBoundingClientRect(), sz = 30;
-  const x = r.left - P.left + r.width / 2 - sz / 2, y = r.top - P.top - sz + 10, k = tgt.closest('.half').dataset.k;
+  const x = r.left - P.left + r.width / 2 - sz / 2, y = r.top - P.top - sz + 10, k = tgt.closest('.capcard').dataset.k;
   Object.assign(el.style, { display: 'block', width: sz + 'px', height: sz + 'px', left: x + 'px', top: y + 'px' });
   if (ballPrev && ballPrev.k !== k && !reduced()) {
     const dx = ballPrev.x - x, dy = ballPrev.y - y, lift = -Math.min(150, 70 + Math.abs(dx) * .3), N = 18, D = 760, kf = [];
@@ -180,20 +180,39 @@ function placeBall(root) {
 
 
 // 팀 반쪽(축구장 왼쪽/오른쪽): 주장 · 팀 이름 · 색 · 선수
-function half(md, i, { ph, ds, myCap, final }) {
+// 주장 카드: 축구장 그림 위쪽 (주장 · 순위 · 팀 이름 · 인원 · 팀 색 고르기)
+function capCard(md, i, { ph, ds, myCap }) {
   const caps = md.captains || [];
   const ids = rosters(md)[i] || [];
   const col = colorOf(teamColor(md, i));
   const rank = (md.order || []).indexOf(i);
   const turn = ph === 'pick' && ds.turn === i;
   const mine = myCap === i;
-  const canColor = ph === 'color' && S.operator;   // 팀 색은 운영진이 배정
-  const used = new Set(caps.map((c) => c.color).filter(Boolean));
+  const canColor = ph === 'color' && (S.operator || mine);   // 팀 색: 드래프트 시작 때 주장이 고름 (운영진도 대신 가능)
+  const capId = captainOf(md, i);
+  const editName = S.operator && md.status !== 'played';
+  return `<div class="capcard h${i} ${turn ? 'turn' : ''} ${mine ? 'mine' : ''} ${col ? '' : 'nocolor'}" data-k="${i}" style="${col ? `--tc:${col.hex};--ti:${col.text}` : ''}">
+    <div class="h-hd">
+      ${rank >= 0 && ph !== 'order' && ph !== 'color' ? `<em class="rank">${rank + 1}순위</em>` : ''}
+      ${capId ? `<span class="hcap">👑 ${esc(nameOf(capId, md))}</span>` : ''}
+      ${editName ? `<input class="tn tn-edit" data-tname="${i}" value="${esc(md.teamNames?.[i] || teamLabel(md, i))}" aria-label="팀 이름" title="팀 이름 (눌러서 고치기)">`
+        : `<span class="tn">${esc(teamLabel(md, i))}${col && md.teamNames?.[i] ? ` · ${col.label}` : ''}</span>`}
+      <span class="cnt"><b>${ids.length}</b>명</span>
+      ${mine ? '<span class="meb">내 팀</span>' : ''}
+    </div>
+    ${canColor ? `<div class="h-sw">${palette(md).map((c) => `<button class="csw ${caps[i]?.color === c.key ? 'on' : ''}" style="--c:${c.hex};--ct:${c.text}" data-color="${i}:${c.key}">${c.label}</button>`).join('')}</div>` : ''}
+  </div>`;
+}
+// 축구장 반쪽: 그 팀 선수 유니폼
+function half(md, i, { ph, ds, myCap, final }) {
+  const ids = rosters(md)[i] || [];
+  const col = colorOf(teamColor(md, i));
+  const turn = ph === 'pick' && ds.turn === i;
+  const mine = myCap === i;
   const pend = !final && md.pending && md.pending.team === i ? md.pending.id : null;
   const last = (md.picks || []).slice(-1)[0];
   const capId = captainOf(md, i);
-  const hasCap = !!capId;
-  const others = ids.filter((x) => x !== capId);   // 주장은 머리칸에, 나머지 선수만 목록
+  const others = ids.filter((x) => x !== capId);   // 주장은 위 카드에, 나머지 선수만
   const nTeams = rosters(md).length;
   const player = (id) => {
     const key = md.id + ':' + id; const nw = !seen.has(key); seen.add(key);
@@ -205,29 +224,21 @@ function half(md, i, { ph, ds, myCap, final }) {
     return `<div class="jf mini vest ${nw ? 'new' : ''}" data-pid="${id}">${figHTML(nm, '', 4)}</div>`;
   };
   return `<div class="half h${i} ${turn ? 'turn' : ''} ${mine ? 'mine' : ''} ${col ? '' : 'nocolor'}" data-k="${i}" style="${col ? `--tc:${col.hex};--ti:${col.text}` : ''}">
-    <div class="h-hd">
-      ${rank >= 0 && ph !== 'order' ? `<em class="rank">${rank + 1}순위</em>` : ''}
-      ${hasCap ? `<span class="hcap">👑 ${esc(nameOf(capId, md))}</span>` : ''}
-      <span class="tn">${esc(teamLabel(md, i))}${col && md.teamNames?.[i] ? ` · ${col.label}` : ''}</span>
-      <span class="cnt"><b>${ids.length}</b>명</span>
-      ${mine ? '<span class="meb">내 팀</span>' : ''}
-    </div>
-    ${canColor ? `<div class="h-sw">${palette(md).map((c) => { const by = caps.findIndex((x) => x.color === c.key);
-      return `<button class="csw ${caps[i].color === c.key ? 'on' : ''}" style="--c:${c.hex};--ct:${c.text}" data-color="${i}:${c.key}">${c.label}</button>`; }).join('')}</div>` : ''}
     <div class="stk pfs-row">${others.map(player).join('')}${pend ? `<div class="jf mini vest pendstk" title="선택 중">${figHTML(nameOf(pend, md), '', 4)}</div>` : ''}</div>
     ${turn ? `<div class="h-turn">${mine ? '내 차례예요!' : '지명 차례'}</div>` : ''}
   </div>`;
 }
-
-// 축구장: 2팀이면 왼쪽·오른쪽, 그 밖에는 나란히
+// 위: 주장 카드(운영진은 가운데 ⇄로 좌우 자리 바꾸기) · 아래: 축구장(왼쪽·오른쪽 팀 선수)
 function pitch(md, opt) {
   const n = rosters(md).length;
-  const ds = opt.ds;
-  return `<section class="pitch n${n}">
-    <div class="lines" aria-hidden="true"><i class="mid"></i><i class="circ"></i><i class="box l"></i><i class="box r"></i></div>
+  const canSwap = S.operator && n === 2 && md.status !== 'played' && !S.games.some((g) => g.matchdayId === md.id);
+  return `<div class="dboard">
     <div class="tball" aria-hidden="true"><i class="tb-sh"></i><b class="tb-b">${BALL_SVG}</b></div>
-    ${Array.from({ length: n }, (_, i) => half(md, i, opt)).join('')}
-  </section>`;
+    <section class="capbar n${n}">${Array.from({ length: n }, (_, i) => capCard(md, i, opt) + (i === 0 && n === 2 ? (canSwap ? '<button class="swapside" data-swapside title="왼쪽·오른쪽 자리 바꾸기" aria-label="자리 바꾸기">⇄<small>자리<br>바꾸기</small></button>' : '<span class="vs">VS</span>') : '')).join('')}</section>
+    <section class="pitch n${n}">
+      <div class="lines" aria-hidden="true"><i class="mid"></i><i class="circ"></i><i class="box l"></i><i class="box r"></i></div>
+      ${Array.from({ length: n }, (_, i) => half(md, i, opt)).join('')}
+    </section></div>`;
 }
 
 // 위쪽 진행판: 단계 표시 + 지금 할 일
@@ -241,9 +252,8 @@ function panel(md, ph, ds, myCap) {
   if (ph === 'color') {
     const left = caps.map((c, i) => (c.color ? null : i)).filter((x) => x != null);
     return `<div class="dp-t">STEP 1 · 팀 색 선택</div>
-      <b>${S.operator ? '팀 색을 배정해 주세요' : '운영진이 팀 색을 배정하고 있어요'}</b>
-      <p>핑크·블루 중에서 운영진이 정해요. 한 팀에 색을 주면 다른 팀은 남은 색이 돼요.${left.length ? '' : ''}</p>
-      ${S.operator && caps.length === 2 ? '<div class="row center"><button class="btn ghost sm" data-quickcolor="0">왼쪽 핑크 · 오른쪽 블루</button><button class="btn ghost sm" data-quickcolor="1">왼쪽 블루 · 오른쪽 핑크</button></div>' : ''}`;
+      <b>${myCap >= 0 ? '우리 팀 색을 골라 주세요!' : '주장들이 팀 색을 고르는 중이에요'}</b>
+      <p>핑크·블루 중에서 먼저 고른 주장이 그 색을 가져가고, 다른 팀은 남은 색이 돼요.${S.operator ? ' 운영진도 주장 카드에서 대신 고를 수 있어요.' : ''}</p>`;
   }
   if (ph === 'order') {
     const g = md.cards;
@@ -295,16 +305,34 @@ function board(md, myCap) {
         return `<button class="jf pfb ${pend ? 'pend vest' : ''}" ${pend && pc ? `style="--tc:${pc.hex};--ti:${pc.text}"` : ''} data-pick="${id}" ${canPick ? '' : 'disabled'}>${figHTML(nameOf(id, md))}</button>`; }).join('')}</div>
     </section>`; })() : ''}
     ${S.operator ? `<section class="card op"><h2>운영</h2>
-      <div class="cap-links">${caps.map((c, i) => `<div><span>${i === 0 ? '왼쪽' : i === 1 ? '오른쪽' : i + 1 + '번'} · ${esc(nameOf(c.id, md))}</span>
-        <input class="tname" data-tname="${i}" value="${esc(md.teamNames?.[i] || '')}" placeholder="팀 이름">
-        <button class="btn ghost sm" data-link="${c.token}">주장 링크</button></div>`).join('')}</div>
-      <p class="tiny muted">주장은 카페 닉네임으로 로그인하면 오른쪽 위 👑 드래프트로 바로 들어와요(주장 링크로도 가능). 팀 이름은 기본으로 "주장 닉네임 + 팀"이에요.</p>
+      <p class="tiny muted">주장은 카페 닉네임으로 로그인하면 오른쪽 위 👑 드래프트로 바로 들어와요. 팀 이름은 주장 카드에서 눌러 고칠 수 있어요.</p>
       <div class="row wrap">
         ${ds.picks.length ? '<button class="btn ghost" data-undo>↶ 마지막 지명 취소</button>' : ''}
         ${!ds.picks.length && (md.order || md.cards) ? '<button class="btn ghost" data-reorder>우선순위 다시 추첨</button>' : ''}
         ${caps.length === 2 && caps.every((c) => c.color) ? '<button class="btn ghost" data-swapcolor>팀 색 서로 바꾸기</button>' : ''}
         <button class="btn ghost danger" data-reset>주장 다시 정하기</button>
       </div></section>` : ''}`;
+}
+// 왼쪽·오른쪽 자리 바꾸기 (운영진) — 팀 번호가 바뀌므로 지명·순위·팀·이벤트 팀 정보를 모두 함께 뒤집음
+export function swapSides(md) {
+  return db.tx(mdPath(md.id), (cur) => {
+    const n = (cur.captains || []).length || (cur.teams || []).length;
+    if (n !== 2) return null;
+    const f = (t) => (t === 0 ? 1 : t === 1 ? 0 : t);
+    if (cur.captains?.length === 2) cur.captains = [cur.captains[1], cur.captains[0]];
+    if (cur.teamNames?.length === 2) cur.teamNames = [cur.teamNames[1], cur.teamNames[0]];
+    if (cur.teams?.length === 2) cur.teams = [cur.teams[1], cur.teams[0]];
+    if (cur.eventTeams?.length === 2) cur.eventTeams = [cur.eventTeams[1], cur.eventTeams[0]];
+    if (cur.teamColors?.length === 2) cur.teamColors = [cur.teamColors[1], cur.teamColors[0]];
+    cur.picks = (cur.picks || []).map((p) => ({ ...p, team: f(p.team) }));
+    if (cur.order?.length === 2) cur.order = cur.order.map(f);
+    if (cur.cards?.picks) { const o = cur.cards.picks, np = {}; if (o[1] != null) np[0] = o[1]; if (o[0] != null) np[1] = o[0]; cur.cards.picks = np; }
+    if (cur.pending) cur.pending.team = f(cur.pending.team);
+    Object.values(cur.apps || {}).forEach((a) => { if (a.team != null) a.team = f(a.team); });
+    Object.values(cur.declines || {}).forEach((a) => { if (a.team != null) a.team = f(a.team); });
+    if (cur.groupOrder?.length === 2) cur.groupOrder = [cur.groupOrder[1], cur.groupOrder[0]];
+    return cur;
+  });
 }
 function bindTeamNames(root, md) {
   root.querySelectorAll('[data-tname]').forEach((x) => x.addEventListener('change', async () => {
@@ -315,17 +343,18 @@ function bindTeamNames(root, md) {
 }
 function bindBoard(root, md, myCap) {
   bindTeamNames(root, md);
+  root.querySelector('[data-swapside]')?.addEventListener('click', () => { ballPrev = null; swapSides(md); });
   const P = mdPath(md.id);
   // ① 팀 색: 먼저 고른 팀이 가져감
-  // ① 팀 색: 운영진이 배정 (2팀이면 다른 팀은 남은 색)
+  // ① 팀 색: 드래프트 시작 때 주장이 고름 — 먼저 고른 주장이 가져가고 다른 팀은 남은 색 (운영진도 대신 가능)
   const assign = (i, key) => db.tx(P, (cur) => {
-    if (!S.operator) return null;
+    if (!S.operator && myCap !== i) return null;
+    if (cur.captains.every((c) => c.color)) return null;   // 이미 정해짐 (먼저 고른 주장이 가져감)
     cur.captains[i].color = key;
     if (cur.captains.length === 2) cur.captains[1 - i].color = COLORS2.find((c) => c !== key);
     return cur;
   });
   root.querySelectorAll('[data-color]').forEach((b) => b.addEventListener('click', () => { const [i, key] = b.dataset.color.split(':'); assign(+i, key); }));
-  root.querySelectorAll('[data-quickcolor]').forEach((b) => b.addEventListener('click', () => assign(0, COLORS2[+b.dataset.quickcolor])));
   root.querySelector('[data-swapcolor]')?.addEventListener('click', () => db.tx(P, (cur) => {
     const [a, b2] = cur.captains; if (!a?.color || !b2?.color) return null; [a.color, b2.color] = [b2.color, a.color]; return cur;
   }));
@@ -437,13 +466,12 @@ function teamsView(md) {
       ${S.operator && md.status !== 'played' ? '<p>선수 유니폼을 누르면 상대 팀으로 옮겨요.</p>' : ''}</div></section>
     ${pitch(md, { ph: 'done', ds, myCap: -1, final: true })}
     ${S.operator && md.status !== 'played' ? `<section class="card op"><h2>운영</h2>
-      <div class="cap-links">${rosters(md).map((ids, i) => `<div><span>${i === 0 ? '왼쪽' : i === 1 ? '오른쪽' : i + 1 + '번'}${captainOf(md, i) ? ` · ${esc(nameOf(captainOf(md, i), md))}` : ''}</span>
-        <input class="tname" data-tname="${i}" value="${esc(md.teamNames?.[i] || '')}" placeholder="팀 이름"></div>`).join('')}</div>
       <div class="row wrap"><a class="btn" href="#/notice">팀 공지 이미지 만들기</a>
       ${md.status === 'teams' && (md.captains || []).length && !teamEvent(md) ? '<button class="btn ghost danger" data-reopen>드래프트로 되돌리기</button>' : ''}</div></section>` : ''}`;
 }
 function bindTeams(root, md) {
   bindTeamNames(root, md);
+  root.querySelector('[data-swapside]')?.addEventListener('click', () => swapSides(md));
   const moveTo = async (from, id, to) => {
     await db.tx(mdPath(md.id), (cur) => {
       cur.teams[from].members = cur.teams[from].members.filter((x) => x !== id);

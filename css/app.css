@@ -741,7 +741,7 @@ details.tnote[open] { padding-bottom: 4px; }
 .flytag.jf { position: fixed; z-index: 3000; display: block; pointer-events: none; will-change: transform; }
 .flytag.jf .pfs { filter: drop-shadow(0 6px 10px rgba(0,0,0,.3)); }
 /* 차례 공 */
-.pitch .tball { position: absolute; z-index: 5; pointer-events: none; display: none; will-change: transform; }
+.dboard .tball { position: absolute; z-index: 5; pointer-events: none; display: none; will-change: transform; }
 .tball .tb-b { position: absolute; inset: 0; display: block; animation: tbBounce .42s cubic-bezier(.45,0,.9,.6) infinite alternate; transform-origin: 50% 100%; }
 .tball .tb-b svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
 .tball .tb-sh { position: absolute; left: 50%; bottom: -3px; width: 80%; height: 6px; margin-left: -40%; border-radius: 50%; background: rgba(0,0,0,.35); animation: tbShadow .42s cubic-bezier(.45,0,.9,.6) infinite alternate; }
@@ -756,3 +756,24 @@ details.tnote[open] { padding-bottom: 4px; }
 .jf b.pfn.two { line-height: 1.04; top: 57%; font-size: min(calc(var(--fw) * .19), calc(var(--fw) * .66 / var(--nl, 3))); }
 .jf.pfb b.pfn.two { font-size: min(calc(var(--fw) * .2), calc(var(--fw) * .7 / var(--nl, 3))); }
 .stk .jf.mini b.pfn.two { top: 58%; font-size: min(12.5px, calc(var(--fw) * .66 / var(--nl, 3))); line-height: 1.02; }
+
+/* ── 0.1.28 드래프트: 주장 카드는 축구장 위, 가운데 자리 바꾸기 ── */
+.dboard { position: relative; padding-top: 26px; display: grid; gap: 8px; }
+.capbar { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: stretch; }
+.capbar:not(.n2) { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+.capcard { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.capcard .h-hd { flex: 1; }
+.capcard.nocolor .h-hd { background: #fff; border: 1px solid var(--line); }
+.capcard.mine .h-hd { box-shadow: 0 0 0 3px #fde047, 0 2px 6px rgba(0,0,0,.18); }
+.capcard.turn .h-hd { animation: pulse 1.4s ease-in-out infinite; box-shadow: 0 0 0 3px #fde047, 0 4px 14px rgba(0,0,0,.2); }
+.half.turn .h-hd { animation: none; }
+.capbar .vs { align-self: center; font-weight: 900; font-size: 13px; color: var(--sub); padding: 0 2px; }
+.swapside { align-self: center; display: flex; flex-direction: column; align-items: center; gap: 2px; border: 1px solid var(--line); background: #fff; border-radius: 12px;
+  padding: 8px 6px; font: 800 18px var(--font); color: var(--ink); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.swapside small { font-size: 10px; font-weight: 700; color: var(--sub); line-height: 1.15; text-align: center; }
+.swapside:active { transform: scale(.94); }
+.h-hd .tn-edit { background: transparent; border: 0; border-bottom: 1px dashed currentColor; color: inherit; font: 600 12px var(--font); padding: 1px 0; width: 100%; max-width: 100%; opacity: .9; border-radius: 0; }
+.h-hd .tn-edit:focus { outline: none; border-bottom-style: solid; opacity: 1; }
+.pitch { min-height: 260px; }
+.half { padding-top: 14px; }
+@media (max-width: 420px) { .capbar { gap: 5px; } .swapside { padding: 6px 4px; font-size: 16px; } .swapside small { font-size: 9px; } }
