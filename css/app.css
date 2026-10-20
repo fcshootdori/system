@@ -699,3 +699,54 @@ details.tnote[open] { padding-bottom: 4px; }
 .blist li { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .no:empty { display: none; }
 .bopts button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── 0.1.26 드래프트 선수: WD_FUTSAL과 같은 유니폼 아이콘 · 지명 애니메이션 · 차례 공 ── */
+.jf { --fw: 70px; --shirt: #fff; --trim: #c5ccd8; --jst: #24314f; position: relative; display: inline-block; width: var(--fw); flex: none; padding: 0; margin: 0; border: 0;
+  background: none; color: #131c2b; font-family: inherit; line-height: 1; vertical-align: top; -webkit-tap-highlight-color: transparent; }
+.jf .pfs { display: block; width: 100%; height: auto; overflow: visible; }
+.jf .pf-body { fill: var(--shirt); stroke: var(--jst); stroke-width: 2; stroke-linejoin: round; transition: fill .25s; }
+.jf .pf-cuff { fill: var(--trim); stroke: var(--jst); stroke-width: 1.6; stroke-linejoin: round; transition: fill .25s; }
+.jf .pf-seam { stroke: var(--jst); stroke-width: 1.4; stroke-linecap: round; opacity: .55; fill: none; }
+.jf .pf-colw { fill: none; stroke: var(--trim); stroke-width: 5; stroke-linecap: round; transition: stroke .25s; }
+.jf .pf-coll { fill: none; stroke: var(--jst); stroke-width: 1.6; stroke-linecap: round; }
+.jf.vest { --shirt: var(--tc, #1e46c8); --trim: color-mix(in srgb, var(--tc, #1e46c8) 68%, #000); }
+.jf b.pfn { position: absolute; left: 50%; top: 56%; transform: translate(-50%, -50%); display: block; margin: 0; font-weight: 900; line-height: 1; white-space: nowrap;
+  font-size: min(calc(var(--fw) * .2), calc(var(--fw) * .6 / var(--nl, 3))); letter-spacing: -.05em; color: #131c2b; pointer-events: none; }
+.jf.vest b.pfn { color: var(--ti, #fff); }
+/* 남은 선수 (벤치) */
+.dpool { background: linear-gradient(180deg, #24603a, #1d4f30); border-radius: 18px; padding: 10px 8px 12px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); }
+.dpool .pool-hd { font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); margin: 0 4px 8px; }
+.dpool .namegrid { display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 6px; }
+.jf.pfb { --fw: 66px; cursor: pointer; transition: transform .12s; }
+.jf.pfb b.pfn { font-size: min(calc(var(--fw) * .23), calc(var(--fw) * .76 / var(--nl, 3))); }
+.pfb:not(:disabled):hover { transform: translateY(-3px); }
+.pfb:not(:disabled):active { transform: scale(.95); }
+.pfb:disabled { cursor: default; }
+.pfb.pend { animation: pfBob 1s ease-in-out infinite; }
+.pfb.pend .pfs { filter: drop-shadow(0 0 6px rgba(255,210,31,.95)); }
+@keyframes pfBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+/* 팀 칸에 들어간 선수 */
+.half .stk { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 6px 3px; border-top: 2px solid rgba(255,255,255,.75); padding-top: 8px; min-height: 40px; }
+.stk .jf.mini { --fw: 52px; cursor: default; }
+.stk button.jf.mini { cursor: pointer; }
+.stk .jf.mini b.pfn { top: 58%; font-size: min(15px, calc(var(--fw) * .62 / var(--nl, 3))); letter-spacing: -.04em; color: #fff; z-index: 2;
+  text-shadow: -1.5px -1.5px 0 #131c2b, 1.5px -1.5px 0 #131c2b, -1.5px 1.5px 0 #131c2b, 1.5px 1.5px 0 #131c2b, 0 2px 0 #131c2b, 0 -2px 0 #131c2b, 2px 0 0 #131c2b, -2px 0 0 #131c2b, 0 3px 6px rgba(0,0,0,.35); }
+.stk .jf.mini.new { animation: stickin .28s ease-out; }
+.stk .jf.mini.pendstk { opacity: .8; animation: pfBob 1s ease-in-out infinite; }
+.stk .jf.mini.pendstk .pf-body { stroke-dasharray: 4 3; }
+.stk .jf.mini.undo .pf-body { stroke: #ff4d4f; stroke-width: 3; }
+@keyframes stickin { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 420px) { .stk .jf.mini { --fw: 44px; } .jf.pfb { --fw: 58px; } .half .stk { gap: 5px 2px; } }
+/* 날아가는 유니폼 */
+.flytag.jf { position: fixed; z-index: 3000; display: block; pointer-events: none; will-change: transform; }
+.flytag.jf .pfs { filter: drop-shadow(0 6px 10px rgba(0,0,0,.3)); }
+/* 차례 공 */
+.pitch .tball { position: absolute; z-index: 5; pointer-events: none; display: none; will-change: transform; }
+.tball .tb-b { position: absolute; inset: 0; display: block; animation: tbBounce .42s cubic-bezier(.45,0,.9,.6) infinite alternate; transform-origin: 50% 100%; }
+.tball .tb-b svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
+.tball .tb-sh { position: absolute; left: 50%; bottom: -3px; width: 80%; height: 6px; margin-left: -40%; border-radius: 50%; background: rgba(0,0,0,.35); animation: tbShadow .42s cubic-bezier(.45,0,.9,.6) infinite alternate; }
+.tball.passing .tb-b, .tball.passing .tb-sh { animation: none; } .tball.passing .tb-sh { opacity: 0; }
+@keyframes tbBounce { 0% { transform: translateY(-18px) scale(1,1); } 88% { transform: translateY(0) scale(1,1); } 100% { transform: translateY(0) scale(1.14,.86); } }
+@keyframes tbShadow { 0% { transform: scale(.45); opacity: .35; } 100% { transform: scale(1); opacity: .9; } }
+.half { padding-top: 34px; }
+@media (prefers-reduced-motion: reduce) { .pfb.pend, .stk .jf.mini.new, .stk .jf.mini.pendstk, .tball .tb-b, .tball .tb-sh { animation: none; } }

@@ -41,6 +41,7 @@ export function render(root) {
   // 이벤트 경기: 팀원까지 미리 정함 → 주장·드래프트 생략 / 주장만 미리 정함 → 주장 생략
   const skip = teamEvent(md) ? ['captain', 'draft'] : capEvent(md) ? ['captain'] : [];
   const jump = (k) => (skip.includes(k) ? (teamEvent(md) ? 'teams' : 'draft') : k);
+  draft.snap(root);   // 드래프트 지명 애니메이션용: 다시 그리기 전 선수 위치
   const auto = jump(stageOf(md));
   const step = jump(S.step || auto);
 

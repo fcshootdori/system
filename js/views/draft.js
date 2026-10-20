@@ -18,15 +18,17 @@ export function render(root, ctx = {}) {
     <h1>${md.status === 'teams' || md.status === 'played' ? '팀 구성' : '주장 · 드래프트'}</h1>
     ${myCap >= 0 ? `<p class="mine">이 기기는 <b>${esc(nameOf(caps[myCap].id, md))}</b> 주장으로 참여 중이에요.</p>` : ''}</section>`;
 
-  if (md.status === 'teams' || md.status === 'played') { root.innerHTML = head + teamsView(md); bindTeams(root, md); return; }
+  if (md.status === 'teams' || md.status === 'played') { ballPrev = null; root.innerHTML = head + teamsView(md); bindTeams(root, md); return; }
   if (capEvent(md) && !caps.length) { root.innerHTML = head + presetCaptains(md); bindPreset(root, md); return; }
   if (!caps.length || md.status === 'captains' && !md.draftStarted) {
     root.innerHTML = head + (S.operator ? captainPicker(md) : `<section class="card">${empty('운영진이 주장을 정하고 있어요.')}</section>`);
     if (S.operator) bindCaptainPicker(root, md);
     return;
   }
+  if (Date.now() - snapAt > 300) draftSnap(root);
   root.innerHTML = head + board(md, myCap);
   bindBoard(root, md, myCap);
+  requestAnimationFrame(() => { draftFly(root, md); placeBall(root); });
 }
 
 // ── 1. 주장 선정 ──
@@ -88,6 +90,70 @@ const palette = () => COLORS2.map(colorOf);
 const seen = new Set();      // 새로 들어온 선수 표시(한 번만 튀어오르게)
 let wasMyTurn = false;
 
+// ── 선수 유니폼 아이콘 (WD_FUTSAL과 같은 반팔 유니폼 + 가슴에 이름) ──
+const FIG_SVG = '<svg class="pfs" viewBox="0 0 80 72" aria-hidden="true"><path class="pf-body" d="M27 4Q40 11 53 4L66 7Q73 9 76 17L79 33L65 35L64 67Q40 71 16 67L15 35L1 33L4 17Q7 9 14 7Z"/><path class="pf-cuff" d="M1.9 28.6L15 30.6V35L1 33ZM78.1 28.6L65 30.6V35L79 33Z"/><path class="pf-seam" d="M15 31V21M65 31V21"/><path class="pf-colw" d="M27 4Q40 12.5 53 4"/><path class="pf-coll" d="M27 4Q40 11 53 4M25.5 5.4Q40 15.5 54.5 5.4"/></svg>';
+const figHTML = (n) => `${FIG_SVG}<b class="pfn" style="--nl:${Math.max(2, [...String(n)].length)}">${esc(n)}</b>`;
+// 차례 축구공 (WD_FUTSAL과 같은 공 — 차례인 팀 위에서 통통 튀고, 차례가 넘어가면 다음 팀으로 패스)
+const BALL_SVG = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18.5" fill="#fff" stroke="#131C2B" stroke-width="2"/><path d="M20 12.5l7 5.1-2.7 8.2h-8.6L13 17.6z" fill="#131C2B"/><path d="M20 12.5V3.2M27 17.6l8.6-2.9M24.3 25.8l5.4 7.4M15.7 25.8l-5.4 7.4M13 17.6l-8.6-2.9" stroke="#131C2B" stroke-width="2" fill="none"/><path d="M14.5 2.6L20 3.2l5.5-.6M35.6 14.7l2 5.3-.9 5.6M29.7 33.2l-4.7 3-5.4.9M10.3 33.2l4.7 3M4.4 14.7l-2 5.3.9 5.6" stroke="#131C2B" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// 지명 애니메이션 (WD_FUTSAL과 같음): 다시 그리기 전 남은 선수 위치를 기억해 두었다가,
+//  새로 팀에 들어온 선수가 그 자리에서 포물선을 그리며 팀 칸으로 날아가고 날아가는 도중 팀 조끼 색이 입혀짐
+let flySnap = null, snapAt = 0;
+// 운영 > 경기 화면은 다시 그릴 때 먼저 화면을 비우므로, 비우기 전에 위치를 기억해 둠
+export function snap(scope) { draftSnap(scope); snapAt = Date.now(); }
+function draftSnap(root) {
+  const pool = root.querySelectorAll('.namegrid [data-pick]');
+  const had = new Set([...root.querySelectorAll('.half [data-pid]')].map((e) => e.dataset.pid));
+  if (!pool.length && !had.size) { flySnap = null; return; }
+  const r = {};
+  pool.forEach((b) => { const q = b.getBoundingClientRect(); if (q.width) r[b.dataset.pick] = { x: q.left, y: q.top, w: q.width, h: q.height }; });
+  flySnap = { pool: r, had };
+}
+function draftFly(root, md) {
+  const snap = flySnap; flySnap = null;
+  if (!snap || reduced()) return;
+  root.querySelectorAll('.half [data-pid]').forEach((el) => {
+    const pid = el.dataset.pid, from = snap.pool[pid];
+    if (snap.had.has(pid) || !from) return;
+    const to = el.getBoundingClientRect(); if (!to.width) return;
+    const f = document.createElement('div'); f.className = 'flytag jf'; f.innerHTML = figHTML(nameOf(pid, md));
+    Object.assign(f.style, { left: from.x + 'px', top: from.y + 'px', width: from.w + 'px', height: from.h + 'px' });
+    f.style.setProperty('--fw', from.w + 'px');
+    const half = el.closest('.half'); const cs = half ? getComputedStyle(half) : null; const tc = cs ? cs.getPropertyValue('--tc').trim() : '';
+    if (tc) { f.style.setProperty('--tc', tc); f.style.setProperty('--ti', cs.getPropertyValue('--ti').trim() || '#fff'); }
+    document.body.appendChild(f); setTimeout(() => f.classList.add('vest'), 280); el.style.visibility = 'hidden';
+    const dx = to.left + to.width / 2 - (from.x + from.w / 2), dy = to.top + to.height / 2 - (from.y + from.h / 2);
+    const sc = Math.max(.45, Math.min(1.2, to.width / from.w)), lift = -Math.min(140, 60 + Math.abs(dx) * .15);
+    const an = f.animate([{ transform: 'translate(0,0) scale(1) rotate(0deg)', offset: 0 },
+      { transform: `translate(${dx * .5}px,${dy * .5 + lift}px) scale(1.18) rotate(${dx > 0 ? 8 : -8}deg)`, offset: .45 },
+      { transform: `translate(${dx}px,${dy}px) scale(${sc}) rotate(0deg)`, offset: 1 }], { duration: 720, easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'forwards' });
+    const done = () => { f.remove(); el.style.visibility = ''; el.animate?.([{ transform: 'scale(1.35)' }, { transform: 'scale(1)' }], { duration: 260, easing: 'ease-out' }); };
+    an.onfinish = done; setTimeout(() => { if (f.isConnected) done(); }, 1200);
+  });
+}
+// 차례 공: 차례인 팀 이름표 위에서 튀고, 차례가 바뀌면 포물선으로 다음 팀에 패스
+let ballPrev = null;
+function placeBall(root) {
+  const pitchEl = root.querySelector('.pitch');
+  const el = pitchEl?.querySelector('.tball');
+  if (!el) return;
+  const tgt = pitchEl.querySelector('.half.turn .h-hd');
+  if (!tgt) { el.style.display = 'none'; ballPrev = null; return; }
+  const P = pitchEl.getBoundingClientRect(), r = tgt.getBoundingClientRect(), sz = 30;
+  const x = r.left - P.left + r.width / 2 - sz / 2, y = r.top - P.top - sz + 10, k = tgt.closest('.half').dataset.k;
+  Object.assign(el.style, { display: 'block', width: sz + 'px', height: sz + 'px', left: x + 'px', top: y + 'px' });
+  if (ballPrev && ballPrev.k !== k && !reduced()) {
+    const dx = ballPrev.x - x, dy = ballPrev.y - y, lift = -Math.min(150, 70 + Math.abs(dx) * .3), N = 18, D = 760, kf = [];
+    for (let i = 0; i <= N; i++) { const t = i / N; kf.push({ transform: `translate(${dx * (1 - t)}px,${dy * (1 - t) + lift * 4 * t * (1 - t)}px)` }); }
+    el.classList.add('passing');
+    el.animate(kf, { duration: D, easing: 'linear' }).onfinish = () => el.classList.remove('passing');
+    el.querySelector('.tb-b').animate([{ transform: 'rotate(0deg)' }, { transform: `rotate(${dx > 0 ? -360 : 360}deg)` }], { duration: D, easing: 'linear' });
+  }
+  ballPrev = { k, x, y };
+}
+
+
 // 팀 반쪽(축구장 왼쪽/오른쪽): 주장 · 팀 이름 · 색 · 선수
 function half(md, i, { ph, ds, myCap, final }) {
   const caps = md.captains || [];
@@ -103,16 +169,17 @@ function half(md, i, { ph, ds, myCap, final }) {
   const capId = captainOf(md, i);
   const hasCap = !!capId;
   const others = ids.filter((x) => x !== capId);   // 주장은 머리칸에, 나머지 선수만 목록
+  const nTeams = rosters(md).length;
   const player = (id) => {
     const key = md.id + ':' + id; const nw = !seen.has(key); seen.add(key);
     const undo = !final && S.operator && last && last.id === id && last.team === i;
     const move = final && S.operator && md.status !== 'played';
-    return `<li class="pl ${nw ? 'new' : ''}"><span class="shirt" aria-hidden="true"></span><b>${esc(nameOf(id, md))}</b>
-      ${undo ? `<button class="x" data-unpick title="마지막 지명 취소">✕</button>` : ''}
-      ${move ? (rosters(md).length === 2 ? `<button class="mv" data-swap="${i}:${id}" title="${esc(teamLabel(md, 1 - i))}(으)로 옮기기">${i === 0 ? '→' : '←'}</button>`
-        : `<select class="move" data-move="${i}:${id}"><option value="">이동</option>${rosters(md).map((_, j) => j !== i ? `<option value="${j}">${teamLabel(md, j)}</option>` : '').join('')}</select>`) : ''}</li>`;
+    const nm = nameOf(id, md);
+    if (undo) return `<button class="jf mini vest undo ${nw ? 'new' : ''}" data-unpick data-pid="${id}" title="눌러서 선택 취소">${figHTML(nm + ' ✕')}</button>`;
+    if (move) return `<button class="jf mini vest ${nw ? 'new' : ''}" data-swap="${i}:${id}" data-pid="${id}" title="눌러서 ${esc(teamLabel(md, (i + 1) % nTeams))}(으)로 옮기기">${figHTML(nm)}</button>`;
+    return `<div class="jf mini vest ${nw ? 'new' : ''}" data-pid="${id}">${figHTML(nm)}</div>`;
   };
-  return `<div class="half h${i} ${turn ? 'turn' : ''} ${mine ? 'mine' : ''} ${col ? '' : 'nocolor'}" style="${col ? `--tc:${col.hex};--ti:${col.text}` : ''}">
+  return `<div class="half h${i} ${turn ? 'turn' : ''} ${mine ? 'mine' : ''} ${col ? '' : 'nocolor'}" data-k="${i}" style="${col ? `--tc:${col.hex};--ti:${col.text}` : ''}">
     <div class="h-hd">
       ${rank >= 0 && ph !== 'order' ? `<em class="rank">${rank + 1}순위</em>` : ''}
       ${hasCap ? `<span class="hcap">👑 ${esc(nameOf(capId, md))}</span>` : ''}
@@ -122,7 +189,7 @@ function half(md, i, { ph, ds, myCap, final }) {
     </div>
     ${canColor ? `<div class="h-sw">${palette(md).map((c) => { const by = caps.findIndex((x) => x.color === c.key);
       return `<button class="csw ${caps[i].color === c.key ? 'on' : ''}" style="--c:${c.hex};--ct:${c.text}" data-color="${i}:${c.key}">${c.label}</button>`; }).join('')}</div>` : ''}
-    <ol class="h-list">${others.map(player).join('')}${pend ? `<li class="pl pend"><span class="shirt" aria-hidden="true"></span><b>${esc(nameOf(pend, md))}</b><small>선택 중</small></li>` : ''}</ol>
+    <div class="stk pfs-row">${others.map(player).join('')}${pend ? `<div class="jf mini vest pendstk" title="선택 중">${figHTML(nameOf(pend, md))}</div>` : ''}</div>
     ${turn ? `<div class="h-turn">${mine ? '내 차례예요!' : '지명 차례'}</div>` : ''}
   </div>`;
 }
@@ -131,10 +198,9 @@ function half(md, i, { ph, ds, myCap, final }) {
 function pitch(md, opt) {
   const n = rosters(md).length;
   const ds = opt.ds;
-  const ball = opt.ph === 'pick' && ds.turn != null ? (ds.turn === 0 ? 'l' : 'r') : '';
   return `<section class="pitch n${n}">
     <div class="lines" aria-hidden="true"><i class="mid"></i><i class="circ"></i><i class="box l"></i><i class="box r"></i></div>
-    ${n === 2 ? `<div class="ball ${ball}" aria-hidden="true">⚽</div>` : ''}
+    <div class="tball" aria-hidden="true"><i class="tb-sh"></i><b class="tb-b">${BALL_SVG}</b></div>
     ${Array.from({ length: n }, (_, i) => half(md, i, opt)).join('')}
   </section>`;
 }
@@ -198,9 +264,11 @@ function board(md, myCap) {
   return `
     <section class="card dpanel">${stepper2(ph)}<div class="dp-body">${panel(md, ph, ds, myCap)}</div></section>
     ${pitch(md, { ph, ds, myCap, final: false })}
-    ${ph === 'pick' ? `<section class="card dpool"><h2>남은 선수 ${ds.remaining.length}명 <small>${canPick ? '눌러서 고른 뒤 \'선택 완료\'' : '주장 차례에만 고를 수 있어요'}</small></h2>
-      <div class="name-grid">${ds.remaining.map((id) => `<button class="name-btn ${md.pending?.id === id ? 'on' : ''}" data-pick="${id}" ${canPick ? '' : 'disabled'}>${esc(nameOf(id, md))}</button>`).join('')}</div>
-    </section>` : ''}
+    ${ph === 'pick' ? (() => { const pc = md.pending ? colorOf(teamColor(md, md.pending.team)) : null;
+      return `<section class="dpool"><div class="pool-hd">남은 선수 ${ds.remaining.length}명 · ${canPick ? '눌러서 고른 뒤 \'선택 완료\'' : '주장 차례에만 고를 수 있어요'}</div>
+      <div class="namegrid">${ds.remaining.map((id) => { const pend = md.pending?.id === id;
+        return `<button class="jf pfb ${pend ? 'pend vest' : ''}" ${pend && pc ? `style="--tc:${pc.hex};--ti:${pc.text}"` : ''} data-pick="${id}" ${canPick ? '' : 'disabled'}>${figHTML(nameOf(id, md))}</button>`; }).join('')}</div>
+    </section>`; })() : ''}
     ${S.operator ? `<section class="card op"><h2>운영</h2>
       <div class="cap-links">${caps.map((c, i) => `<div><span>${i === 0 ? '왼쪽' : i === 1 ? '오른쪽' : i + 1 + '번'} · ${esc(nameOf(c.id, md))}</span>
         <input class="tname" data-tname="${i}" value="${esc(md.teamNames?.[i] || '')}" placeholder="팀 이름">
@@ -341,7 +409,7 @@ function teamsView(md) {
   const ds = draftState(md);
   return `<section class="card dpanel">${stepper2('done')}<div class="dp-body"><div class="dp-t">팀 확정</div>
       <b>${rosters(md).map((ids, i) => `${esc(teamLabel(md, i))} ${ids.length}명`).join(' vs ')}</b>
-      ${S.operator && md.status !== 'played' ? '<p>선수 옆 화살표를 누르면 상대 팀으로 옮겨요.</p>' : ''}</div></section>
+      ${S.operator && md.status !== 'played' ? '<p>선수 유니폼을 누르면 상대 팀으로 옮겨요.</p>' : ''}</div></section>
     ${pitch(md, { ph: 'done', ds, myCap: -1, final: true })}
     ${S.operator && md.status !== 'played' ? `<section class="card op"><h2>운영</h2>
       <div class="cap-links">${rosters(md).map((ids, i) => `<div><span>${i === 0 ? '왼쪽' : i === 1 ? '오른쪽' : i + 1 + '번'}${captainOf(md, i) ? ` · ${esc(nameOf(captainOf(md, i), md))}` : ''}</span>
@@ -358,7 +426,7 @@ function bindTeams(root, md) {
     });
     toast(`${nameOf(id, md)} → ${teamLabel(md, to)}`);
   };
-  root.querySelectorAll('[data-swap]').forEach((b) => b.addEventListener('click', () => { const [f, id] = b.dataset.swap.split(':'); moveTo(+f, id, 1 - +f); }));
+  root.querySelectorAll('[data-swap]').forEach((b) => b.addEventListener('click', () => { const [f, id] = b.dataset.swap.split(':'); moveTo(+f, id, (+f + 1) % rosters(md).length); }));
   root.querySelectorAll('[data-move]').forEach((s) => s.addEventListener('change', () => { if (s.value === '') return; const [f, id] = s.dataset.move.split(':'); moveTo(+f, id, +s.value); }));
   root.querySelector('[data-reopen]')?.addEventListener('click', async () => {
     if (!confirm('확정을 풀고 드래프트 화면으로 돌아갈까요? (선수 이동 내역은 지워져요)')) return;
