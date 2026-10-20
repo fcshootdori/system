@@ -2,14 +2,14 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.36';
-import { db, newId } from '../store.js?v=0.1.36';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.36';
-import { TEAM_COLORS } from '../config.js?v=0.1.36';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.36';
-import { icon } from '../icons.js?v=0.1.36';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.36';
-import { figHTML } from './draft.js?v=0.1.36';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.37';
+import { db, newId } from '../store.js?v=0.1.37';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.37';
+import { TEAM_COLORS } from '../config.js?v=0.1.37';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.37';
+import { icon } from '../icons.js?v=0.1.37';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.37';
+import { figHTML } from './draft.js?v=0.1.37';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -157,6 +157,12 @@ function pitchHTML(md, ti, lu, editable) {
 function lineupCard(md, capOf, op) {
   const R = ui.round, ros = rosters(md);
   const canEdit = (i) => md.status !== 'played' && (op || capOf.includes(i));
+  // 포지션은 그 팀 선수(주장 포함)만 볼 수 있음 — 상대 팀 포지션은 숨김. 운영진은 두 팀 모두
+  const mine = [0, 1].filter((i) => capOf.includes(i) || (ros[i] || []).includes(me.id));
+  const vis = op ? [0, 1] : mine;
+  if (!vis.length) return `<section class="card mm-lineup"><h2>${icon('field')} 포지션</h2>
+    <p class="muted small lp-none">포지션은 그 팀 선수만 볼 수 있어요.</p></section>`;
+  if (!vis.includes(ui.view)) ui.view = vis[0];
   const ti = ui.view;
   const lu = lineupOf(md, ti, R), edit = canEdit(ti);
   const placed = new Set(Object.values(lu?.s || {}));
@@ -164,7 +170,7 @@ function lineupCard(md, capOf, op) {
   const { f } = slotsOf(lu);
   return `<section class="card mm-lineup">
     <h2>${icon('field')} 포지션 <small>${R}라운드</small></h2>
-    <div class="seg lp-teams">${[0, 1].map((i) => `<button type="button" data-view="${i}" class="${i === ti ? 'on' : ''}" style="--tc:${hexOf(md, i).hex}"><i></i>${esc(teamLabel(md, i))}${capOf.includes(i) ? ' · 우리 팀' : ''}</button>`).join('')}</div>
+    ${vis.length > 1 ? `<div class="seg lp-teams">${vis.map((i) => `<button type="button" data-view="${i}" class="${i === ti ? 'on' : ''}" style="--tc:${hexOf(md, i).hex}"><i></i>${esc(teamLabel(md, i))}${mine.includes(i) ? ' · 우리 팀' : ''}</button>`).join('')}</div>` : `<p class="lp-myteam" style="--tc:${hexOf(md, ti).hex}"><i></i>${esc(teamLabel(md, ti))} · 우리 팀 <small class="muted">상대 팀 포지션은 보이지 않아요</small></p>`}
     ${edit ? `<div class="lp-tools">
         <div class="lp-forms">${Object.keys(FORMS).map((k) => `<button type="button" data-form="${k}" class="${k === f ? 'on' : ''}">${k}</button>`).join('')}</div>
         <p class="tiny muted">${capOf.includes(ti) ? '주장 화면 · ' : '운영진 · '}아래 선수 유니폼을 끌어다 자리에 놓아요 (선수를 누르고 자리를 눌러도 돼요). 자리에 있는 선수를 아래 명단으로 끌면 빠져요.</p>

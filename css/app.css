@@ -1281,3 +1281,6 @@ html, body { overscroll-behavior-y: contain; }
 @keyframes ptrspin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ptr.spin .ptr-ball { animation: none; } }
 .cap-check { margin: -4px 0 0; display: flex; flex-wrap: wrap; gap: 4px 10px; } .cap-check:empty { display: none; }
+.lp-myteam { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; font-weight: 800; font-size: 14px; }
+.lp-myteam i { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); }
+.lp-myteam small { font-weight: 500; font-size: 12px; }
