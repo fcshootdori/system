@@ -472,3 +472,19 @@ select.cell.st-staff { color: #b45309; } select.cell.st-rest { color: var(--sub)
 .ev-teams { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 .ev-row { margin-top: 0; }
 .ev-row label:last-child { flex: 0 0 110px; }
+
+/* ── 0.1.14: 로그인 ── */
+body.gate #tabbar, body.gate #topbar, body.gate .ver { display: none; }
+body.gate { padding-bottom: 0; padding-left: 0; }
+.lg { max-width: 380px; margin: 0 auto; padding: 28px 4px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.lg-emb { width: 140px; height: auto; }
+.lg h1 { margin: 4px 0 0; font-size: 26px; }
+.lg .muted { margin: 0 0 8px; }
+.lg-card { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 12px; }
+.lg-card input[name=pin], .lg-card input[name=pin2] { font-size: 24px; letter-spacing: .4em; text-align: center; }
+.lg-sug { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -4px; }
+.chip.sug { border: 0; cursor: pointer; font: 600 13px var(--font); padding: 6px 12px; }
+.lg-who { margin: 0; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+.lg-op { margin-top: 8px; }
+@media (min-width: 1024px) and (hover: hover) { body.gate #view { max-width: 420px; } }
+.lg-emb { border-radius: 24px; }

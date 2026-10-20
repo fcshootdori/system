@@ -11,6 +11,8 @@ export const S = {
   ready: false,
   operator: sessionStorage.getItem('teamapp:op') === '1',
   captainToken: null,
+  auth: null,     // 로그인한 회원 { pid, key, ver }
+  authset: {},    // 회원별 비밀번호 등록 여부 (운영 회원 관리용)
   sel: null,      // 운영 > 경기 메뉴에서 고른 경기일
   step: null,     // 운영 > 경기 메뉴에서 고른 단계
 };
@@ -36,6 +38,7 @@ export function startSync() {
     S.matchdays = list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
     emit();
   });
+  db.watchCol('authset', (list) => { S.authset = Object.fromEntries(list.map((d) => [d.id, d])); emit(); });
   db.watchCol('games', (list) => { S.games = list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); emit(); });
 }
 
@@ -48,9 +51,10 @@ export function setOperator(on) {
 export const refresh = emit;
 
 // 이 기기의 "내 이름" (로그인 없이 이름 선택 방식)
+// 이 기기의 "나" = 로그인한 회원 (카페 닉네임 + 비밀번호)
 export const me = {
-  get id() { return localStorage.getItem('teamapp:me') || ''; },
-  set(id) { if (id) localStorage.setItem('teamapp:me', id); else localStorage.removeItem('teamapp:me'); emit(); },
+  get id() { return S.auth?.pid || ''; },
+  set() { location.hash = '#/login'; },
 };
 export const go = (path) => { location.hash = '#/' + path; };
 export const mdPath = (id) => 'matchdays/' + id;

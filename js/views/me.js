@@ -1,5 +1,8 @@
 // 내 정보 — 내 이름, 내 기록 요약, 앱 정보, 운영모드 입구 (WD_FUTSAL 내 정보와 같은 위치)
-import { S, me, memberById, opDevice } from '../state.js';
+import { S, me, memberById, opDevice, refresh } from '../state.js';
+import { changePin, saveSession, isRemembered, validPin } from '../auth.js';
+import { modal } from '../ui.js';
+import { toast } from '../util.js';
 import { db } from '../store.js';
 import { APP_NAME, APP_VERSION } from '../config.js';
 import { allStats, pct } from '../domain.js';
@@ -12,9 +15,9 @@ export function render(root) {
   root.innerHTML = `
     <section class="card">
       <h1>내 정보</h1>
-      ${m ? `<div class="me-row"><div><b class="me-name">${esc(m.name)}</b><small class="muted">이 기기에서 쓰는 이름</small></div>
-          <button class="btn ghost sm" data-pick>바꾸기</button></div>`
-        : `<p class="muted">이름을 고르면 신청하고 내 기록을 볼 수 있어요.</p><button class="btn full" data-pick>내 이름 선택</button>`}
+      ${m ? `<div class="me-row"><div><b class="me-name">${esc(m.name)}</b><small class="muted">${S.auth?.temp ? '비밀번호 없이 접속 중' : isRemembered() ? '자동 로그인 켜짐' : '이번 접속에만 로그인'}</small></div></div>
+          <div class="row">${S.auth?.temp ? '' : '<button class="btn ghost" data-pin>비밀번호 변경</button>'}<button class="btn ghost" data-logout>로그아웃</button></div>`
+        : `<p class="muted">카페 닉네임과 비밀번호로 로그인하면 신청하고 내 기록을 볼 수 있어요.</p><button class="btn full" data-pick>로그인</button>`}
     </section>
     ${r ? `<a class="card" href="#/records/${r.id}"><h2>내 기록 <small>자세히 ›</small></h2>
       <div class="stats3 four">
@@ -35,4 +38,21 @@ export function render(root) {
     </section>
     <p class="muted tiny center">${APP_NAME} Ver.${APP_VERSION} · ${db.mode === 'demo' ? '데모 모드' : '서버 연결됨'}</p>`;
   root.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => pickMe()));
+  root.querySelector('[data-logout]')?.addEventListener('click', () => {
+    if (!confirm('로그아웃할까요? 다음에는 닉네임과 비밀번호를 다시 입력해야 해요.')) return;
+    S.auth = null; saveSession(null); toast('로그아웃했어요'); location.hash = '#/login'; refresh();
+  });
+  root.querySelector('[data-pin]')?.addEventListener('click', () => {
+    const { el, close } = modal('비밀번호 변경', `<form class="stack">
+      <label>지금 비밀번호<input name="p0" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password"></label>
+      <label>새 비밀번호 (숫자 4자리)<input name="p1" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password"></label>
+      <label>새 비밀번호 한 번 더<input name="p2" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password"></label>
+      <button class="btn">바꾸기</button></form>`);
+    el.querySelector('form').addEventListener('submit', async (e) => {
+      e.preventDefault(); const f = e.target;
+      if (!validPin(f.p1.value) || f.p1.value !== f.p2.value) return toast('새 비밀번호를 숫자 4자리로 똑같이 두 번 넣어 주세요');
+      try { const sess = await changePin(S.auth, f.p0.value.trim(), f.p1.value.trim()); saveSession(sess, isRemembered()); S.auth = sess; toast('비밀번호를 바꿨어요'); close(); refresh(); }
+      catch (err) { toast(err.message || '바꾸지 못했어요'); }
+    });
+  });
 }

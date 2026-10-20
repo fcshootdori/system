@@ -22,6 +22,8 @@ import * as run from './views/run.js';
 import * as notice from './views/notice.js';
 import * as admin from './views/admin.js';
 import * as membersView from './views/members.js';
+import * as loginView from './views/login.js';
+import { loadSession, saveSession, verify } from './auth.js';
 
 const MEMBER_TABS = [['home', '홈', '⌂'], ['sched', '일정', '▦'], ['mm', '경기모드', '⚽'], ['results', '경기결과', '▤'], ['me', '내 정보', '☺']];
 const OP_TABS = [['plan', '일정', '▦'], ['run', '경기', '⚑'], ['notice', '공지', '✉'], ['members', '회원', '☺'], ['settings', '설정', '⚙']];
@@ -32,6 +34,7 @@ const ROUTES = {
   // 회원 메뉴 안쪽 화면 (하단 메뉴는 그대로)
   apply: { view: apply, parent: 'home' }, draft: { view: draft, parent: 'home' },
   games: { view: games, parent: 'results' }, records: { view: records, parent: 'results' },
+  login: { view: loginView },
   // 운영 메뉴
   plan: { view: schedule, op: true, sub: 'op' }, run: { view: run, op: true }, notice: { view: notice, op: true },
   members: { view: membersView, op: true }, settings: { view: admin, op: true, sub: 'settings' },
@@ -70,8 +73,15 @@ function renderShell() {
 let pending = false;
 function render() {
   const { name, params } = parseHash();
-  const route = ROUTES[name];
+  let route = ROUTES[name];
   const root = document.getElementById('view');
+  // 로그인 전에는 로그인 화면만 (운영모드는 운영진 비밀번호로 따로 들어감)
+  const gated = !S.auth && !S.operator;
+  document.body.classList.toggle('gate', gated || name === 'login');
+  if (gated || name === 'login') {
+    if (S.auth && name === 'login') { location.hash = '#/home'; return; }
+    loginView.render(root, {}); return;
+  }
   if (route.op && !S.operator) { go('home'); return; }
   route.view.render(root, { params, sub: route.sub });
 }
@@ -108,9 +118,14 @@ window.addEventListener('hashchange', () => { renderShell(); render(); window.sc
   const qs = new URLSearchParams(location.search);
   if (qs.get('c')) localStorage.setItem('teamapp:captain', qs.get('c'));
   S.captainToken = localStorage.getItem('teamapp:captain');
+  S.auth = loadSession();   // 자동 로그인
   document.getElementById('ver').textContent = `${APP_NAME} Ver.${APP_VERSION}`;
   await initStore();
   startSync();
   onChange(safeRender);
   renderShell(); render();
+  // 자동 로그인 정보 확인 (비밀번호가 바뀌었거나 운영진이 초기화했으면 다시 로그인)
+  if (S.auth) verify(S.auth).then((ok) => {
+    if (!ok) { S.auth = null; saveSession(null); toast('다시 로그인해 주세요'); renderShell(); render(); }
+  }).catch(() => {});
 })();

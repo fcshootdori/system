@@ -8,6 +8,7 @@ import { rosters } from '../domain.js';
 import { esc, toast, fmtDate, todayISO, koSort } from '../util.js';
 import { modal, empty } from '../ui.js';
 import { norm } from '../cafe-parser.js';
+import { resetPin } from '../auth.js';
 
 export const MSTAT = { staff: '운영진', regular: '정회원', rest: '휴면' };
 // 휴면 여부는 active(승률계산기 활성 Y/N과 같은 값)를 기준으로, 나머지는 status로 구분
@@ -50,7 +51,7 @@ function rowsOf() {
   const { total, rec } = attendance();
   return S.members.map((m) => {
     const a = rec.get(m.id) || { att: 0, last: '' };
-    return { id: m.id, name: m.name, realName: m.realName || '', status: statusOf(m), aliases: (m.aliases || []).join(', '), att: a.att,
+    return { id: m.id, name: m.name, realName: m.realName || '', login: S.authset?.[m.id]?.registered ? 1 : 0, status: statusOf(m), aliases: (m.aliases || []).join(', '), att: a.att,
       rate: total ? Math.round((a.att / total) * 100) : 0, last: a.last, createdAt: m.createdAt || 0, source: m.source };
   });
 }
@@ -85,12 +86,13 @@ function listView(body, root) {
       <button class="btn ghost sm" data-selclear>선택 해제</button><button class="btn ghost danger sm" data-seldel>선택 삭제</button></div>` : ''}
     ${rows.length ? `<div class="card sheetwrap"><table class="grid"><thead><tr>
       <th class="ck"><input type="checkbox" data-selall ${rows.length && rows.every((r) => sel.has(r.id)) ? 'checked' : ''} aria-label="모두 선택"></th>
-      ${th('name', '닉네임', 'stick')}${th('realName', '이름')}${th('status', '유형')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
+      ${th('name', '닉네임', 'stick')}${th('realName', '이름')}${th('status', '유형')}${th('login', '로그인')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
       ${rows.map((r) => `<tr class="${sel.has(r.id) ? 'msel' : ''} st-row-${r.status}">
         <td class="ck"><input type="checkbox" data-sel="${r.id}" ${sel.has(r.id) ? 'checked' : ''} aria-label="${esc(r.name)} 선택"></td>
         <td class="stick"><input class="cell w-name" value="${esc(r.name)}" data-cell="name" data-id="${r.id}"></td>
         <td><input class="cell w-real" value="${esc(r.realName)}" placeholder="-" data-cell="realName" data-id="${r.id}"></td>
         <td><select class="cell st st-${r.status}" data-cell="status" data-id="${r.id}">${Object.entries(MSTAT).map(([s, l]) => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
+        <td>${r.login ? `<span class="small ok-t">등록됨</span> <button class="btn ghost sm" data-pinreset="${r.id}">초기화</button>` : '<span class="small muted">미등록</span>'}</td>
         <td><input class="cell w-alias" value="${esc(r.aliases)}" placeholder="-" data-cell="aliases" data-id="${r.id}"></td>
         <td class="num"><button class="attcell" data-att="${r.id}"><b>${r.att}</b>회</button></td>
         <td class="num"><div class="att-rate"><div class="att-bar"><i style="width:${r.rate}%"></i></div><span>${r.rate}%</span></div></td>
@@ -125,6 +127,11 @@ function listView(body, root) {
     await db.del('members/' + m.id); toast('삭제했어요');
   }));
   body.querySelectorAll('[data-att]').forEach((b) => b.addEventListener('click', () => showDates(b.dataset.att)));
+  body.querySelectorAll('[data-pinreset]').forEach((b) => b.addEventListener('click', async () => {
+    const m = S.members.find((x) => x.id === b.dataset.pinreset);
+    if (!confirm(`${m.name} 님의 비밀번호를 초기화할까요? 다음 접속 때 새 비밀번호를 정하게 돼요. (자동 로그인된 기기도 다시 로그인해야 해요)`)) return;
+    await resetPin(m.id); toast(`${m.name} 님 비밀번호를 초기화했어요`);
+  }));
   body.querySelector('[data-add]').addEventListener('click', addMember);
   body.querySelector('[data-bulk]').addEventListener('click', bulkPaste);
   body.querySelector('[data-csv]').addEventListener('click', () => exportCSV(all));
