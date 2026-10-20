@@ -1,6 +1,6 @@
 // 저장소 계층 — 데모(localStorage) / Firebase(Firestore) 공통 인터페이스
 //   경로 규칙: 'collection/docId' 또는 'collection/docId/sub/subId'
-import { FIREBASE } from './config.js?v=0.1.30';
+import { FIREBASE } from './config.js?v=0.1.31';
 
 const clean = (o) => JSON.parse(JSON.stringify(o ?? null));
 export const newId = () =>
@@ -61,7 +61,10 @@ async function firebaseBackend(cfg) {
   const fsMod = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`);
   const authMod = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`);
   const app = appMod.initializeApp(cfg);
-  const fs = fsMod.getFirestore(app);
+  // 기기에 데이터를 저장해 두고(오프라인 캐시) 다시 열 때는 바뀐 것만 받아 옴 → Firestore 읽기 사용량 크게 줄임
+  let fs;
+  try { fs = fsMod.initializeFirestore(app, { localCache: fsMod.persistentLocalCache({ tabManager: fsMod.persistentMultipleTabManager() }) }); }
+  catch (e) { console.warn('오프라인 캐시를 쓸 수 없어 기본 연결로', e); fs = fsMod.getFirestore(app); }
   const auth = authMod.getAuth(app);
   let authError = null;
   await authMod.signInAnonymously(auth).catch((e) => { authError = e.code || String(e); console.warn('익명 로그인 실패', e); });

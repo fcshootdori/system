@@ -1,7 +1,7 @@
-import { S, memberById, me, matchdayById } from '../state.js?v=0.1.30';
-import { allStats, pct, RATE_TEXT } from '../domain.js?v=0.1.30';
-import { esc, fmtDate } from '../util.js?v=0.1.30';
-import { empty, teamChip } from '../ui.js?v=0.1.30';
+import { S, memberById, me, matchdayById } from '../state.js?v=0.1.31';
+import { allStats, pct, RATE_TEXT } from '../domain.js?v=0.1.31';
+import { esc, fmtDate } from '../util.js?v=0.1.31';
+import { empty, teamChip } from '../ui.js?v=0.1.31';
 
 let sortKey = 'pts', minGames = 15, showAll = false;   // 최소 경기 기본 15경기
 // 부문별 1위 (최소 경기 조건을 채운 회원 중) — 공동 1위는 함께 표시

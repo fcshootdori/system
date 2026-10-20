@@ -1,13 +1,13 @@
 // 내 정보 — 내 이름, 내 기록 요약, 앱 정보, 운영모드 입구 (WD_FUTSAL 내 정보와 같은 위치)
-import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.30';
-import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.30';
-import { modal } from '../ui.js?v=0.1.30';
-import { toast } from '../util.js?v=0.1.30';
-import { db } from '../store.js?v=0.1.30';
-import { APP_NAME, APP_VERSION } from '../config.js?v=0.1.30';
-import { allStats, pct } from '../domain.js?v=0.1.30';
-import { esc } from '../util.js?v=0.1.30';
-import { pickMe } from './pickme.js?v=0.1.30';
+import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.31';
+import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.31';
+import { modal } from '../ui.js?v=0.1.31';
+import { toast } from '../util.js?v=0.1.31';
+import { db } from '../store.js?v=0.1.31';
+import { APP_NAME, APP_VERSION } from '../config.js?v=0.1.31';
+import { allStats, pct } from '../domain.js?v=0.1.31';
+import { esc } from '../util.js?v=0.1.31';
+import { pickMe } from './pickme.js?v=0.1.31';
 
 export function render(root) {
   const m = memberById(me.id);
