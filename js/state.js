@@ -1,6 +1,6 @@
 // 앱 전역 상태 — 저장소를 구독해 화면이 항상 최신 데이터를 보도록 함
 import { db } from './store.js';
-import { DEFAULT_TEAM, DEFAULT_FORMAT } from './config.js';
+import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js';
 import { byName } from './util.js';
 
 export const S = {
@@ -28,7 +28,10 @@ export function startSync() {
       legacySheet: { ...DEFAULT_TEAM.legacySheet, ...(d?.legacySheet || {}) } };
     emit();
   });
-  db.watchCol('members', (list) => { S.members = list.sort(byName); S.ready = true; emit(); });
+  db.watchCol('members', (list) => {
+    S.members = list.map((m) => (KNOWN_ALIASES[m.name] ? { ...m, aliases: [...new Set([...(m.aliases || []), ...KNOWN_ALIASES[m.name]])] } : m)).sort(byName);
+    S.ready = true; emit();
+  });
   db.watchCol('matchdays', (list) => {
     S.matchdays = list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
     emit();

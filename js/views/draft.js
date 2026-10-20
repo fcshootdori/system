@@ -1,7 +1,7 @@
 import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js';
 import { db } from '../store.js';
 import { TEAM_COLORS } from '../config.js';
-import { confirmed, draftState, rosters, fmtOf, teamColor, appGroups } from '../domain.js';
+import { confirmed, draftState, rosters, fmtOf, teamColor, appGroups, defaultSectionColors } from '../domain.js';
 import { TEAM_COLORS as TC } from '../config.js';
 import { modal } from '../ui.js';
 import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js';
@@ -187,9 +187,10 @@ function groupSplit(md) {
   const f = fmtOf(md);
   const colors = f.fixedColors?.length ? f.fixedColors : TC.map((c) => c.key);
   const rest = confirmed(md).map((a) => a.id).filter((id) => !groups.some(([, ids]) => ids.includes(id)));
+  const pre = defaultSectionColors(groups.map(([g]) => g), md);
   const { el, close } = modal('구역대로 팀 만들기', `<form class="stack">
     ${groups.map(([g, ids], i) => `<label>${esc(g)} <small class="muted">${ids.length}명</small><select name="g${i}">${TC.map((c) =>
-      `<option value="${c.key}" ${c.key === colors[i % colors.length] ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label>`).join('')}
+      `<option value="${c.key}" ${c.key === pre[i] ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label>`).join('')}
     ${rest.length ? `<p class="small muted">구역 없이 신청한 ${rest.length}명(${rest.map((id) => esc(nameOf(id, md))).join(', ')})은 인원이 적은 팀부터 넣어요.</p>` : ''}
     <button class="btn">팀 확정</button></form>`);
   el.querySelector('form').addEventListener('submit', async (e) => {
@@ -203,6 +204,7 @@ function groupSplit(md) {
       cur.format = { ...fmtOf(cur), teams: teams.length, teamMode: 'fixed', fixedColors: [...picks, ...colors.filter((c) => !picks.includes(c))] };
       return cur;
     });
+    await db.set('meta/team', { sectionColors: { ...(S.team.sectionColors || {}), ...Object.fromEntries(groups.map(([g], i) => [g, picks[i]])) } }, { merge: true });
     close(); toast('구역대로 팀을 만들었어요 — 팀 확정 단계에서 선수를 옮길 수 있어요');
   });
 }

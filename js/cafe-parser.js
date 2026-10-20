@@ -27,43 +27,46 @@ function parseTime(line, baseDate = new Date()) {
 }
 const isTimeLine = (l) => TIME_FULL.test(l) || /^(작성자\s*)?\d{1,2}:\d{2}(\s*새글)?$/.test(l) || /^작성자\b/.test(l);
 
-// 1) 댓글 단위로 나누기
+// 1) 댓글 단위로 나누기 — 세 가지 복사 형식을 모두 읽음
+//   ① 모바일 앱:  "진이" ↵ "작성자 26.10.04 12:17" ↵ 내용 ↵ "답글" ↵ "기능 더보기"
+//   ② 모바일 웹:  "* 진이" ↵ "작성자 26.10.04 12:17" ↵ 내용 …
+//   ③ PC:        "진이작성자 26.10.04 12:17" ↵ 내용 ↵ "답글기능 더보기"
+//   "작성자"는 카페의 글쓴이 아이콘 글씨라 닉네임에서 떼어 내고, 운영진 머리 댓글 표시로만 씀
+const TIME_LINE = /^(작성자)?\s*((\d{2})\.(\d{2})\.(\d{2})\s+(\d{1,2}):(\d{2})|(\d{1,2}):(\d{2}))(\s*새글)?$/;
 function splitComments(text, baseDate) {
   const lines = String(text || '').split(/\r?\n/).map((l) => l.trim());
   const out = [];
-  let cur = null;
+  let cur = null, boundary = true, last = null; // last: { text, afterBoundary, inBody }
   const push = () => { if (cur && cur.at != null) out.push(cur); cur = null; };
-  let boundary = true;
   lines.forEach((raw) => {
     if (!raw) return;
-    const wasBoundary = boundary; boundary = false;
-    const boundaryNow = wasBoundary;
-    const bullet = raw.match(/^[*•·∙●○-]\s*(.+)$/);
-    const line = bullet ? bullet[1].trim() : raw;
-    const inl = line.match(HEAD_INLINE);
-    const waitingTime = cur && cur.at == null && !bullet;      // 모바일 형식: 닉네임 다음 줄이 시간
+    const afterBoundary = boundary; boundary = false;
+    if (NOISE.test(raw)) { boundary = true; last = null; return; }
+    const bullet = raw.match(/^[*•·∙●○]\s*(.+)$/);
+    if (bullet) { push(); cur = { name: bullet[1].trim(), author: false, at: null, body: [] }; last = null; return; }
+
+    const tl = raw.match(TIME_LINE);
+    if (tl) {
+      if (cur && cur.at == null) { cur.author = !!tl[1]; cur.at = parseTime(tl[2], baseDate); last = null; return; } // ②
+      if (last && last.afterBoundary) {                                                                          // ① 바로 앞 줄이 닉네임
+        if (last.inBody && cur) cur.body.pop();
+        push();
+        cur = { name: last.text, author: !!tl[1], at: parseTime(tl[2], baseDate), body: [] };
+        last = null; return;
+      }
+    }
+    const inl = !tl && raw.match(HEAD_INLINE);
     const nm = inl ? inl[1].trim() : '';
-    // 댓글 첫 줄로 인정: 첫 줄이거나, "답글기능 더보기" 바로 다음이거나, 날짜까지 붙은 형식일 때
-    //  (댓글 내용 "참석 10:00"처럼 시간으로 끝나는 줄을 새 댓글로 잘못 읽지 않도록)
-    const headOk = !cur || boundaryNow || (inl && inl[4] != null);
-    if (inl && !waitingTime && headOk && nm && !/^(작성자|답글|기능 더보기|새글)$/.test(nm)) {   // 숫자 닉네임(3232)도 허용   // 닉네임+시간이 한 줄 (PC 복사)
+    const headOk = !cur || afterBoundary || (inl && inl[4] != null);
+    if (inl && headOk && !(cur && cur.at == null) && nm && !/^(작성자|답글|기능 더보기|새글)$/.test(nm)) {      // ③ (숫자 닉네임 3232도 허용)
       push();
       cur = { name: nm, author: !!inl[2], at: parseTime(inl[3], baseDate), body: [] };
-      return;
+      last = null; return;
     }
-    if (bullet) {                                             // "* 닉네임" 다음 줄에 시간 (모바일 복사)
-      push();
-      cur = { name: line, author: false, at: null, body: [] };
-      return;
-    }
-    if (!cur) return;
-    if (cur.at == null && isTimeLine(raw)) {
-      cur.author = /작성자/.test(raw);
-      cur.at = parseTime(raw, baseDate);
-      return;
-    }
-    if (NOISE.test(raw)) { boundary = true; return; }
-    if (cur.at != null) cur.body.push(raw);
+    // 내용 줄 (① 형식에서는 다음 줄이 시간이면 닉네임으로 바뀜)
+    const inBody = !!(cur && cur.at != null);
+    if (inBody) cur.body.push(raw);
+    last = { text: raw, afterBoundary, inBody };
   });
   push();
   return out.map((c, i) => ({ ...c, order: i, body: c.body.join(' ').replace(/^첫댓글\s*/, '').trim() }));
@@ -107,7 +110,12 @@ export function parseCafeComments(text, members, { baseDate = new Date() } = {})
   const sections = [];
   let sec = null;
   const entries = [];
+  let closed = false;
   comments.forEach((c) => {
+    if (c.author && !isHeader(c) && !/^(참|불|ㅊ|ㅂ)/.test(c.body.replace(/\s/g, ''))) {   // 운영진 공지 댓글
+      if (/마감/.test(c.body)) closed = true;
+      return;
+    }
     if (isHeader(c)) {
       sec = { title: c.body.replace(/^\[|\]$/g, '').trim(), kind: headerKind(c.body), count: 0 };
       sections.push(sec);
@@ -134,5 +142,5 @@ export function parseCafeComments(text, members, { baseDate = new Date() } = {})
     final.set(key, { ...e, firstAt: e.kind !== 'out' ? (prev?.firstAt ?? e.at) : firstIn });
   });
   const rows = [...final.values()].map((e) => ({ ...e, suggestion: e.memberId ? null : suggest(e.nick, members) }));
-  return { structured, sections, rows, comments: comments.length };
+  return { structured, sections, rows, closed, comments: comments.length };
 }

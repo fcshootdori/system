@@ -1,7 +1,8 @@
 import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js';
 import { pickMe } from './pickme.js';
 import { db, newId } from '../store.js';
-import { applicants, pendingApps, fmtOf } from '../domain.js';
+import { applicants, pendingApps, fmtOf, teamsFromGroups, defaultSectionColors } from '../domain.js';
+import { TEAM_COLORS } from '../config.js';
 import { parseCafeComments, norm } from '../cafe-parser.js';
 import { esc, fmtDate, fmtTime, toast, byName } from '../util.js';
 import { modal, empty } from '../ui.js';
@@ -67,8 +68,15 @@ export function render(root, ctx = {}) {
   });
   root.querySelectorAll('[data-ok]').forEach((b) => b.addEventListener('click', async () => {
     const id = b.dataset.ok;
-    await db.tx(mdPath(md.id), (cur) => { if (cur.apps?.[id]) cur.apps[id].pending = false; return cur; });
-    toast(`${nameOf(id, md)} 님을 참가 명단에 넣었어요`);
+    let into = null;
+    await db.tx(mdPath(md.id), (cur) => {
+      if (cur.apps?.[id]) cur.apps[id].pending = false;
+      if (cur.teams?.length && !cur.teams.some((t) => t.members.includes(id))) {
+        const t = cur.teams.reduce((a, b) => (b.members.length < a.members.length ? b : a)); t.members.push(id); into = t.color;
+      }
+      return cur;
+    });
+    toast(`${nameOf(id, md)} 님을 참가 명단에 넣었어요${into ? ` (${TEAM_COLORS.find((c) => c.key === into)?.label || ''}팀)` : ''}`);
   }));
   root.querySelectorAll('[data-rm]').forEach((b) => b.addEventListener('click', async () => {
     const id = b.dataset.rm;
@@ -139,7 +147,9 @@ function cafeImport(md) {
 
   el.querySelector('[data-parse]').addEventListener('click', () => {
     const out = el.querySelector('[data-out]');
-    const { rows, sections } = parseCafeComments(el.querySelector('[data-src]').value, S.members);
+    const { rows, sections, closed } = parseCafeComments(el.querySelector('[data-src]').value, S.members);
+    const teamSecs = sections.filter((x) => x.kind === 'in').map((x) => x.title);
+    const secColors = defaultSectionColors(teamSecs, md);
     if (!rows.length) { out.innerHTML = `<p class="err">댓글을 찾지 못했어요. 닉네임과 작성 시간(예: 26.10.18 10:36)이 함께 복사됐는지 확인해 주세요.</p>`; return; }
     const groups = [...new Set(rows.map((r) => r.section))];
     out.innerHTML = `
@@ -154,6 +164,12 @@ function cafeImport(md) {
             ${!r.memberId && r.suggestion ? `<button class="link tiny" data-sug="${r.suggestion}">혹시 ${esc(memberById(r.suggestion)?.name || '')}?</button>` : ''}</td>
           <td><select data-kind>${KIND_OPTS.map(([k, l]) => `<option value="${k}" ${k === (r.tentative ? 'tentative' : r.kind) ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
         </tr>`).join('')}</tbody></table></div>`).join('')}
+      ${teamSecs.length >= 2 ? `<div class="teamopt">
+        <label class="inline"><input type="checkbox" data-mkteams ${closed ? 'checked' : ''}> <b>댓글 구역대로 팀까지 확정</b></label>
+        <div class="row wrap">${teamSecs.map((t, i) => `<label>${esc(t)}<select data-secc="${esc(t)}">${TEAM_COLORS.map((c) =>
+          `<option value="${c.key}" ${c.key === secColors[i] ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label>`).join('')}</div>
+        <p class="tiny muted">${closed ? '"마감" 댓글이 있어 기본으로 켜 뒀어요. ' : ''}구역 그대로 팀이 되고(드래프트 없음), 협의 인원은 승인할 때 인원이 적은 팀에 들어가요. 정한 색은 같은 구역 이름에 다음에도 그대로 써요.</p>
+      </div>` : ''}
       <p class="muted small">게스트로 참석하는 사람은 개인 기록에 남지 않아요. 회원을 고르면 그 닉네임이 별칭으로 저장돼서 다음부터 자동으로 일치해요.</p>
       <button class="btn full" data-apply>참석자 확정</button>`;
 
@@ -211,7 +227,20 @@ function cafeImport(md) {
         });
         return cur;
       });
-      toast(`참석 ${n.in}명(게스트 ${n.guest}) · 협의 ${n.pending}명 · 불참 ${n.out}명 반영`);
+      // 구역대로 팀 확정
+      const mk = out.querySelector('[data-mkteams]')?.checked;
+      if (mk) {
+        const picks = [...out.querySelectorAll('[data-secc]')].map((s) => ({ group: s.dataset.secc, color: s.value }));
+        if (new Set(picks.map((p) => p.color)).size !== picks.length) { ev.target.disabled = false; return toast('구역마다 다른 팀 색을 골라 주세요'); }
+        await db.tx(mdPath(md.id), (cur) => {
+          cur.teams = teamsFromGroups(cur, picks); cur.captains = []; cur.picks = []; cur.draftStarted = false; cur.status = 'teams';
+          const rest = (fmtOf(cur).fixedColors || []).filter((c) => !picks.some((p) => p.color === c));
+          cur.format = { ...fmtOf(cur), teams: picks.length, teamMode: 'fixed', fixedColors: [...picks.map((p) => p.color), ...rest] };
+          return cur;
+        });
+        await db.set('meta/team', { sectionColors: { ...(S.team.sectionColors || {}), ...Object.fromEntries(picks.map((p) => [p.group, p.color])) } }, { merge: true });
+      }
+      toast(`참석 ${n.in}명(게스트 ${n.guest}) · 협의 ${n.pending}명 · 불참 ${n.out}명 반영${mk ? ' · 팀 확정' : ''}`);
       close();
     });
   });

@@ -433,3 +433,7 @@ select.cell.st-staff { color: #b45309; } select.cell.st-rest { color: var(--sub)
 .stage-pick button.now { color: var(--ink); font-weight: 800; }
 .time-row { align-items: flex-end; margin-top: 0; }
 .time-row .tilde { padding-bottom: 12px; color: var(--sub); font-weight: 700; }
+
+/* ── 0.1.11: 댓글 구역 → 팀 확정 ── */
+.teamopt { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 12px; padding: 12px; margin: 14px 0 6px; }
+.teamopt .row { margin-top: 8px; }

@@ -1,6 +1,6 @@
 import { S, memberById } from '../state.js';
 import { db, newId } from '../store.js';
-import { APP_NAME, APP_VERSION, DEFAULT_TEAM } from '../config.js';
+import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js';
 import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js';
 import { esc, toast, fileToDataUrl, todayISO, byName } from '../util.js';
 import { modal, empty } from '../ui.js';
@@ -147,6 +147,11 @@ async function readSheet(form, out) {
   const known = new Map();
   S.members.forEach((m) => { known.set(m.name, m.id); (m.aliases || []).forEach((a) => known.set(a, m.id)); });
   const sheetNames = new Set(parsed.members.map((m) => m.name));
+  // 기본 별칭(config KNOWN_ALIASES): 시트에만 있는 회원이어도 오타 이름을 같은 사람으로
+  Object.entries(KNOWN_ALIASES).forEach(([name, aliases]) => {
+    const target = S.members.find((m) => m.name === name)?.id || (sheetNames.has(name) ? 'new:' + name : null);
+    if (target) aliases.forEach((a) => { if (!known.has(a)) known.set(a, target); });
+  });
   const pool = [...S.members.map((m) => ({ id: m.id, name: m.name })),
     ...parsed.members.filter((m) => !known.has(m.name)).map((m) => ({ id: 'new:' + m.name, name: m.name }))].sort(byName);
   const counts = new Map();
@@ -206,7 +211,8 @@ async function readSheet(form, out) {
       await db.set('members/' + mid, { aliases: [...new Set([...cur, ...names])] }, { merge: true });
     }
     // 3) 경기일·경기
-    const { docs, skipped } = buildDocs(parsed.matches, (name) => idOf.get(name) || null, appDates);
+    const resolve = (name) => { const v = idOf.get(name); return v && String(v).startsWith('new:') ? newIds.get(v) || idOf.get(v.slice(4)) || null : v || null; };
+    const { docs, skipped } = buildDocs(parsed.matches, resolve, appDates);
     for (let i = 0; i < docs.length; i += 10) {
       await Promise.all(docs.slice(i, i + 10).flatMap((d) => [db.set(d.md.path, d.md.data), db.set(d.game.path, d.game.data)]));
       e.target.textContent = `가져오는 중… ${Math.min(i + 10, docs.length)}/${docs.length}`;

@@ -7,7 +7,7 @@
 //    경기 방식은 경기일마다 따로 바꿀 수도 있습니다 (경기일 수정 화면).
 // ─────────────────────────────────────────────────────────────
 export const APP_NAME = 'SHOOTDORI';
-export const APP_VERSION = '0.1.10';
+export const APP_VERSION = '0.1.11';
 
 // Firebase 프로젝트: fcshootdori (웹 앱 설정값 — 공개되어도 되는 값이며, 보안은 Firestore 규칙으로 지킴)
 export const FIREBASE = {
@@ -41,6 +41,14 @@ export const DEFAULT_TEAM = {
   cafeUrl: '',
   cafeImport: true,            // 카페 댓글로 참석 받기 (정식 서비스 전 임시 기능 — 설정에서 끄면 앱 신청만 사용)
   legacySheet: { id: '1A6L2YeHQslEo9s5Pxg13xTupShrQodrysk8IZ1hckbQ' }, // 승률계산기
+};
+
+// 카페 닉네임 ↔ 승률계산기 이름이 다른 회원 (748회 댓글과 시트 명단을 비교해 확인)
+//  회원 화면에서 별칭을 따로 넣지 않아도 카페 댓글·시트 가져오기에서 같은 사람으로 알아봄
+export const KNOWN_ALIASES = {
+  '싸비': ['Xabi'],
+  '자나': ['자나자나자나'],
+  '골넣고잠': ['골잠'],
 };
 
 export const TEAM_COLORS = [

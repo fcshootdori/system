@@ -224,3 +224,24 @@ export function matchNumbers(extra) {
 }
 export const matchNo = (md) => (md ? matchNumbers().get(md.id)?.no ?? null : null);
 export const noLabel = (md) => { const n = matchNo(md); return n != null ? `${n}회` : ''; };
+
+// 카페 댓글 구역대로 팀 만들기 — picks: [{ group, color }]
+//  구역 없이 들어온 참가자(협의 승인 등)는 인원이 적은 팀부터 넣음 (748회: 협의 토토로 → 핑크 15명)
+export function teamsFromGroups(md, picks) {
+  const groups = appGroups(md);
+  const teams = picks.map((p) => ({ color: p.color, members: [...(groups.get(p.group) || [])] }));
+  const used = new Set(teams.flatMap((t) => t.members));
+  confirmed(md).map((a) => a.id).filter((id) => !used.has(id))
+    .forEach((id) => teams.reduce((a, b) => (b.members.length < a.members.length ? b : a)).members.push(id));
+  return teams;
+}
+// 구역 이름별 팀 색: 예전에 정한 색 → 없으면 머리 댓글 순서(첫 구역 = 1번 팀 색)
+export function defaultSectionColors(titles, md) {
+  const fixed = fmtOf(md).fixedColors || ['pink', 'blue'];
+  const memo = S.team.sectionColors || {};
+  const used = new Set();
+  return titles.map((t, i) => {
+    let c = memo[t] && !used.has(memo[t]) ? memo[t] : fixed.find((x) => !used.has(x)) || fixed[i % fixed.length];
+    used.add(c); return c;
+  });
+}
