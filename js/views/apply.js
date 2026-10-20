@@ -1,4 +1,5 @@
-import { S, currentMatchday, memberById, me, mdPath, nameOf } from '../state.js';
+import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js';
+import { pickMe } from './pickme.js';
 import { db, newId } from '../store.js';
 import { applicants, fmtOf } from '../domain.js';
 import { parseCafeComments } from '../cafe-parser.js';
@@ -7,9 +8,9 @@ import { modal, empty } from '../ui.js';
 
 const SRC = { app: '앱', cafe: '카페', manual: '운영진' };
 
-export function render(root) {
-  const md = currentMatchday();
-  if (!md) { root.innerHTML = `<section class="card">${empty('진행 중인 경기일이 없어요.')}</section>`; return; }
+export function render(root, ctx = {}) {
+  const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || nextMatchday();
+  if (!md) { root.innerHTML = `<section class="card">${empty('진행 중인 경기가 없어요.')}</section>`; return; }
   const list = applicants(md);
   const main = list.filter((a) => !a.wait), wait = list.filter((a) => a.wait);
   const mine = list.find((a) => a.id === me.id);
@@ -18,8 +19,9 @@ export function render(root) {
   const short = f.minPlayers && main.length < f.minPlayers ? f.minPlayers - main.length : 0;
 
   root.innerHTML = `
+    ${ctx.embedded ? '' : '<a class="back" href="#/home">‹ 홈</a>'}
     <section class="card">
-      <div class="eyebrow">${fmtDate(md.date)} ${esc(md.venue || '')}</div>
+      ${ctx.embedded ? '' : `<div class="eyebrow">${fmtDate(md.date)} ${esc(md.venue || '')}</div>`}
       <h1>참가 신청 <small>${main.length}${cap ? ` / ${cap}` : ''}명</small></h1>
       ${f.minPlayers ? `<div class="meter ${short ? '' : 'ok'}"><i style="width:${Math.min(100, main.length / f.minPlayers * 100)}%"></i></div>
         <p class="small ${short ? 'warn-t' : 'ok-t'}">${short ? `최소 ${f.minPlayers}명까지 ${short}명 더 필요해요` : `최소 인원 ${f.minPlayers}명 충족`}</p>` : ''}
@@ -40,6 +42,7 @@ export function render(root) {
       ${wait.length ? `<h2 class="mt">대기 ${wait.length}명</h2>${listHtml(wait, md)}` : ''}
     </section>`;
 
+  root.querySelector('[data-me]')?.addEventListener('click', () => pickMe());
   root.querySelector('[data-toggle]')?.addEventListener('click', async () => {
     await db.tx(mdPath(md.id), (cur) => {
       cur.apps = cur.apps || {};

@@ -43,7 +43,7 @@ function detail(root, id) {
   const r = allStats().find((x) => x.id === id);
   if (!m || !r) { root.innerHTML = `<section class="card">${empty('회원을 찾을 수 없어요.')}</section>`; return; }
   root.innerHTML = `<section class="card">
-    <a href="#/records" class="back">← 전체 기록</a>
+    <a href="#/results" class="back">‹ 경기결과</a>
     <h1>${esc(m.name)} ${m.active === false ? '<small>휴면</small>' : ''}</h1>
     <div class="stats3 four">
       <div><b>${pct(r.rate)}</b><span>승률</span></div>

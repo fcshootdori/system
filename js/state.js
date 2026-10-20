@@ -11,7 +11,11 @@ export const S = {
   ready: false,
   operator: sessionStorage.getItem('teamapp:op') === '1',
   captainToken: null,
+  sel: null,      // 운영 > 경기 메뉴에서 고른 경기일
+  step: null,     // 운영 > 경기 메뉴에서 고른 단계
 };
+// 이 기기에서 운영모드 PIN을 한 번이라도 맞혔으면 오른쪽 위에 운영모드 버튼을 보여 줌 (WD_FUTSAL과 같은 방식)
+export const opDevice = () => localStorage.getItem('teamapp:opdev') === '1';
 
 const listeners = new Set();
 export const onChange = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
@@ -34,7 +38,8 @@ export function startSync() {
 
 export function setOperator(on) {
   S.operator = on;
-  if (on) sessionStorage.setItem('teamapp:op', '1'); else sessionStorage.removeItem('teamapp:op');
+  if (on) { sessionStorage.setItem('teamapp:op', '1'); localStorage.setItem('teamapp:opdev', '1'); }
+  else sessionStorage.removeItem('teamapp:op');
   emit();
 }
 export const refresh = emit;
@@ -61,3 +66,20 @@ export function currentMatchday() {
   return live[0] || S.matchdays[0] || null;
 }
 export const matchdayById = (id) => S.matchdays.find((m) => m.id === id);
+
+const todayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+// 끝난 경기일 (기록이 있는 것), 최근 순
+export const playedDays = () => S.matchdays.filter((m) => S.games.some((g) => g.matchdayId === m.id && g.done))
+  .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+// 다음 경기: 오늘 이후의 끝나지 않은 경기일 중 가장 빠른 것
+export function nextMatchday() {
+  const t = todayStr();
+  const up = S.matchdays.filter((m) => m.status !== 'played' && (m.date || '') >= t).sort((a, b) => a.date.localeCompare(b.date));
+  return up[0] || S.matchdays.filter((m) => m.status !== 'played').sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] || null;
+}
+// 이 기기가 주장 링크로 들어온 진행 중 드래프트
+export function captainMatchday() {
+  if (!S.captainToken) return null;
+  return S.matchdays.find((m) => (m.captains || []).some((c) => c.token === S.captainToken) && ['captains', 'drafting'].includes(m.status)) || null;
+}
+export const today = todayStr;

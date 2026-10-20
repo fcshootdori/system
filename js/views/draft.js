@@ -1,16 +1,18 @@
-import { S, currentMatchday, mdPath, nameOf, me } from '../state.js';
+import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js';
 import { db } from '../store.js';
 import { TEAM_COLORS } from '../config.js';
 import { confirmed, draftState, rosters, fmtOf, teamColor } from '../domain.js';
 import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js';
 import { empty, colorChip, teamLabel, teamChip } from '../ui.js';
 
-export function render(root) {
-  const md = currentMatchday();
+let lastCtx = {};
+export function render(root, ctx = {}) {
+  lastCtx = ctx;
+  const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || captainMatchday() || nextMatchday();
   if (!md) { root.innerHTML = `<section class="card">${empty('진행 중인 경기일이 없어요.')}</section>`; return; }
   const caps = md.captains || [];
   const myCap = caps.findIndex((c) => S.captainToken && c.token === S.captainToken);
-  const head = `<section class="card"><div class="eyebrow">${fmtDate(md.date)} ${esc(md.venue || '')}</div>
+  const head = ctx.embedded ? '' : `<a class="back" href="#/home">‹ 홈</a><section class="card"><div class="eyebrow">${fmtDate(md.date)} ${esc(md.venue || '')}</div>
     <h1>${md.status === 'teams' || md.status === 'played' ? '팀 구성' : '주장 · 드래프트'}</h1>
     ${myCap >= 0 ? `<p class="mine">이 기기는 <b>${esc(nameOf(caps[myCap].id, md))}</b> 주장으로 참여 중이에요.</p>` : ''}</section>`;
 
@@ -49,7 +51,7 @@ function captainPicker(md) {
 }
 function bindCaptainPicker(root, md) {
   const n = fmtOf(md).teams;
-  const rer = () => render(root);
+  const rer = () => render(root, lastCtx);
   root.querySelectorAll('[data-cap]').forEach((b) => b.addEventListener('click', () => {
     const id = b.dataset.cap;
     capSel = capSel.includes(id) ? capSel.filter((x) => x !== id) : capSel.length < n ? [...capSel, id] : capSel;

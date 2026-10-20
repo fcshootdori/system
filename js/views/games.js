@@ -1,4 +1,4 @@
-import { S, currentMatchday, matchdayById, mdPath, nameOf } from '../state.js';
+import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js';
 import { db, newId } from '../store.js';
 import { rosters, schedule, dayStandings, fmtOf, totals } from '../domain.js';
 import { esc, fmtDate, toast } from '../util.js';
@@ -7,13 +7,15 @@ import { fmtSummary } from './home.js';
 
 let openGame = null; // 편집 중인 경기 id
 
-export function render(root, { params }) {
-  const md = params[0] ? matchdayById(params[0]) : currentMatchday();
+let lastCtx = {};
+export function render(root, ctx = {}) {
+  lastCtx = ctx;
+  const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || currentMatchday();
   if (!md) { root.innerHTML = `<section class="card">${empty('경기일이 없어요.')}</section>`; return; }
   const f = fmtOf(md);
   const ros = rosters(md);
   const games = S.games.filter((g) => g.matchdayId === md.id);
-  const head = `<section class="card"><div class="eyebrow">${esc(md.venue || '')}${md.source === 'sheet' ? ' 승률계산기 기록' : ''}</div>
+  const head = ctx.embedded ? '' : `${ctx.live ? '' : '<a class="back" href="#/results">‹ 경기결과</a>'}<section class="card"><div class="eyebrow">${esc(md.venue || '')}${md.source === 'sheet' ? ' 승률계산기 기록' : ''}</div>
     <h1>${fmtDate(md.date)} 경기</h1><p class="muted small">${esc(fmtSummary(md))}</p></section>`;
   if (!md.teams?.length) {
     root.innerHTML = head + `<section class="card">${empty('팀이 확정되면 경기 결과를 기록할 수 있어요.')}</section>`; return;
@@ -34,6 +36,7 @@ export function render(root, { params }) {
         </li>`).join('')}</ol>` : empty('아직 라운드가 없어요.')}
       ${scorersHtml(md, games)}
     </section>
+    ${rosterCard(md, ros, games)}
     ${extrasCard(md, ros, editable)}
     ${editable ? `<section class="card op"><h2>운영</h2><div class="row wrap">
       ${games.length ? '' : `<button class="btn" data-sched>${sum ? `${f.rounds}라운드 만들기` : `대진 만들기 (${ros.length}팀 × ${f.rounds}라운드)`}</button>`}
@@ -194,4 +197,14 @@ function editGame(md) {
     }
   });
   wrap.addEventListener('change', (e) => { if (e.target.matches('[data-done]')) upd((c) => { c.done = e.target.checked; }); });
+}
+
+// 팀 명단 (득점·MOM 표시)
+function rosterCard(md, ros, games) {
+  const goals = {};
+  games.forEach((g) => Object.entries(g.goals || {}).forEach(([id, n]) => { goals[id] = (goals[id] || 0) + n; }));
+  const mom = new Set(md.mom || []);
+  return `<section class="card"><h2>팀 명단</h2><div class="teams-grid n${ros.length}">${ros.map((ids, ti) => `
+    <div class="team-card ${ids.includes(me.id) ? 'mine' : ''}"><header>${teamChip(md, ti)}<small>${ids.length}명</small></header>
+      <ol>${ids.map((id) => `<li>${esc(nameOf(id, md))}${goals[id] ? ` <span class="g">⚽${goals[id] > 1 ? goals[id] : ''}</span>` : ''}${mom.has(id) ? ' <b class="mom">MOM</b>' : ''}</li>`).join('')}</ol></div>`).join('')}</div></section>`;
 }

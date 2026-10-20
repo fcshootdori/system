@@ -9,6 +9,7 @@ let kind = null, mdId = null, lastCanvas = null;
 const KINDS = { apply: '신청 명단', teams: '팀 구성', result: '경기 결과' };
 
 export function render(root) {
+  if (window.__noticeMd) { mdId = window.__noticeMd; kind = null; window.__noticeMd = null; }
   const md = (mdId && matchdayById(mdId)) || currentMatchday();
   if (!md) { root.innerHTML = `<section class="card">${empty('경기일이 없어요.')}</section>`; return; }
   if (!kind) kind = md.status === 'played' ? 'result' : md.teams?.length ? 'teams' : 'apply';
