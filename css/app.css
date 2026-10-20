@@ -372,3 +372,47 @@ h3.sec { margin: 16px 0 6px; font-size: 15px; padding: 6px 10px; background: var
 /* ── 0.1.7: 회차 ── */
 .rb-title .no { background: var(--brand); color: #fff; font-size: 12px; padding: 2px 7px; border-radius: 6px; vertical-align: 2px; }
 .no-hint { margin: -6px 0 0; }
+
+/* ── 0.1.8: 운영 > 회원 관리 ── */
+.mg-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mg-top h2 { margin: 0; font-size: 18px; }
+.row.nowrap { flex-wrap: nowrap; margin-top: 0; }
+.mtools { display: flex; flex-direction: column; gap: 8px; }
+.seg.mseg { margin: 0; overflow-x: auto; }
+.seg.mseg button { white-space: nowrap; font-size: 13px; padding: 7px 8px; }
+.warnbar { background: #fffbeb; border-color: #fde68a; }
+.warnbar p { margin: 4px 0 0; }
+.bulkbar { position: sticky; top: 60px; z-index: 11; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--ink); color: #fff;
+  border-radius: 12px; padding: 8px 12px; }
+.bulkbar select { width: auto; padding: 5px 8px; font-size: 13px; }
+.bulkbar .btn.ghost { background: rgba(255,255,255,.12); color: #fff; }
+.sheetwrap { padding: 0; overflow-x: auto; }
+table.grid { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 14px; }
+table.grid th { position: sticky; top: 0; background: #f8fafc; font-size: 12px; color: var(--sub); font-weight: 700; padding: 10px 6px; white-space: nowrap; cursor: pointer; border-bottom: 1px solid var(--line); text-align: left; }
+table.grid th.on { color: var(--brand); }
+table.grid td { padding: 6px; border-bottom: 1px solid var(--soft); white-space: nowrap; vertical-align: middle; }
+table.grid .ck { width: 34px; text-align: center; padding-left: 10px; }
+table.grid .stick { position: sticky; left: 0; background: #fff; z-index: 1; }
+table.grid th.stick { background: #f8fafc; z-index: 2; }
+table.grid tr.msel td, table.grid tr.msel .stick { background: color-mix(in srgb, var(--brand) 7%, #fff); }
+table.grid tr.st-row-rest td { color: var(--sub); }
+table.grid .num { text-align: right; }
+.cell { border: 1px solid transparent; background: transparent; padding: 6px 8px; border-radius: 8px; font: 600 14px var(--font); }
+.cell:hover, .cell:focus { border-color: var(--line); background: #fff; }
+.w-name { width: 120px; } .w-alias { width: 150px; font-weight: 500; color: var(--sub); }
+select.cell { width: auto; }
+select.cell.st-staff { color: #b45309; } select.cell.st-rest { color: var(--sub); } select.cell.st-regular { color: var(--brand); }
+.attcell { border: 0; background: var(--soft); border-radius: 8px; padding: 4px 8px; font: 600 13px var(--font); cursor: pointer; color: var(--ink); }
+.att-rate { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.att-bar { width: 60px; height: 6px; background: var(--soft); border-radius: 99px; overflow: hidden; }
+.att-bar i { display: block; height: 100%; background: var(--brand); }
+.att-rate span { font-size: 12px; color: var(--sub); min-width: 34px; text-align: right; }
+.att-hd { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.att-hd .seg { margin: 0; }
+.att-list { list-style: none; margin: 0; padding: 0; }
+.att-list li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--soft); }
+.att-list li.rest { opacity: .55; }
+.att-list .rk { width: 24px; text-align: center; font-weight: 800; color: var(--brand); }
+.att-list .am { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.att-list .att-rate span { min-width: 76px; }
+.list.dates li { padding: 8px 0; border-bottom: 1px solid var(--soft); }

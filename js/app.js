@@ -21,6 +21,7 @@ import * as records from './views/records.js';
 import * as run from './views/run.js';
 import * as notice from './views/notice.js';
 import * as admin from './views/admin.js';
+import * as membersView from './views/members.js';
 
 const MEMBER_TABS = [['home', '홈', '⌂'], ['sched', '일정', '▦'], ['mm', '경기모드', '⚽'], ['results', '경기결과', '▤'], ['me', '내 정보', '☺']];
 const OP_TABS = [['plan', '일정', '▦'], ['run', '경기', '⚑'], ['notice', '공지', '✉'], ['members', '회원', '☺'], ['settings', '설정', '⚙']];
@@ -33,7 +34,7 @@ const ROUTES = {
   games: { view: games, parent: 'results' }, records: { view: records, parent: 'results' },
   // 운영 메뉴
   plan: { view: schedule, op: true, sub: 'op' }, run: { view: run, op: true }, notice: { view: notice, op: true },
-  members: { view: admin, op: true, sub: 'members' }, settings: { view: admin, op: true, sub: 'settings' },
+  members: { view: membersView, op: true }, settings: { view: admin, op: true, sub: 'settings' },
 };
 
 function parseHash() {
