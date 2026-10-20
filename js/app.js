@@ -24,6 +24,7 @@ import * as admin from './views/admin.js';
 import * as membersView from './views/members.js';
 import * as loginView from './views/login.js';
 import { loadSession, saveSession, verify } from './auth.js';
+import { startAutoSync } from './member-sync.js';
 
 const MEMBER_TABS = [['home', '홈', '⌂'], ['sched', '일정', '▦'], ['mm', '경기모드', '⚽'], ['results', '경기결과', '▤'], ['me', '내 정보', '☺']];
 const OP_TABS = [['plan', '일정', '▦'], ['run', '경기', '⚑'], ['notice', '공지', '✉'], ['members', '회원', '☺'], ['settings', '설정', '⚙']];
@@ -122,6 +123,7 @@ window.addEventListener('hashchange', () => { renderShell(); render(); window.sc
   document.getElementById('ver').textContent = `${APP_NAME} Ver.${APP_VERSION}`;
   await initStore();
   startSync();
+  startAutoSync();   // 회원 시트 주소가 저장된 운영진 기기: 회원 정보 자동 반영
   onChange(safeRender);
   renderShell(); render();
   // 자동 로그인 정보 확인 (비밀번호가 바뀌었거나 운영진이 초기화했으면 다시 로그인)

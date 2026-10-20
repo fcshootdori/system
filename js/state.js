@@ -13,6 +13,7 @@ export const S = {
   captainToken: null,
   auth: null,     // 로그인한 회원 { pid, key, ver }
   authset: {},    // 회원별 비밀번호 등록 여부 (운영 회원 관리용)
+  msync: null,    // 회원 시트 마지막 반영 정보 (meta/memberSheet)
   sel: null,      // 운영 > 경기 메뉴에서 고른 경기일
   step: null,     // 운영 > 경기 메뉴에서 고른 단계
 };
@@ -25,6 +26,7 @@ let raf = 0;
 const emit = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => listeners.forEach((f) => f())); };
 
 export function startSync() {
+  db.watchDoc('meta/memberSheet', (d) => { S.msync = d; emit(); });
   db.watchDoc('meta/team', (d) => {
     S.team = { ...DEFAULT_TEAM, ...(d || {}), format: { ...DEFAULT_FORMAT, ...(d?.format || {}) },
       legacySheet: { ...DEFAULT_TEAM.legacySheet, ...(d?.legacySheet || {}) } };

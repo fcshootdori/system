@@ -488,3 +488,39 @@ body.gate { padding-bottom: 0; padding-left: 0; }
 .lg-op { margin-top: 8px; }
 @media (min-width: 1024px) and (hover: hover) { body.gate #view { max-width: 420px; } }
 .lg-emb { border-radius: 24px; }
+
+/* ── 0.1.15 회원 시트 ── */
+.mshcard { display: grid; gap: 8px; }
+.msh-hd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.mshcard form input { flex: 1; min-width: 0; }
+.msh-btns { flex-wrap: wrap; gap: 6px; }
+.mtools .gsel { align-self: flex-start; width: auto; padding: 8px 10px; font-size: 13px; border-radius: 10px; }
+.cell.ro { display: inline-block; border-color: transparent; }
+.nosheet { display: block; font-size: 10px; color: var(--sub); padding-left: 8px; margin-top: -4px; }
+.grade { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 99px; background: #eef2ff; color: #3730a3; }
+.grade.g-0 { background: #fef3c7; color: #92400e; }
+.grade.g-1 { background: #e0f2fe; color: #075985; }
+.grade.g-2 { background: #ecfccb; color: #3f6212; }
+.grade.g-3 { background: #f1f5f9; color: #334155; }
+.grade.g-4 { background: #f3f4f6; color: #9ca3af; text-decoration: line-through; }
+.v { color: #b45309; }
+.abs { font-size: 12px; font-weight: 700; color: #b91c1c; }
+table.grid td.gap, table.grid th.gap { width: 6px; padding: 0; background: var(--soft); border: 0; }
+table.grid tr.st-row-left td { color: var(--sub); }
+select.cell.st-left { color: #9ca3af; }
+.rv li { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rv select { width: auto; max-width: 60%; font-size: 13px; padding: 6px 8px; }
+.modal h4 { margin: 14px 0 6px; font-size: 14px; }
+.fee { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; white-space: nowrap; }
+.fee.f-year { background: #dcfce7; color: #166534; }
+.fee.f-pre { background: #fce7f3; color: #9d174d; }
+.fee.f-month { background: #dbeafe; color: #1e40af; }
+.fee.f-abs { background: #fef3c7; color: #92400e; }
+.fee.f-free { background: #e5e7eb; color: #374151; }
+.fee.f-etc { background: #f3e8ff; color: #6b21a8; }
+.fee.f-none { color: #cbd5e1; padding: 2px 4px; }
+.fgrid td.cur { background: color-mix(in srgb, var(--brand) 5%, #fff); }
+.fgrid th.on { color: var(--brand); }
+.feesum { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.feesum > div { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; }
+.feesum b { font-size: 16px; }

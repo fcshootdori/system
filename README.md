@@ -62,6 +62,25 @@ WD_FUTSAL 운영 흐름과 경기기록시스템(승률계산기) 조회 기능�
 - 비밀번호는 저장하지 않고, 닉네임·비밀번호로 만든 열쇠(SHA-256)를 문서 이름으로 써서 목록 조회가 막힌 컬렉션에 둬요
 - **Firestore 규칙 업데이트 필요**: `firestore.rules` 내용을 Firebase 콘솔 → Firestore → 규칙에 붙여넣고 게시 (auth·authset 컬렉션 추가). 업데이트 전에는 로그인 화면에 "비밀번호 없이 닉네임으로만 들어가기(임시)"가 떠요
 
+## 회원 시트 (회원현황 구글 시트 → 회원 정보)
+회원현황 구글 시트의 내용·항목을 운영 > 회원에 그대로 반영합니다. 시트가 기준이라 시트 항목은 시트에서 고칩니다.
+
+- **연결**: 운영 > 회원 > 회원 시트 연결에 시트 주소를 넣고 [연결하고 불러오기]. 처음에는 새 회원·이름이 다른 짝을 확인하고 반영해요.
+- **새로 불러오기**: 시트를 고친 뒤 바로 반영할 때 누름.
+- **자동 반영**
+  - 시트 주소를 저장한 운영진 기기: 앱을 열 때 + 열어 둔 동안 30분마다
+  - 서버(GitHub Actions): 3시간마다 — 아무도 앱을 안 열어도 반영됨 (아래 준비 1번 필요)
+- **항목**: 연번 · 가입일자 · 등급 · 닉네임 · 이름 · 생년월일 · 연락처 · 운영진 이력 · 장불여부 · 장불 사유 · 장불시작/해제일자 · 생일, [회비 현황] 탭에 1~12월 회비
+- **회원 맞추기**: 닉네임·별칭 → 시트 연번(닉네임이 바뀐 경우) → 한쪽 이름이 다른 쪽에 포함되는 유일한 짝(예: 우영 ↔ 우영우영우). 닉네임이 바뀌면 예전 닉네임은 별칭으로 남겨요. 시트 닉네임의 괄호 표기는 별칭으로 넣어요(스테이(stay) → 스테이, stay).
+- **등급 탈퇴회원** → 회원 유형 '탈퇴'(신청·이름 선택에서 빠짐, 기록은 남음). 시트에서 빠진 회원은 삭제하지 않고 '시트에 없음'으로 표시해요.
+- **🔒 개인정보**: 앱 서버(Firestore)는 누구나 읽을 수 있어서 **이름·생년월일·연락처·장불 사유·생일·회비는 서버에 저장하지 않아요.** 시트 주소를 저장한 운영진 기기에서만 시트에서 바로 읽어 보여 줘요. 시트 주소도 공개 저장소에 적지 않고 기기(와 GitHub Secret)에만 둬요.
+
+**준비 1 — 서버 자동 반영 켜기 (한 번만)**: GitHub 저장소 → Settings → Secrets and variables → Actions → New repository secret
+→ 이름 `MEMBER_SHEET_ID`, 값에 회원 시트 주소를 붙여넣기. (회원현황이 첫 탭이 아니면 `MEMBER_SHEET_GID`에 탭 gid도)
+Actions 탭 → '회원 시트 자동 반영' → Run workflow 로 바로 한 번 돌려 볼 수 있어요.
+
+**준비 2 — 시트 공유**: 시트 공유가 '링크가 있는 모든 사용자 · 뷰어'여야 읽을 수 있어요.
+
 ## 1. 새 계정에 올리기 (GitHub Pages)
 
 1. 새 GitHub 계정(또는 조직)에서 저장소 생성 (예: `system`, Public)
@@ -136,7 +155,9 @@ firestore.rules         Firestore 보안 규칙 (v0.1)
 ```
 meta/team               팀 이름 · 엠블럼 · 대표 색 · PIN · winRate · cafeUrl · legacySheet
                         format{teams, rounds, scoring(sum|each), teamMode(fixed|choose), fixedColors[], minPlayers, capacity, draft}
-members/{id}            name · aliases[] · active
+members/{id}            name · aliases[] · active · status(staff|regular|rest|left)
+                        회원 시트: sheetNo · joined · grade · staffV · staffHist · absent · absFrom · absTo · inSheet
+meta/memberSheet        회원 시트 반영 기록: checkedAt · changedAt · by(auto|manual|server) · count · last{created, updated, missing}
 matchdays/{id}          date · time · venue · note · format(그날만 변경 시) · mom[] · late{} · source('sheet')
                         status(open→closed→captains→drafting→teams→played)
                         apps{memberId:{at, source}} · guests{g_id:{name, host}}

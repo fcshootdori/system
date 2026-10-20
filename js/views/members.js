@@ -9,14 +9,19 @@ import { esc, toast, fmtDate, todayISO, koSort } from '../util.js';
 import { modal, empty } from '../ui.js';
 import { norm } from '../cafe-parser.js';
 import { resetPin } from '../auth.js';
+import { sheetLink, setSheetLink, parseLink, sheetUrl, preview, apply, needsReview, startAutoSync, autoSync, holdAuto } from '../member-sync.js';
+import { FEE_KINDS, feeKind, isLeftGrade, nickParts, publicOf } from '../member-sheet.js';
 
-export const MSTAT = { staff: '운영진', regular: '정회원', rest: '휴면' };
-// 휴면 여부는 active(승률계산기 활성 Y/N과 같은 값)를 기준으로, 나머지는 status로 구분
-export const statusOf = (m) => (m.active === false ? 'rest' : m.status && m.status !== 'rest' ? m.status : 'regular');
+export const MSTAT = { staff: '운영진', regular: '정회원', rest: '휴면', left: '탈퇴' };
+// 탈퇴(회원 시트 등급 '탈퇴회원') → 휴면(active=false, 승률계산기 활성 N과 같은 값) → 나머지는 status로 구분
+export const statusOf = (m) => (m.status === 'left' || isLeftGrade(m.grade) ? 'left' : m.active === false ? 'rest' : m.status && m.status !== 'rest' ? m.status : 'regular');
+const GRADES = ['VIP', '우수회원', '슛도리', '정회원', '탈퇴회원'];
+const dot = (iso) => (iso ? iso.slice(2).replace(/-/g, '.') : '');
 
 // 닉네임·별칭 중 하나라도 같으면 같은 사람으로 봄
 const taken = (name, exceptId) => S.members.some((x) => x.id !== exceptId && [x.name, ...(x.aliases || [])].some((a) => norm(a) === norm(name)));
-let tab = 'list', q = '', filt = 'all', sort = { k: 'name', d: 1 }, sel = new Set(), per = 'all';
+let loadedOnce = false;
+let tab = 'list', q = '', filt = 'all', grade = '', sort = { k: 'no', d: 1 }, sel = new Set(), per = 'all', hideLeft = true, busy = false;
 
 // ── 회원별 출석 ──
 function attendance(fromDate = '') {
@@ -39,58 +44,171 @@ function attendance(fromDate = '') {
 }
 
 export function render(root) {
-  const nav = `<nav class="subnav">${[['list', '회원 관리'], ['att', '출석 관리']].map(([k, l]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</nav>`;
+  const nav = `<nav class="subnav">${[['list', '회원 관리'], ['fee', '회비 현황'], ['att', '출석 관리']].map(([k, l]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</nav>`;
   root.innerHTML = nav + '<div data-body></div>';
   root.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; render(root); }));
   const body = root.querySelector('[data-body]');
-  if (tab === 'att') attView(body, root); else listView(body, root);
+  if (tab === 'att') attView(body, root); else if (tab === 'fee') feeView(body, root); else listView(body, root);
 }
+
+// ───────────── 회원 시트 (구글 시트 연결 · 새로 불러오기) ─────────────
+const ago = (ts) => {
+  if (!ts) return '';
+  const m = Math.round((Date.now() - ts) / 60000);
+  return m < 1 ? '방금' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : new Date(ts).toLocaleDateString('ko-KR');
+};
+const BY = { auto: '자동', manual: '새로 불러오기', server: '자동(서버)' };
+function sheetCard() {
+  const l = sheetLink(), ms = S.msync;
+  const last = ms?.checkedAt ? `마지막 확인 ${ago(ms.checkedAt)} (${BY[ms.by] || ms.by})${ms.changedAt ? ` · 마지막 변경 ${ago(ms.changedAt)}${ms.last ? ` — 새 회원 ${ms.last.created} · 바뀐 회원 ${ms.last.updated}` : ''}` : ''}${ms.sheetUpdated ? ` · 시트 최종업데이트 ${esc(ms.sheetUpdated)}` : ''}` : '아직 반영한 적이 없어요';
+  if (!l) return `<section class="card mshcard">
+    <div class="msh-hd"><b>📄 회원 시트 연결</b><span class="small muted">${last}</span></div>
+    <p class="small">회원현황 구글 시트 주소를 넣으면 시트 내용·항목이 회원 정보에 그대로 들어오고, 이후 시트가 바뀌면 자동으로 반영돼요.</p>
+    <form class="row nowrap" data-link><input name="url" placeholder="https://docs.google.com/spreadsheets/d/..." autocomplete="off"><button class="btn sm">연결하고 불러오기</button></form>
+    <p class="tiny muted">🔒 이름·생년월일·연락처·장불 사유·생일·회비는 서버에 저장하지 않고, 시트 주소를 저장한 이 기기에서만 시트에서 바로 읽어 보여 줘요. 시트 주소도 이 기기에만 저장돼요.</p></section>`;
+  return `<section class="card mshcard">
+    <div class="msh-hd"><b>📄 회원 시트</b><span class="small muted">${last}</span></div>
+    <div class="row nowrap msh-btns"><button class="btn sm" data-reload ${busy ? 'disabled' : ''}>${busy ? '불러오는 중…' : '↻ 새로 불러오기'}</button>
+      <a class="btn ghost sm" href="${esc(sheetUrl(l))}" target="_blank" rel="noopener">시트 열기</a>
+      <button class="btn ghost sm" data-unlink>연결 해제</button></div>
+    <p class="tiny muted">이 기기에서 앱을 열 때와 열어 둔 동안 30분마다 자동으로 반영돼요. 시트 항목(연번·가입일자·등급·닉네임·이름·생년월일·연락처·운영진 이력·장불·생일·회비)은 시트에서 고쳐 주세요.
+      ${S.msheet ? '' : ' · 🔒 개인정보 칸은 시트를 읽으면 보여요.'}</p></section>`;
+}
+function bindSheetCard(body, root) {
+  const rer = () => render(root);
+  body.querySelector('[data-link]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const l = parseLink(e.target.url.value);
+    if (!l) return toast('구글 시트 주소를 확인해 주세요');
+    setSheetLink(l); await reload(root, true, true);
+  });
+  body.querySelector('[data-reload]')?.addEventListener('click', () => reload(root, true));
+  body.querySelector('[data-unlink]')?.addEventListener('click', () => {
+    if (!confirm('이 기기에서 회원 시트 연결을 해제할까요? (이미 반영된 회원 정보는 그대로 남아요)')) return;
+    setSheetLink(null); S.msheet = null; startAutoSync(); rer();
+  });
+}
+async function reload(root, manual, first = false) {
+  if (busy) return;
+  busy = true; loadedOnce = true; render(root);
+  try {
+    if (!manual) { await autoSync(); busy = false; return render(root); }
+    const pv = await preview();
+    if (needsReview(pv)) { holdAuto(true); busy = false; render(root); return reviewModal(pv, root, first); }
+    const r = await apply(pv, { by: manual ? 'manual' : 'auto' });
+    if (first) startAutoSync();
+    if (manual) toast(r.created || r.updated || r.missing ? `시트 반영: 새 회원 ${r.created} · 바뀐 회원 ${r.updated}${r.missing ? ` · 시트에서 빠짐 ${r.missing}` : ''}` : `시트와 같아요 (회원 ${r.count}명)`);
+  } catch (e) { toast(e.message || '시트를 읽지 못했어요'); }
+  busy = false; render(root);
+}
+// 새 회원·비슷한 이름 짝 확인
+function reviewModal(pv, root, first) {
+  holdAuto(true);
+  const { records, plan } = pv;
+  const linked = new Set(plan.ops.filter((o) => o.id).map((o) => o.id));
+  const free = S.members.filter((m) => !linked.has(m.id)).sort((a, b) => koSort(a.name, b.name));
+  const creates = plan.ops.filter((o) => o.type === 'create');
+  const fuzzy = plan.ops.filter((o) => o.how === 'similar' || o.how === 'no');
+  const sum = { up: plan.ops.filter((o) => o.type === 'update').length, same: plan.ops.filter((o) => o.type === 'same').length };
+  const { el, close } = modal('회원 시트 반영 확인', `
+    <p class="small">시트 회원 <b>${records.length}명</b> — 바뀐 회원 ${sum.up} · 그대로 ${sum.same}${plan.missing.length ? ` · 시트에서 빠진 회원 ${plan.missing.length}` : ''}</p>
+    ${fuzzy.length ? `<h4>이름이 달라 짝지은 회원 ${fuzzy.length}</h4><ul class="list rv">${fuzzy.map((o) => `<li><span>앱 <b>${esc(o.from)}</b> → 시트 <b>${esc(records[o.ri].nick)}</b></span>
+      <label class="inline small"><input type="checkbox" data-keep="${o.ri}" checked> 같은 사람</label></li>`).join('')}</ul>
+      <p class="tiny muted">같은 사람이면 닉네임을 시트대로 바꾸고 예전 닉네임은 별칭으로 남겨요. 체크를 풀면 새 회원으로 추가해요.</p>` : ''}
+    ${creates.length ? `<h4>새 회원 ${creates.length}</h4><ul class="list rv">${creates.map((o) => `<li><span><b>${esc(records[o.ri].nick)}</b> <small class="muted">${esc(records[o.ri].grade)} · ${dot(records[o.ri].joined)} 가입</small></span>
+      <select data-choice="${o.ri}"><option value="new">새 회원으로 추가</option>${free.map((m) => `<option value="${m.id}">= ${esc(m.name)} (기존 회원)</option>`).join('')}</select></li>`).join('')}</ul>
+      <p class="tiny muted">기록이 있는 기존 회원과 같은 사람이면 골라 주세요 (닉네임이 바뀐 경우 등).</p>` : ''}
+    <button class="btn full" data-go>반영하기</button>`, { wide: true });
+  new MutationObserver((_, ob) => { if (!el.isConnected) { holdAuto(false); ob.disconnect(); } }).observe(document.body, { childList: true });
+  el.querySelector('[data-go]').addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    const choices = {};
+    el.querySelectorAll('[data-choice]').forEach((s) => { choices[s.dataset.choice] = s.value; });
+    // 짝 풀기 → 새 회원으로
+    el.querySelectorAll('[data-keep]').forEach((c) => {
+      if (c.checked) return;
+      const o = plan.ops.find((x) => x.ri === +c.dataset.keep);
+      const fresh = planSync1(records[o.ri]);
+      Object.assign(o, { type: 'create', id: undefined, how: undefined, data: fresh });
+    });
+    try {
+      const r = await apply(pv, { by: 'manual', choices });
+      toast(`시트 반영: 새 회원 ${r.created} · 바뀐 회원 ${r.updated}`); close(); holdAuto(false); if (first) startAutoSync(); render(root);
+    } catch (err) { toast(err.message); e.target.disabled = false; }
+  });
+}
+const planSync1 = (r) => { const left = isLeftGrade(r.grade); return { name: r.nick, aliases: nickParts(r.nick), ...publicOf(r), status: left ? 'left' : 'regular', active: !left, source: 'members-sheet' }; };
 
 // ───────────── 회원 관리 ─────────────
 function rowsOf() {
   const { total, rec } = attendance();
+  const P = S.msheet?.byId || {};
   return S.members.map((m) => {
     const a = rec.get(m.id) || { att: 0, last: '' };
-    return { id: m.id, name: m.name, realName: m.realName || '', login: S.authset?.[m.id]?.registered ? 1 : 0, status: statusOf(m), aliases: (m.aliases || []).join(', '), att: a.att,
+    const p = P[m.id] || null;
+    return { id: m.id, name: m.name, inSheet: !!m.inSheet, no: m.inSheet ? Number(m.sheetNo) || 9999 : 99999, sheetNo: m.inSheet ? m.sheetNo || '' : '',
+      joined: m.inSheet ? m.joined || '' : '', grade: m.inSheet ? m.grade || '' : '', staffV: !!m.staffV, staffHist: m.staffHist || '',
+      absent: m.absent || '', absFrom: m.absFrom || '', absTo: m.absTo || '', p,
+      realName: p ? p.realName : (m.inSheet ? '' : m.realName || ''), birth: p?.birth || '', phone: p?.phone || '', bday: p?.bMonth ? `${+p.bMonth}/${+p.bDay}` : '',
+      login: S.authset?.[m.id]?.registered ? 1 : 0, status: statusOf(m), aliases: (m.aliases || []).join(', '), att: a.att,
       rate: total ? Math.round((a.att / total) * 100) : 0, last: a.last, createdAt: m.createdAt || 0, source: m.source };
   });
 }
 
 function listView(body, root) {
   const all = rowsOf();
+  const priv = !!S.msheet;
   const cnt = (k) => all.filter((r) => r.status === k).length;
   let rows = filt === 'all' ? all : all.filter((r) => r.status === filt);
+  if (grade) rows = rows.filter((r) => (grade === '-' ? !r.inSheet : r.grade === grade));
   const k = q.trim().toLowerCase();
-  if (k) rows = rows.filter((r) => r.name.toLowerCase().includes(k) || r.realName.toLowerCase().includes(k) || r.aliases.toLowerCase().includes(k) || norm(r.name).includes(norm(k)));
+  if (k) rows = rows.filter((r) => r.name.toLowerCase().includes(k) || r.realName.toLowerCase().includes(k) || r.aliases.toLowerCase().includes(k) || norm(r.name).includes(norm(k))
+    || (k.replace(/\D/g, '').length >= 4 && r.phone.replace(/\D/g, '').includes(k.replace(/\D/g, ''))));
   rows.sort((a, b) => {
     const x = a[sort.k], y = b[sort.k];
-    const c = typeof x === 'number' ? x - y : koSort(x || '', y || '');
-    return c * sort.d || koSort(a.name, b.name);
+    const c = typeof x === 'number' ? x - y : koSort(x || '￿', y || '￿');
+    return c * sort.d || a.no - b.no || koSort(a.name, b.name);
   });
   sel = new Set([...sel].filter((id) => all.some((r) => r.id === id)));
   const dups = dupGroups();
   const th = (key, label, cls = '') => `<th data-sort="${key}" class="${cls} ${sort.k === key ? 'on' : ''}">${label}${sort.k === key ? (sort.d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  const gcnt = (g) => all.filter((r) => (g === '-' ? !r.inSheet : r.grade === g)).length;
+  const lock = '<span class="muted" title="시트를 읽으면 보여요">🔒</span>';
 
   body.innerHTML = `
+    ${sheetCard()}
     <div class="mg-top"><h2>회원 ${all.length}명</h2>
       <div class="row nowrap"><button class="btn ghost sm" data-bulk>명단 붙여넣기</button><button class="btn ghost sm" data-csv>CSV 저장</button><button class="btn sm" data-add>＋ 회원 추가</button></div></div>
     <div class="mtools">
-      <input class="search" type="search" placeholder="닉네임·이름·별칭 검색" value="${esc(q)}" data-q>
+      <input class="search" type="search" placeholder="닉네임·이름·별칭·연락처 검색" value="${esc(q)}" data-q>
       <div class="seg mseg">${[['all', `전체 ${all.length}`], ...Object.entries(MSTAT).map(([s, l]) => [s, `${l} ${cnt(s)}`])].map(([s, l]) =>
         `<button data-f="${s}" class="${filt === s ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <select class="gsel" data-grade><option value="">등급 전체</option>${[...GRADES, '-'].filter((g) => gcnt(g)).map((g) => `<option value="${g}" ${grade === g ? 'selected' : ''}>${g === '-' ? '시트에 없음' : g} ${gcnt(g)}</option>`).join('')}</select>
     </div>
     ${dups.length ? `<div class="card warnbar"><b>⚠️ 같은 이름으로 보이는 회원 ${dups.length}쌍</b>
       <p class="small muted">${dups.map((g) => g.map((m) => esc(m.name)).join(' · ')).join(' / ')} — 이름을 고치거나 한 명을 휴면·삭제해 주세요.</p></div>` : ''}
     ${sel.size ? `<div class="bulkbar"><b>${sel.size}명 선택</b>
       <select data-bulkstat><option value="">유형 바꾸기</option>${Object.entries(MSTAT).map(([s, l]) => `<option value="${s}">${l}로</option>`).join('')}</select>
       <button class="btn ghost sm" data-selclear>선택 해제</button><button class="btn ghost danger sm" data-seldel>선택 삭제</button></div>` : ''}
-    ${rows.length ? `<div class="card sheetwrap"><table class="grid"><thead><tr>
+    ${rows.length ? `<div class="card sheetwrap"><table class="grid mgrid"><thead><tr>
       <th class="ck"><input type="checkbox" data-selall ${rows.length && rows.every((r) => sel.has(r.id)) ? 'checked' : ''} aria-label="모두 선택"></th>
-      ${th('name', '닉네임', 'stick')}${th('realName', '이름')}${th('status', '유형')}${th('login', '로그인')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
+      ${th('name', '닉네임', 'stick')}${th('no', '연번', 'num')}${th('joined', '가입일자')}${th('grade', '등급')}${th('realName', '이름')}${th('birth', '생년월일')}${th('phone', '연락처')}${th('staffHist', '운영진 이력')}${th('absent', '장불여부')}<th>장불 사유</th>${th('absFrom', '장불시작일자')}${th('absTo', '장불해제일자')}${th('bday', '생일')}
+      <th class="gap"></th>${th('status', '유형')}${th('login', '로그인')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
       ${rows.map((r) => `<tr class="${sel.has(r.id) ? 'msel' : ''} st-row-${r.status}">
         <td class="ck"><input type="checkbox" data-sel="${r.id}" ${sel.has(r.id) ? 'checked' : ''} aria-label="${esc(r.name)} 선택"></td>
-        <td class="stick"><input class="cell w-name" value="${esc(r.name)}" data-cell="name" data-id="${r.id}"></td>
-        <td><input class="cell w-real" value="${esc(r.realName)}" placeholder="-" data-cell="realName" data-id="${r.id}"></td>
+        <td class="stick">${r.inSheet ? `<span class="cell ro" title="닉네임은 회원 시트에서 고쳐 주세요">${esc(r.name)}</span>` : `<input class="cell w-name" value="${esc(r.name)}" data-cell="name" data-id="${r.id}"><small class="nosheet">시트에 없음</small>`}</td>
+        <td class="num">${esc(r.sheetNo) || '-'}</td>
+        <td>${dot(r.joined) || '-'}</td>
+        <td>${r.grade ? `<span class="grade g-${GRADES.indexOf(r.grade)}">${esc(r.grade)}</span>` : '-'}</td>
+        <td>${r.inSheet ? (priv ? esc(r.realName) || '-' : lock) : `<input class="cell w-real" value="${esc(r.realName)}" placeholder="-" data-cell="realName" data-id="${r.id}">`}</td>
+        <td>${r.inSheet ? (priv ? dot(r.birth) || '-' : lock) : '-'}</td>
+        <td>${r.inSheet ? (priv ? (r.phone ? `<a href="tel:${esc(r.phone.replace(/[^\d+]/g, ''))}">${esc(r.phone)}</a>` : '-') : lock) : '-'}</td>
+        <td>${r.staffV || r.staffHist ? `<span class="small">${r.staffV ? '<b class="v">V</b> ' : ''}${esc(r.staffHist)}</span>` : '-'}</td>
+        <td>${r.absent ? `<span class="abs">${esc(r.absent)}</span>` : '-'}</td>
+        <td class="small">${r.inSheet ? (priv ? esc(r.p?.absReason || '') || '-' : lock) : '-'}</td>
+        <td>${dot(r.absFrom) || '-'}</td><td>${dot(r.absTo) || '-'}</td>
+        <td>${r.inSheet ? (priv ? r.bday || '-' : lock) : '-'}</td>
+        <td class="gap"></td>
         <td><select class="cell st st-${r.status}" data-cell="status" data-id="${r.id}">${Object.entries(MSTAT).map(([s, l]) => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
         <td>${r.login ? `<span class="small ok-t">등록됨</span> <button class="btn ghost sm" data-pinreset="${r.id}">초기화</button>` : '<span class="small muted">미등록</span>'}</td>
         <td><input class="cell w-alias" value="${esc(r.aliases)}" placeholder="-" data-cell="aliases" data-id="${r.id}"></td>
@@ -98,22 +216,24 @@ function listView(body, root) {
         <td class="num"><div class="att-rate"><div class="att-bar"><i style="width:${r.rate}%"></i></div><span>${r.rate}%</span></div></td>
         <td class="num">${r.last ? r.last.slice(2).replace(/-/g, '.') : '-'}</td>
         <td><button class="btn ghost danger sm" data-del="${r.id}">삭제</button></td></tr>`).join('')}
-      </tbody></table></div>` : `<section class="card">${empty(q || filt !== 'all' ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 추가나 명단 붙여넣기, 설정 → 승률계산기에서 가져오기로 등록하세요.')}</section>`}
-    <p class="note small muted">칸을 눌러 바로 고치면 저장돼요. 닉네임은 카페 닉네임 그대로 쓰고, 오타·다른 표기는 별칭에 쉼표로 넣으세요(카페 댓글·시트 가져오기에서 자동으로 알아봐요).
-      회원 유형: 운영진 · 정회원 · 휴면(쉬는 회원 — 신청·이름 선택에서 빠지고 지난 기록은 그대로 남아요). 출석률은 기록이 있는 전체 경기 기준이에요.</p>`;
+      </tbody></table></div>` : `<section class="card">${empty(q || filt !== 'all' || grade ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
+    <p class="note small muted">연번~생일은 회원 시트 내용 그대로예요(시트에서 고치면 반영돼요). 유형·별칭은 앱에서 바로 고치면 저장돼요. 별칭에는 오타·다른 표기를 쉼표로 넣으세요(카페 댓글·로그인에서 알아봐요).
+      회원 유형: 운영진 · 정회원 · 휴면(쉬는 회원 — 신청·이름 선택에서 빠지고 지난 기록은 그대로 남아요) · 탈퇴(시트 등급이 탈퇴회원). 출석률은 기록이 있는 전체 경기 기준이에요.</p>`;
 
   const rer = () => render(root);
+  bindSheetCard(body, root);
   body.querySelector('[data-q]').addEventListener('input', (e) => { q = e.target.value; const pos = e.target.selectionStart; rer(); const i = root.querySelector('[data-q]'); i.focus(); i.setSelectionRange(pos, pos); });
   body.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => { filt = b.dataset.f; rer(); }));
+  body.querySelector('[data-grade]').addEventListener('change', (e) => { grade = e.target.value; rer(); });
   body.querySelectorAll('[data-sort]').forEach((t) => t.addEventListener('click', () => {
-    const key = t.dataset.sort; sort = sort.k === key ? { k: key, d: -sort.d } : { k: key, d: ['att', 'rate', 'last'].includes(key) ? -1 : 1 }; rer();
+    const key = t.dataset.sort; sort = sort.k === key ? { k: key, d: -sort.d } : { k: key, d: ['att', 'rate', 'last', 'joined'].includes(key) ? -1 : 1 }; rer();
   }));
   body.querySelector('[data-selall]')?.addEventListener('change', (e) => { rows.forEach((r) => (e.target.checked ? sel.add(r.id) : sel.delete(r.id))); rer(); });
   body.querySelectorAll('[data-sel]').forEach((c) => c.addEventListener('change', () => { c.checked ? sel.add(c.dataset.sel) : sel.delete(c.dataset.sel); rer(); }));
   body.querySelector('[data-selclear]')?.addEventListener('click', () => { sel.clear(); rer(); });
   body.querySelector('[data-bulkstat]')?.addEventListener('change', async (e) => {
     const s = e.target.value; if (!s) return;
-    await Promise.all([...sel].map((id) => db.set('members/' + id, { status: s, active: s !== 'rest' }, { merge: true })));
+    await Promise.all([...sel].map((id) => db.set('members/' + id, { status: s, active: s !== 'rest' && s !== 'left' }, { merge: true })));
     toast(`${sel.size}명을 ${MSTAT[s]}(으)로 바꿨어요`); sel.clear();
   });
   body.querySelector('[data-seldel]')?.addEventListener('click', async () => {
@@ -123,7 +243,7 @@ function listView(body, root) {
   body.querySelectorAll('[data-cell]').forEach((el) => el.addEventListener('change', () => saveCell(el)));
   body.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
     const m = S.members.find((x) => x.id === b.dataset.del);
-    if (!confirm(`${m.name} 님을 삭제할까요? 지난 경기 기록에는 '(알 수 없음)'으로 남아요. 쉬는 회원이면 삭제 대신 '휴면'을 권해요.`)) return;
+    if (!confirm(`${m.name} 님을 삭제할까요? 지난 경기 기록에는 '(알 수 없음)'으로 남아요. 쉬는 회원이면 삭제 대신 '휴면'을 권해요.${m.inSheet ? '\n(회원 시트에 있는 회원은 다음 반영 때 다시 들어와요)' : ''}`)) return;
     await db.del('members/' + m.id); toast('삭제했어요');
   }));
   body.querySelectorAll('[data-att]').forEach((b) => b.addEventListener('click', () => showDates(b.dataset.att)));
@@ -135,6 +255,36 @@ function listView(body, root) {
   body.querySelector('[data-add]').addEventListener('click', addMember);
   body.querySelector('[data-bulk]').addEventListener('click', bulkPaste);
   body.querySelector('[data-csv]').addEventListener('click', () => exportCSV(all));
+  // 시트 주소가 있는데 이번 접속에서 아직 안 읽었으면 바로 읽기 (개인정보 칸 표시)
+  if (sheetLink() && !S.msheet && !busy && !loadedOnce) { loadedOnce = true; reload(root, false); }
+}
+
+// ───────────── 회비 현황 ─────────────
+function feeView(body, root) {
+  const P = S.msheet?.byId;
+  const mon = new Date().getMonth();
+  let list = S.members.filter((m) => m.inSheet && P?.[m.id]).map((m) => ({ m, f: P[m.id].fees || [] }));
+  if (hideLeft) list = list.filter(({ m }) => statusOf(m) !== 'left');
+  const k = q.trim().toLowerCase();
+  if (k) list = list.filter(({ m }) => m.name.toLowerCase().includes(k) || norm(m.name).includes(norm(k)) || (P[m.id].realName || '').includes(k));
+  list.sort((a, b) => (Number(a.m.sheetNo) || 9999) - (Number(b.m.sheetNo) || 9999));
+  const cnt = {}; list.forEach(({ f }) => { const kk = feeKind(f[mon]) || 'none'; cnt[kk] = (cnt[kk] || 0) + 1; });
+  const pill = (v) => { const kk = feeKind(v); return kk ? `<span class="fee f-${kk}" title="${esc(v)}">${FEE_KINDS[kk]?.mark || ''} ${esc(FEE_KINDS[kk]?.label || v)}</span>` : '<span class="fee f-none">-</span>'; };
+  body.innerHTML = `${sheetCard()}
+    ${!P ? `<section class="card">${empty(sheetLink() ? '회원 시트를 읽는 중이에요…' : '회비 현황은 회원 시트를 연결하면 보여요.')}</section>` : `
+    <section class="card"><div class="att-hd"><div><b>${mon + 1}월 회비</b><small class="muted"> 회원 ${list.length}명</small></div>
+      <label class="inline small"><input type="checkbox" data-hl ${hideLeft ? 'checked' : ''}> 탈퇴 회원 숨기기</label></div>
+      <div class="feesum">${[...Object.keys(FEE_KINDS), 'etc', 'none'].filter((x) => cnt[x]).map((x) => `<div><b>${cnt[x]}</b>${x === 'none' ? '<span class="fee f-none">-</span> 없음' : x === 'etc' ? '기타' : pill(FEE_KINDS[x].label)}</div>`).join('')}</div></section>
+    <div class="mtools"><input class="search" type="search" placeholder="닉네임·이름 검색" value="${esc(q)}" data-q></div>
+    <div class="card sheetwrap"><table class="grid fgrid"><thead><tr><th class="stick">닉네임</th><th>등급</th>${Array.from({ length: 12 }, (_, i) => `<th class="${i === mon ? 'on' : ''}">${i + 1}월</th>`).join('')}</tr></thead><tbody>
+      ${list.map(({ m, f }) => `<tr class="st-row-${statusOf(m)}"><td class="stick"><b>${esc(m.name)}</b></td><td>${m.grade ? `<span class="grade g-${GRADES.indexOf(m.grade)}">${esc(m.grade)}</span>` : ''}</td>
+        ${Array.from({ length: 12 }, (_, i) => `<td class="${i === mon ? 'cur' : ''}">${pill(f[i])}</td>`).join('')}</tr>`).join('')}
+    </tbody></table></div>
+    <p class="note small muted">◎ 연납 · ♥ 선납 · O 월납 · ▲ 장불 · ■ 면제 · - 없음 — 회원 시트의 1~12월 회비 칸 그대로예요. 고칠 때는 시트에서 고쳐 주세요.</p>`}`;
+  bindSheetCard(body, root);
+  body.querySelector('[data-hl]')?.addEventListener('change', (e) => { hideLeft = e.target.checked; render(root); });
+  body.querySelector('[data-q]')?.addEventListener('input', (e) => { q = e.target.value; const pos = e.target.selectionStart; render(root); const i = root.querySelector('[data-q]'); i.focus(); i.setSelectionRange(pos, pos); });
+  if (sheetLink() && !S.msheet && !busy && !loadedOnce) { loadedOnce = true; reload(root, false); }
 }
 
 async function saveCell(el) {
@@ -149,7 +299,7 @@ async function saveCell(el) {
     const aliases = [...new Set([...(m.aliases || []), m.name])].filter((a) => a !== v);
     await db.set('members/' + id, { name: v, aliases }, { merge: true }); toast('닉네임을 바꿨어요 (예전 닉네임은 별칭으로 남겨요)');
   } else if (f === 'status') {
-    await db.set('members/' + id, { status: el.value, active: el.value !== 'rest' }, { merge: true }); toast(`${m.name} · ${MSTAT[el.value]}`);
+    await db.set('members/' + id, { status: el.value, active: el.value !== 'rest' && el.value !== 'left' }, { merge: true }); toast(`${m.name} · ${MSTAT[el.value]}`);
   } else if (f === 'realName') {
     await db.set('members/' + id, { realName: el.value.trim() }, { merge: true }); toast('이름을 저장했어요');
   } else if (f === 'aliases') {
@@ -202,7 +352,8 @@ function bulkPaste() {
 function exportCSV(rows) {
   const qv = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const list = [...rows].sort((a, b) => koSort(a.name, b.name));
-  const csv = '﻿' + [['닉네임', '이름', '유형', '별칭', '출석', '출석률(%)', '최근 출석'], ...list.map((r) => [r.name, r.realName, MSTAT[r.status], r.aliases, r.att, r.rate, r.last])]
+  const csv = '﻿' + [['닉네임', '연번', '가입일자', '등급', '이름', '생년월일', '연락처', '운영진 이력', '장불여부', '장불시작일자', '장불해제일자', '생일', '유형', '별칭', '출석', '출석률(%)', '최근 출석'],
+    ...list.map((r) => [r.name, r.sheetNo, r.joined, r.grade, r.realName, r.birth, r.phone, (r.staffV ? 'V ' : '') + r.staffHist, r.absent, r.absFrom, r.absTo, r.bday, MSTAT[r.status], r.aliases, r.att, r.rate, r.last])]
     .map((r) => r.map(qv).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
@@ -230,7 +381,7 @@ function attView(body, root) {
   const t = todayISO();
   const from = per === 'year' ? t.slice(0, 4) + '-01-01' : per === '3m' ? (() => { const d = new Date(); d.setMonth(d.getMonth() - 3); return d.toISOString().slice(0, 10); })() : '';
   const { total, rec } = attendance(from);
-  const rows = S.members.filter((m) => statusOf(m) !== 'rest' || rec.has(m.id))
+  const rows = S.members.filter((m) => !['rest', 'left'].includes(statusOf(m)) || rec.has(m.id))
     .map((m) => ({ m, a: rec.get(m.id) || { att: 0, last: '', streak: 0 } }))
     .sort((x, y) => y.a.att - x.a.att || koSort(x.m.name, y.m.name));
   const avg = rows.length ? Math.round(rows.reduce((s, r) => s + r.a.att, 0) / rows.length * 10) / 10 : 0;
@@ -242,7 +393,7 @@ function attView(body, root) {
     </section>
     <section class="card"><ol class="att-list">${rows.map(({ m, a }, i) => {
       const rate = total ? Math.round(a.att / total * 100) : 0;
-      return `<li class="${statusOf(m) === 'rest' ? 'rest' : ''}"><span class="rk">${i + 1}</span>
+      return `<li class="${['rest', 'left'].includes(statusOf(m)) ? 'rest' : ''}"><span class="rk">${i + 1}</span>
         <div class="am"><b>${esc(m.name)}</b><small class="muted">${a.last ? `최근 ${fmtDate(a.last, false)}` : '출석 기록 없음'}${a.streak > 1 ? ` · 🔥 ${a.streak}경기 연속` : ''}${statusOf(m) === 'rest' ? ' · 휴면' : ''}</small></div>
         <div class="att-rate"><div class="att-bar"><i style="width:${rate}%"></i></div><span>${a.att}회 · ${rate}%</span></div></li>`;
     }).join('')}</ol></section>`;
