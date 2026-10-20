@@ -88,8 +88,10 @@ export function nextMatchday() {
 }
 // 이 기기가 주장 링크로 들어온 진행 중 드래프트
 export function captainMatchday() {
-  if (!S.captainToken) return null;
-  return S.matchdays.find((m) => !m.cancelled && (m.captains || []).some((c) => c.token === S.captainToken) && ['captains', 'drafting'].includes(m.status)) || null;
+  // 로그인한 회원이 주장이거나, 주장 링크로 들어온 기기
+  const pid = S.auth?.pid;
+  if (!pid && !S.captainToken) return null;
+  return S.matchdays.find((m) => !m.cancelled && (m.captains || []).some((c) => (pid && c.id === pid) || (S.captainToken && c.token === S.captainToken)) && ['captains', 'drafting'].includes(m.status)) || null;
 }
 export const today = todayStr;
 

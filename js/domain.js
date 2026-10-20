@@ -72,15 +72,27 @@ export function draftPool(md) {
   const caps = new Set((md.captains || []).map((c) => c.id));
   return confirmed(md).map((a) => a.id).filter((id) => !caps.has(id));
 }
+// 지명 순서: 우선순위 추첨 결과(md.order = [1순위 팀, 2순위 팀])로 1-2-2-1-1-2-2-1 … (스네이크)
 export function draftState(md) {
   const n = (md.captains || []).length;
   const pool = draftPool(md);
   const picks = md.picks || [];
   const picked = new Set(picks.map((p) => p.id));
   const remaining = pool.filter((id) => !picked.has(id));
-  const seq = pickSequence(n, pool.length, fmtOf(md).draft);
+  const order = md.order?.length === n ? md.order : [...Array(n).keys()];
+  const seq = pickSequence(n, pool.length, fmtOf(md).draft).map((p) => order[p]);
   const turn = remaining.length && n ? seq[picks.length] : null;
-  return { n, pool, picks, remaining, seq, turn, done: n > 0 && remaining.length === 0 };
+  return { n, pool, picks, remaining, seq, order, turn, done: n > 0 && remaining.length === 0 };
+}
+// 드래프트 단계: 주장 → 팀 색 선택 → 우선순위 추첨 → 선수 선택 → (모두 배치) → 팀 확정
+export function draftPhase(md) {
+  if (!md) return 'captains';
+  if (['teams', 'played'].includes(md.status)) return 'done';
+  const caps = md.captains || [];
+  if (!caps.length || (md.status === 'captains' && !md.draftStarted)) return 'captains';
+  if (fmtOf(md).teamMode !== 'fixed' && caps.some((c) => !c.color)) return 'color';
+  if (!(md.order?.length === caps.length) && !(md.picks || []).length) return 'order';
+  return draftState(md).remaining.length ? 'pick' : 'allin';
 }
 export function rosters(md) {
   if (md?.teams?.length) return md.teams.map((t) => t.members || []);
