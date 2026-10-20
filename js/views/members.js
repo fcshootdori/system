@@ -1,16 +1,16 @@
 // 운영 > 회원 — [회원 관리 | 출석 관리]  (WD_FUTSAL 운영 회원 메뉴와 같은 구성)
 //  회원 관리: 검색 · 유형 필터 · 표에서 바로 고치기 · 명단 붙여넣기 · CSV 저장 · 여러 명 선택 처리
 //  출석 관리: 기간별 출석 횟수 · 출석률 · 최근 출석 · 연속 출석
-import { S, playedDays } from '../state.js?v=0.1.42';
-import { db, newId } from '../store.js?v=0.1.42';
-import { APP_NAME } from '../config.js?v=0.1.42';
-import { rosters } from '../domain.js?v=0.1.42';
-import { esc, toast, fmtDate, todayISO, koSort } from '../util.js?v=0.1.42';
-import { modal, empty, fitBoxes } from '../ui.js?v=0.1.42';
-import { norm } from '../cafe-parser.js?v=0.1.42';
-import { resetPin } from '../auth.js?v=0.1.42';
-import { sheetLink, setSheetLink, parseLink, sheetUrl, preview, apply, needsReview, startAutoSync, autoSync, holdAuto } from '../member-sync.js?v=0.1.42';
-import { FEE_KINDS, feeKind, isLeftGrade, nickParts, publicOf } from '../member-sheet.js?v=0.1.42';
+import { S, playedDays } from '../state.js?v=0.1.43';
+import { db, newId } from '../store.js?v=0.1.43';
+import { APP_NAME } from '../config.js?v=0.1.43';
+import { rosters } from '../domain.js?v=0.1.43';
+import { esc, toast, fmtDate, todayISO, koSort } from '../util.js?v=0.1.43';
+import { modal, empty, fitBoxes } from '../ui.js?v=0.1.43';
+import { norm } from '../cafe-parser.js?v=0.1.43';
+import { resetPin } from '../auth.js?v=0.1.43';
+import { sheetLink, setSheetLink, parseLink, sheetUrl, preview, apply, needsReview, startAutoSync, autoSync, holdAuto } from '../member-sync.js?v=0.1.43';
+import { FEE_KINDS, feeKind, isLeftGrade, nickParts, publicOf } from '../member-sheet.js?v=0.1.43';
 
 // 회원 구분 = 회원 시트 등급 (VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원), 운영진은 따로 체크
 export const isLeft = (m) => isLeftGrade(m.grade) || m.status === 'left';
@@ -70,7 +70,7 @@ function sheetCard() {
     <form class="row nowrap" data-link><input name="url" placeholder="https://docs.google.com/spreadsheets/d/..." autocomplete="off"><button class="btn sm">연결하고 불러오기</button></form>
     <p class="tiny muted">🔒 이름·생년월일·연락처·장불 사유·회비는 서버에 저장하지 않고, 시트 주소를 저장한 이 기기에서만 시트에서 바로 읽어 보여 줘요. 시트 주소도 이 기기에만 저장돼요.</p></section>`;
   return `<section class="card mshcard compact"><div class="msh-row">
-    <span class="msh-t"><b>📄 <span class="hide-xs">회원 </span>시트</b> <small class="muted">${ms?.checkedAt ? ago(ms.checkedAt) : ''}${S.msheet ? '' : ' · 🔒'}</small></span>
+    <span class="msh-t"><b>📄<span class="hide-xxs"> <span class="hide-xs">회원 </span>시트</span></b> <small class="muted">${ms?.checkedAt ? ago(ms.checkedAt) : ''}${S.msheet ? '' : ' · 🔒'}</small></span>
     <span class="msh-btns"><button class="btn sm" data-reload ${busy ? 'disabled' : ''}>${busy ? '불러오는 중…' : '↻ 새로 불러오기'}</button>
       <a class="btn ghost sm" href="${esc(sheetUrl(l))}" target="_blank" rel="noopener">시트 열기</a>
       <button class="btn ghost sm icon" data-shinfo aria-label="회원 시트 안내">ⓘ</button></span></div></section>`;

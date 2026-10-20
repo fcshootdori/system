@@ -3,10 +3,10 @@
 //  - [새로 불러오기]: 바로 읽어 반영. 새 회원·비슷한 이름 짝이 있으면 먼저 확인
 //  - 자동 반영: 시트 주소가 저장된 기기에서 앱을 열 때 + 열어 둔 동안 30분마다
 //    (앱을 아무도 안 열어도 반영되게 하려면 GitHub Actions 자동 반영 — README 참고)
-import { db, newId } from './store.js?v=0.1.42';
-import { S, refresh } from './state.js?v=0.1.42';
-import { KNOWN_ALIASES } from './config.js?v=0.1.42';
-import { parseCSV, parseMemberTable, planSync, privateOf, syncSummary, norm } from './member-sheet.js?v=0.1.42';
+import { db, newId } from './store.js?v=0.1.43';
+import { S, refresh } from './state.js?v=0.1.43';
+import { KNOWN_ALIASES } from './config.js?v=0.1.43';
+import { parseCSV, parseMemberTable, planSync, privateOf, syncSummary, norm } from './member-sheet.js?v=0.1.43';
 
 const LS = 'teamapp:msheet';
 export function sheetLink() { try { return JSON.parse(localStorage.getItem(LS)) || null; } catch { return null; } }

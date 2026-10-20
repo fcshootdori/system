@@ -1,16 +1,16 @@
 // 회원 홈 — 경기장 사진 위 다음 경기 티켓(바로 참석·불참) + 지난 경기 전광판
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.42';
-import { db, newId } from '../store.js?v=0.1.42';
-import { STATUS } from '../config.js?v=0.1.42';
-import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.42';
-import { icon } from '../icons.js?v=0.1.42';
-import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.42';
-import { myBox, bindMy } from './apply.js?v=0.1.42';
-import { TEAM_COLORS } from '../config.js?v=0.1.42';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.42';
-import { norm } from '../cafe-parser.js?v=0.1.42';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.42';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.42';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.43';
+import { db, newId } from '../store.js?v=0.1.43';
+import { STATUS } from '../config.js?v=0.1.43';
+import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.43';
+import { icon } from '../icons.js?v=0.1.43';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.43';
+import { myBox, bindMy } from './apply.js?v=0.1.43';
+import { TEAM_COLORS } from '../config.js?v=0.1.43';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.43';
+import { norm } from '../cafe-parser.js?v=0.1.43';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.43';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.43';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);
@@ -145,7 +145,7 @@ export function editMatchday(md, presetDate) {
           <div class="row ev-row">
             <label>${i ? '오른쪽' : '왼쪽'} 팀 이름<input name="evn${i}" placeholder="예: ${i ? '준찬팀' : '지진희팀'}" value="${esc(ev0?.[i]?.name || '')}"></label>
             <label>색<select name="evc${i}">${TEAM_COLORS.filter((c) => ['pink', 'blue'].includes(c.key)).map((c) => `<option value="${c.key}" ${(ev0?.[i]?.color || ['pink', 'blue'][i]) === c.key ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label></div>
-          <label>주장 <span class="muted small" data-caphint></span><input name="evk${i}" autocomplete="off" placeholder="카페 닉네임 · 여러 명은 쉼표로 (예: 진이, 타로)" value="${esc(evCaps(ev0?.[i]).map((c) => nameOf(c)).join(', '))}"></label>
+          <label>주장 <span class="muted small" data-caphint></span><input name="evk${i}" autocomplete="off" placeholder="예: 진이, 타로 (여러 명은 쉼표로)" value="${esc(evCaps(ev0?.[i]).map((c) => nameOf(c)).join(', '))}"></label>
           <p class="cap-check tiny" data-capchk="${i}"></p>
           <div class="ev-mem" data-evmem="${i}"></div></div>`).join('')}
         </div>
