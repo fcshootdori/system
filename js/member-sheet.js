@@ -180,13 +180,15 @@ export function planSync(records, members, { links = {}, knownAliases = {} } = {
       if (m.name !== r.nick) { aliases.push(m.name); data.name = r.nick; }
       aliases = [...new Set([...aliases, ...extra])].filter((a) => a && norm(a) !== norm(r.nick));
       if (!same(aliases, m.aliases || [])) data.aliases = aliases;
-      if (isLeftGrade(r.grade) && m.status !== 'left') { data.status = 'left'; data.active = false; }
-      if (!isLeftGrade(r.grade) && (m.status === 'left' || isLeftGrade(m.grade))) { data.status = 'regular'; data.active = true; }
+      // 회원 구분은 시트 등급으로: 탈퇴회원이 아니면 활동 회원 (예전 '유형' 값은 정리, 운영진 표시는 staff로 옮김)
+      const act = !isLeftGrade(r.grade);
+      if ((m.active !== false) !== act) data.active = act;
+      if (m.status) { if (m.status === 'staff' && m.staff === undefined) data.staff = true; data.status = null; }
       if (m.realName) data.realName = ''; // 이름은 시트에서만 읽음 (서버에 남기지 않음)
       ops.push({ type: Object.keys(data).length ? 'update' : 'same', ri, id: m.id, how: hit.how, from: m.name, data });
     } else {
       const left = isLeftGrade(r.grade);
-      ops.push({ type: 'create', ri, data: { name: r.nick, aliases: extra, ...pub, status: left ? 'left' : 'regular', active: !left, source: 'members-sheet' } });
+      ops.push({ type: 'create', ri, data: { name: r.nick, aliases: extra, ...pub, active: !left, source: 'members-sheet' } });
     }
   });
   const missing = members.filter((m) => !used.has(m.id) && m.inSheet).map((m) => m.id); // 전에는 시트에 있었는데 빠진 회원

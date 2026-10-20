@@ -87,7 +87,7 @@ function render() {
   if (route.op && !S.operator) { go('home'); return; }
   route.view.render(root, { params, sub: route.sub });
 }
-const typing = () => { const a = document.activeElement; return a && a.closest('#view') && /INPUT|TEXTAREA|SELECT/.test(a.tagName); };
+const typing = () => { const a = document.activeElement; return a && a.closest('#view') && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && !/checkbox|radio/.test(a.type); };
 function safeRender() {
   if (typing()) { pending = true; return; }
   renderShell(); render();

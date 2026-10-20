@@ -531,3 +531,10 @@ select.cell.st-left { color: #9ca3af; }
 .left-hd { margin: 22px 4px 8px; font-size: 15px; color: var(--sub); }
 .left-hd small { font-weight: 500; font-size: 12px; }
 .left-wrap { opacity: .85; }
+
+/* ── 0.1.17 등급 구분 · 운영진 체크 · 장불 사유 말풍선 ── */
+button.abs { border: 0; background: #fef2f2; border-radius: 6px; padding: 3px 7px; cursor: pointer; font: 700 12px var(--font); color: #b91c1c; }
+button.abs i { font-style: normal; opacity: .6; }
+.abs-pop { position: absolute; z-index: 50; max-width: 260px; background: #111827; color: #fff; font-size: 13px; line-height: 1.45; padding: 8px 11px; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.18); }
+.staffck { width: 18px; height: 18px; accent-color: #b45309; }
+.gseg { flex-wrap: wrap; }

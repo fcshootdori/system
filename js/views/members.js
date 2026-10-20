@@ -12,16 +12,17 @@ import { resetPin } from '../auth.js';
 import { sheetLink, setSheetLink, parseLink, sheetUrl, preview, apply, needsReview, startAutoSync, autoSync, holdAuto } from '../member-sync.js';
 import { FEE_KINDS, feeKind, isLeftGrade, nickParts, publicOf } from '../member-sheet.js';
 
-export const MSTAT = { staff: '운영진', regular: '정회원', rest: '휴면', left: '탈퇴' };
-// 탈퇴(회원 시트 등급 '탈퇴회원') → 휴면(active=false, 승률계산기 활성 N과 같은 값) → 나머지는 status로 구분
-export const statusOf = (m) => (m.status === 'left' || isLeftGrade(m.grade) ? 'left' : m.active === false ? 'rest' : m.status && m.status !== 'rest' ? m.status : 'regular');
+// 회원 구분 = 회원 시트 등급 (VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원), 운영진은 따로 체크
+export const isLeft = (m) => isLeftGrade(m.grade) || m.status === 'left';
+export const isStaff = (m) => (m.staff ?? m.status === 'staff') === true;
+const isRest = (m) => isLeft(m) || m.active === false;
 const GRADES = ['VIP', '우수회원', '슛도리', '정회원', '탈퇴회원'];
 const dot = (iso) => (iso ? iso.slice(2).replace(/-/g, '.') : '');
 
 // 닉네임·별칭 중 하나라도 같으면 같은 사람으로 봄
 const taken = (name, exceptId) => S.members.some((x) => x.id !== exceptId && [x.name, ...(x.aliases || [])].some((a) => norm(a) === norm(name)));
 let loadedOnce = false;
-let tab = 'list', q = '', filt = 'all', grade = '', sort = { k: 'no', d: 1 }, sel = new Set(), per = 'all', hideLeft = true, busy = false;
+let tab = 'list', q = '', filt = 'all', sort = { k: 'grank', d: 1 }, sel = new Set(), per = 'all', hideLeft = true, busy = false;
 
 // ── 회원별 출석 ──
 function attendance(fromDate = '') {
@@ -137,7 +138,7 @@ function reviewModal(pv, root, first) {
     } catch (err) { toast(err.message); e.target.disabled = false; }
   });
 }
-const planSync1 = (r) => { const left = isLeftGrade(r.grade); return { name: r.nick, aliases: nickParts(r.nick), ...publicOf(r), status: left ? 'left' : 'regular', active: !left, source: 'members-sheet' }; };
+const planSync1 = (r) => { const left = isLeftGrade(r.grade); return { name: r.nick, aliases: nickParts(r.nick), ...publicOf(r), active: !left, source: 'members-sheet' }; };
 
 // ───────────── 회원 관리 ─────────────
 function rowsOf() {
@@ -146,11 +147,12 @@ function rowsOf() {
   return S.members.map((m) => {
     const a = rec.get(m.id) || { att: 0, last: '' };
     const p = P[m.id] || null;
+    const grade = m.inSheet ? m.grade || '' : '';
     return { id: m.id, name: m.name, inSheet: !!m.inSheet, no: m.inSheet ? Number(m.sheetNo) || 9999 : 99999, sheetNo: m.inSheet ? m.sheetNo || '' : '',
-      joined: m.inSheet ? m.joined || '' : '', grade: m.inSheet ? m.grade || '' : '', staffV: !!m.staffV, staffHist: m.staffHist || '',
+      joined: m.inSheet ? m.joined || '' : '', grade, grank: grade ? (GRADES.indexOf(grade) + 1 || 9) : 10, staff: isStaff(m) ? 1 : 0, left: isLeft(m), rest: !isLeft(m) && m.active === false, staffV: !!m.staffV, staffHist: m.staffHist || '',
       absent: m.absent || '', absFrom: m.absFrom || '', absTo: m.absTo || '', p,
       realName: p ? p.realName : (m.inSheet ? '' : m.realName || ''), birth: p?.birth || '', phone: p?.phone || '', bday: p?.bMonth ? `${+p.bMonth}/${+p.bDay}` : '',
-      login: S.authset?.[m.id]?.registered ? 1 : 0, status: statusOf(m), aliases: (m.aliases || []).join(', '), att: a.att,
+      login: S.authset?.[m.id]?.registered ? 1 : 0, aliases: (m.aliases || []).join(', '), att: a.att,
       rate: total ? Math.round((a.att / total) * 100) : 0, last: a.last, createdAt: m.createdAt || 0, source: m.source };
   });
 }
@@ -158,44 +160,44 @@ function rowsOf() {
 function listView(body, root) {
   const all = rowsOf();
   const priv = !!S.msheet;
-  const cnt = (k) => all.filter((r) => r.status === k).length;
-  let rows = filt === 'all' ? all : all.filter((r) => r.status === filt);
-  if (grade) rows = rows.filter((r) => (grade === '-' ? !r.inSheet : r.grade === grade));
+  // 구분: 전체 · 운영진 · 등급별 · 시트에 없음 (탈퇴회원은 항상 아래쪽에 따로)
+  const FILTERS = [['all', '전체', () => true], ['staff', '운영진', (r) => r.staff], ...GRADES.filter((g) => !isLeftGrade(g)).map((g) => [g, g, (r) => r.grade === g]), ['-', '시트에 없음', (r) => !r.inSheet]];
+  const fOf = (k) => (FILTERS.find((x) => x[0] === k) || FILTERS[0])[2];
+  const cnt = (k) => all.filter((r) => !r.left && fOf(k)(r)).length;
+  if (!FILTERS.some((x) => x[0] === filt)) filt = 'all';
+  let rows = all.filter((r) => r.left || fOf(filt)(r));
   const k = q.trim().toLowerCase();
   if (k) rows = rows.filter((r) => r.name.toLowerCase().includes(k) || r.realName.toLowerCase().includes(k) || r.aliases.toLowerCase().includes(k) || norm(r.name).includes(norm(k))
     || (k.replace(/\D/g, '').length >= 4 && r.phone.replace(/\D/g, '').includes(k.replace(/\D/g, ''))));
   rows.sort((a, b) => {
     const x = a[sort.k], y = b[sort.k];
     const c = typeof x === 'number' ? x - y : koSort(x || '￿', y || '￿');
-    return c * sort.d || a.no - b.no || koSort(a.name, b.name);
+    return c * sort.d || a.grank - b.grank || koSort(a.name, b.name);
   });
   sel = new Set([...sel].filter((id) => all.some((r) => r.id === id)));
   const dups = dupGroups();
   const th = (key, label, cls = '') => `<th data-sort="${key}" class="${cls} ${sort.k === key ? 'on' : ''}">${label}${sort.k === key ? (sort.d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
-  const gcnt = (g) => all.filter((r) => (g === '-' ? !r.inSheet : r.grade === g)).length;
   const lock = '<span class="muted" title="시트를 읽으면 보여요">🔒</span>';
   // 탈퇴 회원은 아래쪽에 따로
-  const main = rows.filter((r) => r.status !== 'left'), left = rows.filter((r) => r.status === 'left');
+  const main = rows.filter((r) => !r.left), left = rows.filter((r) => r.left);
   const table = (list, key) => `<table class="grid mgrid"><thead><tr>
       <th class="ck"><input type="checkbox" data-selall="${key}" ${list.length && list.every((r) => sel.has(r.id)) ? 'checked' : ''} aria-label="모두 선택"></th>
-      ${th('name', '닉네임', 'stick')}${th('no', '연번', 'num')}${th('joined', '가입일자')}${th('grade', '등급')}${th('realName', '이름')}${th('birth', '생년월일')}${th('phone', '연락처')}${th('staffHist', '운영진 이력')}${th('absent', '장불여부')}<th>장불 사유</th>${th('absFrom', '장불시작일자')}${th('absTo', '장불해제일자')}${th('bday', '생일')}
-      <th class="gap"></th>${th('status', '유형')}${th('login', '로그인')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
-      ${list.map((r) => `<tr class="${sel.has(r.id) ? 'msel' : ''} st-row-${r.status}">
+      ${th('name', '닉네임', 'stick')}${th('grank', '등급')}${th('staff', '운영진')}${th('joined', '가입일자')}${th('realName', '이름')}${th('birth', '생년월일')}${th('phone', '연락처')}${th('staffHist', '운영진 이력')}${th('absent', '장불여부')}${th('absFrom', '장불시작일자')}${th('absTo', '장불해제일자')}${th('bday', '생일')}
+      <th class="gap"></th>${th('login', '로그인')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
+      ${list.map((r) => `<tr class="${sel.has(r.id) ? 'msel' : ''} ${r.left ? 'st-row-left' : r.rest || !r.inSheet ? 'st-row-rest' : ''}">
         <td class="ck"><input type="checkbox" data-sel="${r.id}" ${sel.has(r.id) ? 'checked' : ''} aria-label="${esc(r.name)} 선택"></td>
         <td class="stick">${r.inSheet ? `<span class="cell ro" title="닉네임은 회원 시트에서 고쳐 주세요">${esc(r.name)}</span>` : `<input class="cell w-name" value="${esc(r.name)}" data-cell="name" data-id="${r.id}"><small class="nosheet">시트에 없음</small>`}</td>
-        <td class="num">${esc(r.sheetNo) || '-'}</td>
-        <td>${dot(r.joined) || '-'}</td>
         <td>${r.grade ? `<span class="grade g-${GRADES.indexOf(r.grade)}">${esc(r.grade)}</span>` : '-'}</td>
+        <td class="ck"><input type="checkbox" class="staffck" data-staff="${r.id}" ${r.staff ? 'checked' : ''} aria-label="${esc(r.name)} 운영진"></td>
+        <td>${dot(r.joined) || '-'}</td>
         <td>${r.inSheet ? (priv ? esc(r.realName) || '-' : lock) : `<input class="cell w-real" value="${esc(r.realName)}" placeholder="-" data-cell="realName" data-id="${r.id}">`}</td>
         <td>${r.inSheet ? (priv ? dot(r.birth) || '-' : lock) : '-'}</td>
         <td>${r.inSheet ? (priv ? (r.phone ? `<a href="tel:${esc(r.phone.replace(/[^\d+]/g, ''))}">${esc(r.phone)}</a>` : '-') : lock) : '-'}</td>
         <td>${r.staffV || r.staffHist ? `<span class="small">${r.staffV ? '<b class="v">V</b> ' : ''}${esc(r.staffHist)}</span>` : '-'}</td>
-        <td>${r.absent ? `<span class="abs">${esc(r.absent)}</span>` : '-'}</td>
-        <td class="small">${r.inSheet ? (priv ? esc(r.p?.absReason || '') || '-' : lock) : '-'}</td>
+        <td>${r.absent ? `<button type="button" class="abs" data-absr="${r.id}" title="${esc(priv ? `장불 사유: ${r.p?.absReason || '적힌 사유 없음'}` : '장불 사유는 회원 시트를 읽으면 보여요')}">${esc(r.absent)} <i>ⓘ</i></button>` : '-'}</td>
         <td>${dot(r.absFrom) || '-'}</td><td>${dot(r.absTo) || '-'}</td>
         <td>${r.inSheet ? (priv ? r.bday || '-' : lock) : '-'}</td>
         <td class="gap"></td>
-        <td><select class="cell st st-${r.status}" data-cell="status" data-id="${r.id}">${Object.entries(MSTAT).map(([s, l]) => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
         <td>${r.login ? `<span class="small ok-t">등록됨</span> <button class="btn ghost sm" data-pinreset="${r.id}">초기화</button>` : '<span class="small muted">미등록</span>'}</td>
         <td><input class="cell w-alias" value="${esc(r.aliases)}" placeholder="-" data-cell="aliases" data-id="${r.id}"></td>
         <td class="num"><button class="attcell" data-att="${r.id}"><b>${r.att}</b>회</button></td>
@@ -210,45 +212,59 @@ function listView(body, root) {
       <div class="row nowrap"><button class="btn ghost sm" data-bulk>명단 붙여넣기</button><button class="btn ghost sm" data-csv>CSV 저장</button><button class="btn sm" data-add>＋ 회원 추가</button></div></div>
     <div class="mtools">
       <input class="search" type="search" placeholder="닉네임·이름·별칭·연락처 검색" value="${esc(q)}" data-q>
-      <div class="seg mseg">${[['all', `전체 ${all.length}`], ...Object.entries(MSTAT).map(([s, l]) => [s, `${l} ${cnt(s)}`])].map(([s, l]) =>
-        `<button data-f="${s}" class="${filt === s ? 'on' : ''}">${l}</button>`).join('')}</div>
-      <select class="gsel" data-grade><option value="">등급 전체</option>${[...GRADES, '-'].filter((g) => gcnt(g)).map((g) => `<option value="${g}" ${grade === g ? 'selected' : ''}>${g === '-' ? '시트에 없음' : g} ${gcnt(g)}</option>`).join('')}</select>
+      <div class="seg mseg gseg">${FILTERS.filter(([k]) => k === 'all' || k === 'staff' || cnt(k)).map(([k, l]) =>
+        `<button data-f="${esc(k)}" class="${filt === k ? 'on' : ''}">${l} ${cnt(k)}</button>`).join('')}</div>
     </div>
     ${dups.length ? `<div class="card warnbar"><b>⚠️ 같은 이름으로 보이는 회원 ${dups.length}쌍</b>
       <p class="small muted">${dups.map((g) => g.map((m) => esc(m.name)).join(' · ')).join(' / ')} — 이름을 고치거나 한 명을 휴면·삭제해 주세요.</p></div>` : ''}
     ${sel.size ? `<div class="bulkbar"><b>${sel.size}명 선택</b>
-      <select data-bulkstat><option value="">유형 바꾸기</option>${Object.entries(MSTAT).map(([s, l]) => `<option value="${s}">${l}로</option>`).join('')}</select>
+      <button class="btn ghost sm" data-bulkstaff="1">운영진 지정</button><button class="btn ghost sm" data-bulkstaff="0">운영진 해제</button>
       <button class="btn ghost sm" data-selclear>선택 해제</button><button class="btn ghost danger sm" data-seldel>선택 삭제</button></div>` : ''}
-    ${main.length ? `<div class="card sheetwrap">${table(main, 'main')}</div>` : rows.length ? '' : `<section class="card">${empty(q || filt !== 'all' || grade ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
+    ${main.length ? `<div class="card sheetwrap">${table(main, 'main')}</div>` : rows.length ? '' : `<section class="card">${empty(q || filt !== 'all' ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
     ${left.length ? `<h3 class="left-hd">탈퇴 회원 ${left.length}명 <small class="muted">회원 시트 등급 '탈퇴회원' — 지난 기록은 그대로 남아요</small></h3>
       <div class="card sheetwrap left-wrap">${table(left, 'left')}</div>` : ''}
-    <p class="note small muted">연번~생일은 회원 시트 내용 그대로예요(시트에서 고치면 반영돼요). 유형·별칭은 앱에서 바로 고치면 저장돼요. 별칭에는 오타·다른 표기를 쉼표로 넣으세요(카페 댓글·로그인에서 알아봐요).
-      회원 유형: 운영진 · 정회원 · 휴면(쉬는 회원 — 신청·이름 선택에서 빠지고 지난 기록은 그대로 남아요) · 탈퇴(시트 등급이 탈퇴회원). 출석률은 기록이 있는 전체 경기 기준이에요.</p>`;
+    <p class="note small muted">등급·가입일자~생일은 회원 시트 내용 그대로예요(시트에서 고치면 반영돼요). 회원 구분은 시트 등급(VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원)을 따르고, 운영진은 체크로 따로 지정해요.
+      장불여부를 누르거나 마우스를 올리면 장불 사유가 보여요. 별칭에는 오타·다른 표기를 쉼표로 넣으세요(카페 댓글·로그인에서 알아봐요). 출석률은 기록이 있는 전체 경기 기준이에요.</p>`;
 
   const rer = () => render(root);
   bindSheetCard(body, root);
   body.querySelector('[data-q]').addEventListener('input', (e) => { q = e.target.value; const pos = e.target.selectionStart; rer(); const i = root.querySelector('[data-q]'); i.focus(); i.setSelectionRange(pos, pos); });
   body.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => { filt = b.dataset.f; rer(); }));
-  body.querySelector('[data-grade]').addEventListener('change', (e) => { grade = e.target.value; rer(); });
   body.querySelectorAll('[data-sort]').forEach((t) => t.addEventListener('click', () => {
     const key = t.dataset.sort; sort = sort.k === key ? { k: key, d: -sort.d } : { k: key, d: ['att', 'rate', 'last', 'joined'].includes(key) ? -1 : 1 }; rer();
   }));
   body.querySelectorAll('[data-selall]').forEach((c) => c.addEventListener('change', (e) => { (c.dataset.selall === 'left' ? left : main).forEach((r) => (e.target.checked ? sel.add(r.id) : sel.delete(r.id))); rer(); }));
   body.querySelectorAll('[data-sel]').forEach((c) => c.addEventListener('change', () => { c.checked ? sel.add(c.dataset.sel) : sel.delete(c.dataset.sel); rer(); }));
   body.querySelector('[data-selclear]')?.addEventListener('click', () => { sel.clear(); rer(); });
-  body.querySelector('[data-bulkstat]')?.addEventListener('change', async (e) => {
-    const s = e.target.value; if (!s) return;
-    await Promise.all([...sel].map((id) => db.set('members/' + id, { status: s, active: s !== 'rest' && s !== 'left' }, { merge: true })));
-    toast(`${sel.size}명을 ${MSTAT[s]}(으)로 바꿨어요`); sel.clear();
-  });
+  body.querySelectorAll('[data-bulkstaff]').forEach((b) => b.addEventListener('click', async () => {
+    const on = b.dataset.bulkstaff === '1';
+    await Promise.all([...sel].map((id) => db.set('members/' + id, { staff: on }, { merge: true })));
+    toast(`${sel.size}명을 운영진${on ? '으로 지정' : '에서 해제'}했어요`); sel.clear(); rer();
+  }));
+  body.querySelectorAll('[data-staff]').forEach((c) => c.addEventListener('change', async () => {
+    const m = S.members.find((x) => x.id === c.dataset.staff);
+    await db.set('members/' + m.id, { staff: c.checked }, { merge: true }); toast(`${m.name} · 운영진 ${c.checked ? '지정' : '해제'}`);
+  }));
+  // 장불 사유: 마우스를 올리면(title) · 누르면 말풍선
+  body.querySelectorAll('[data-absr]').forEach((b) => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.abs-pop').forEach((x) => x.remove());
+    const pop = document.createElement('div'); pop.className = 'abs-pop'; pop.textContent = b.title;
+    document.body.appendChild(pop);
+    const rc = b.getBoundingClientRect();
+    pop.style.top = `${rc.bottom + window.scrollY + 6}px`;
+    pop.style.left = `${Math.max(8, Math.min(rc.left + window.scrollX, window.innerWidth - pop.offsetWidth - 8))}px`;
+    const off = () => { pop.remove(); document.removeEventListener('click', off); };
+    setTimeout(() => document.addEventListener('click', off), 0);
+  }));
   body.querySelector('[data-seldel]')?.addEventListener('click', async () => {
-    if (!confirm(`${sel.size}명을 삭제할까요? 지난 경기 기록에는 '(알 수 없음)'으로 남아요. 쉬는 회원이면 삭제 대신 '휴면'을 권해요.`)) return;
+    if (!confirm(`${sel.size}명을 삭제할까요? 지난 경기 기록에는 '(알 수 없음)'으로 남아요. 시트에 있는 회원은 다음 반영 때 다시 들어와요.`)) return;
     await Promise.all([...sel].map((id) => db.del('members/' + id))); toast(`${sel.size}명을 삭제했어요`); sel.clear();
   });
   body.querySelectorAll('[data-cell]').forEach((el) => el.addEventListener('change', () => saveCell(el)));
   body.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
     const m = S.members.find((x) => x.id === b.dataset.del);
-    if (!confirm(`${m.name} 님을 삭제할까요? 지난 경기 기록에는 '(알 수 없음)'으로 남아요. 쉬는 회원이면 삭제 대신 '휴면'을 권해요.${m.inSheet ? '\n(회원 시트에 있는 회원은 다음 반영 때 다시 들어와요)' : ''}`)) return;
+    if (!confirm(`${m.name} 님을 삭제할까요? 지난 경기 기록에는 '(알 수 없음)'으로 남아요. ${m.inSheet ? '\n(회원 시트에 있는 회원은 다음 반영 때 다시 들어와요)' : ''}`)) return;
     await db.del('members/' + m.id); toast('삭제했어요');
   }));
   body.querySelectorAll('[data-att]').forEach((b) => b.addEventListener('click', () => showDates(b.dataset.att)));
@@ -269,7 +285,7 @@ function feeView(body, root) {
   const P = S.msheet?.byId;
   const mon = new Date().getMonth();
   let list = S.members.filter((m) => m.inSheet && P?.[m.id]).map((m) => ({ m, f: P[m.id].fees || [] }));
-  if (hideLeft) list = list.filter(({ m }) => statusOf(m) !== 'left');
+  if (hideLeft) list = list.filter(({ m }) => !isLeft(m));
   const k = q.trim().toLowerCase();
   if (k) list = list.filter(({ m }) => m.name.toLowerCase().includes(k) || norm(m.name).includes(norm(k)) || (P[m.id].realName || '').includes(k));
   list.sort((a, b) => (Number(a.m.sheetNo) || 9999) - (Number(b.m.sheetNo) || 9999));
@@ -282,7 +298,7 @@ function feeView(body, root) {
       <div class="feesum">${[...Object.keys(FEE_KINDS), 'etc', 'none'].filter((x) => cnt[x]).map((x) => `<div><b>${cnt[x]}</b>${x === 'none' ? '<span class="fee f-none">-</span> 없음' : x === 'etc' ? '기타' : pill(FEE_KINDS[x].label)}</div>`).join('')}</div></section>
     <div class="mtools"><input class="search" type="search" placeholder="닉네임·이름 검색" value="${esc(q)}" data-q></div>
     <div class="card sheetwrap"><table class="grid fgrid"><thead><tr><th class="stick">닉네임</th><th>등급</th>${Array.from({ length: 12 }, (_, i) => `<th class="${i === mon ? 'on' : ''}">${i + 1}월</th>`).join('')}</tr></thead><tbody>
-      ${list.map(({ m, f }) => `<tr class="st-row-${statusOf(m)}"><td class="stick"><b>${esc(m.name)}</b></td><td>${m.grade ? `<span class="grade g-${GRADES.indexOf(m.grade)}">${esc(m.grade)}</span>` : ''}</td>
+      ${list.map(({ m, f }) => `<tr class="${isLeft(m) ? 'st-row-left' : ''}"><td class="stick"><b>${esc(m.name)}</b></td><td>${m.grade ? `<span class="grade g-${GRADES.indexOf(m.grade)}">${esc(m.grade)}</span>` : ''}</td>
         ${Array.from({ length: 12 }, (_, i) => `<td class="${i === mon ? 'cur' : ''}">${pill(f[i])}</td>`).join('')}</tr>`).join('')}
     </tbody></table></div>
     <p class="note small muted">◎ 연납 · ♥ 선납 · O 월납 · ▲ 장불 · ■ 면제 · - 없음 — 회원 시트의 1~12월 회비 칸 그대로예요. 고칠 때는 시트에서 고쳐 주세요.</p>`}`;
@@ -303,8 +319,6 @@ async function saveCell(el) {
     // 예전 닉네임은 별칭으로 남겨 카페 댓글·시트에서 계속 알아보게 함
     const aliases = [...new Set([...(m.aliases || []), m.name])].filter((a) => a !== v);
     await db.set('members/' + id, { name: v, aliases }, { merge: true }); toast('닉네임을 바꿨어요 (예전 닉네임은 별칭으로 남겨요)');
-  } else if (f === 'status') {
-    await db.set('members/' + id, { status: el.value, active: el.value !== 'rest' && el.value !== 'left' }, { merge: true }); toast(`${m.name} · ${MSTAT[el.value]}`);
   } else if (f === 'realName') {
     await db.set('members/' + id, { realName: el.value.trim() }, { merge: true }); toast('이름을 저장했어요');
   } else if (f === 'aliases') {
@@ -318,13 +332,14 @@ function addMember() {
     <label>닉네임 (카페 닉네임)<input name="name" required autofocus></label>
     <label>이름 <span class="muted small">(실명 · 선택)</span><input name="realName"></label>
     <label>별칭 <span class="muted small">(쉼표로 구분 · 선택)</span><input name="aliases"></label>
-    <label>유형<select name="status">${Object.entries(MSTAT).map(([s, l]) => `<option value="${s}" ${s === 'regular' ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    <label class="inline"><input type="checkbox" name="staff"> 운영진</label>
+    <p class="tiny muted">회원 시트에 있는 회원은 시트에 추가하면 자동으로 들어와요. 여기서는 시트에 없는 회원만 추가하세요.</p>
     <button class="btn">추가</button></form>`);
   el.querySelector('form').addEventListener('submit', async (e) => {
     e.preventDefault(); const f = e.target; const name = f.name.value.trim();
     if (taken(name)) return toast('같은 닉네임(또는 별칭)의 회원이 이미 있어요');
     await db.set('members/' + newId(), { name, realName: f.realName.value.trim(), aliases: f.aliases.value.split(',').map((s) => s.trim()).filter(Boolean),
-      status: f.status.value, active: f.status.value !== 'rest', createdAt: Date.now() });
+      staff: f.staff.checked, active: true, createdAt: Date.now() });
     toast(`${name} 님을 추가했어요`); close();
   });
 }
@@ -349,7 +364,7 @@ function bulkPaste() {
   });
   ok.addEventListener('click', async () => {
     const now = Date.now();
-    await Promise.all(names.map((name, i) => db.set('members/' + newId() + i, { name, aliases: [], status: 'regular', active: true, createdAt: now })));
+    await Promise.all(names.map((name, i) => db.set('members/' + newId() + i, { name, aliases: [], active: true, createdAt: now })));
     toast(`${names.length}명을 추가했어요`); close();
   });
 }
@@ -357,8 +372,8 @@ function bulkPaste() {
 function exportCSV(rows) {
   const qv = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const list = [...rows].sort((a, b) => koSort(a.name, b.name));
-  const csv = '﻿' + [['닉네임', '연번', '가입일자', '등급', '이름', '생년월일', '연락처', '운영진 이력', '장불여부', '장불시작일자', '장불해제일자', '생일', '유형', '별칭', '출석', '출석률(%)', '최근 출석'],
-    ...list.map((r) => [r.name, r.sheetNo, r.joined, r.grade, r.realName, r.birth, r.phone, (r.staffV ? 'V ' : '') + r.staffHist, r.absent, r.absFrom, r.absTo, r.bday, MSTAT[r.status], r.aliases, r.att, r.rate, r.last])]
+  const csv = '﻿' + [['닉네임', '등급', '운영진', '가입일자', '이름', '생년월일', '연락처', '운영진 이력', '장불여부', '장불 사유', '장불시작일자', '장불해제일자', '생일', '별칭', '출석', '출석률(%)', '최근 출석'],
+    ...list.map((r) => [r.name, r.grade, r.staff ? 'O' : '', r.joined, r.realName, r.birth, r.phone, (r.staffV ? 'V ' : '') + r.staffHist, r.absent, r.p?.absReason || '', r.absFrom, r.absTo, r.bday, r.aliases, r.att, r.rate, r.last])]
     .map((r) => r.map(qv).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
@@ -386,7 +401,7 @@ function attView(body, root) {
   const t = todayISO();
   const from = per === 'year' ? t.slice(0, 4) + '-01-01' : per === '3m' ? (() => { const d = new Date(); d.setMonth(d.getMonth() - 3); return d.toISOString().slice(0, 10); })() : '';
   const { total, rec } = attendance(from);
-  const rows = S.members.filter((m) => !['rest', 'left'].includes(statusOf(m)) || rec.has(m.id))
+  const rows = S.members.filter((m) => !isRest(m) || rec.has(m.id))
     .map((m) => ({ m, a: rec.get(m.id) || { att: 0, last: '', streak: 0 } }))
     .sort((x, y) => y.a.att - x.a.att || koSort(x.m.name, y.m.name));
   const avg = rows.length ? Math.round(rows.reduce((s, r) => s + r.a.att, 0) / rows.length * 10) / 10 : 0;
@@ -398,8 +413,8 @@ function attView(body, root) {
     </section>
     <section class="card"><ol class="att-list">${rows.map(({ m, a }, i) => {
       const rate = total ? Math.round(a.att / total * 100) : 0;
-      return `<li class="${['rest', 'left'].includes(statusOf(m)) ? 'rest' : ''}"><span class="rk">${i + 1}</span>
-        <div class="am"><b>${esc(m.name)}</b><small class="muted">${a.last ? `최근 ${fmtDate(a.last, false)}` : '출석 기록 없음'}${a.streak > 1 ? ` · 🔥 ${a.streak}경기 연속` : ''}${statusOf(m) === 'rest' ? ' · 휴면' : ''}</small></div>
+      return `<li class="${isRest(m) ? 'rest' : ''}"><span class="rk">${i + 1}</span>
+        <div class="am"><b>${esc(m.name)}</b><small class="muted">${a.last ? `최근 ${fmtDate(a.last, false)}` : '출석 기록 없음'}${a.streak > 1 ? ` · 🔥 ${a.streak}경기 연속` : ''}${isLeft(m) ? ' · 탈퇴' : m.active === false ? ' · 쉬는 회원' : ''}</small></div>
         <div class="att-rate"><div class="att-bar"><i style="width:${rate}%"></i></div><span>${a.att}회 · ${rate}%</span></div></li>`;
     }).join('')}</ol></section>`;
   body.querySelectorAll('[data-per]').forEach((b) => b.addEventListener('click', () => { per = b.dataset.per; render(root); }));

@@ -79,7 +79,9 @@ WD_FUTSAL 운영 흐름과 경기기록시스템(승률계산기) 조회 기능�
   - 서버(GitHub Actions): 3시간마다 — 아무도 앱을 안 열어도 반영됨 (아래 준비 1번 필요)
 - **항목**: 연번 · 가입일자 · 등급 · 닉네임 · 이름 · 생년월일 · 연락처 · 운영진 이력 · 장불여부 · 장불 사유 · 장불시작/해제일자 · 생일, [회비 현황] 탭에 1~12월 회비
 - **회원 맞추기**: 닉네임·별칭 → 시트 연번(닉네임이 바뀐 경우) → 한쪽 이름이 다른 쪽에 포함되는 유일한 짝(예: 우영 ↔ 우영우영우). 닉네임이 바뀌면 예전 닉네임은 별칭으로 남겨요. 시트 닉네임의 괄호 표기는 별칭으로 넣어요(스테이(stay) → 스테이, stay).
-- **등급 탈퇴회원** → 회원 유형 '탈퇴'(신청·이름 선택에서 빠짐, 기록은 남음). 회원 명단에서는 아래쪽 '탈퇴 회원'에 따로 모아 보여요. 시트에서 빠진 회원은 삭제하지 않고 '시트에 없음'으로 표시해요.
+- **회원 구분 = 시트 등급** (VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원). 예전 '회원 유형'(운영진/정회원/휴면)은 없앴고, **운영진은 회원 명단의 체크박스로 따로 지정**해요.
+- 탈퇴회원은 신청·이름 선택에서 빠지고(기록은 남음) 회원 명단 아래쪽 '탈퇴 회원'에 따로 모아 보여요.
+- 장불 사유는 장불여부에 마우스를 올리거나 누르면 보여요. 회원 목록에서 연번은 보이지 않아요(맞추기에는 계속 씀). 시트에서 빠진 회원은 삭제하지 않고 '시트에 없음'으로 표시해요.
 - **🔒 개인정보**: 앱 서버(Firestore)는 누구나 읽을 수 있어서 **이름·생년월일·연락처·장불 사유·생일·회비는 서버에 저장하지 않아요.** 시트 주소를 저장한 운영진 기기에서만 시트에서 바로 읽어 보여 줘요. 시트 주소도 공개 저장소에 적지 않고 기기(와 GitHub Secret)에만 둬요.
 
 **준비 1 — 서버 자동 반영 켜기 (한 번만)**: GitHub 저장소 → Settings → Secrets and variables → Actions → New repository secret
@@ -162,7 +164,7 @@ firestore.rules         Firestore 보안 규칙 (v0.1)
 ```
 meta/team               팀 이름 · 엠블럼 · 대표 색 · PIN · winRate · cafeUrl · legacySheet
                         format{teams, rounds, scoring(sum|each), teamMode(fixed|choose), fixedColors[], minPlayers, capacity, draft}
-members/{id}            name · aliases[] · active · status(staff|regular|rest|left)
+members/{id}            name · aliases[] · active · staff(운영진 체크)
                         회원 시트: sheetNo · joined · grade · staffV · staffHist · absent · absFrom · absTo · inSheet
 meta/memberSheet        회원 시트 반영 기록: checkedAt · changedAt · by(auto|manual|server) · count · last{created, updated, missing}
 matchdays/{id}          date · time · venue · note · format(그날만 변경 시) · mom[] · late{} · source('sheet')

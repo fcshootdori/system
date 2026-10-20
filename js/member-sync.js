@@ -69,7 +69,7 @@ export async function apply(pv, { by = 'manual', choices = {} } = {}) {
         id = ch; data = again.data; if (Object.keys(data).length) { writes.push(db.set('members/' + id, data, { merge: true })); updated++; }
       } else if ((id = S.members.find((m) => norm(m.name) === norm(r.nick))?.id)) {
         // 그사이 다른 기기·자동 반영이 먼저 추가했으면 새로 만들지 않음
-        data = { ...data }; delete data.status; delete data.active; delete data.source; delete data.aliases;
+        data = { ...data }; delete data.active; delete data.source; delete data.aliases;
         writes.push(db.set('members/' + id, data, { merge: true })); updated++;
       } else {
         id = newId() + o.ri;
