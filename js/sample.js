@@ -2,10 +2,10 @@
 //  · md.sample = true: 운영모드(또는 '이 기기에서 샘플 보기')에서만 보이고, 개인 기록·출석·회차에는 들어가지 않음
 //  · 참가자는 실제 활동 회원 중에서 무작위로 (회원 목록을 늘리지 않음, 모자라면 게스트로)
 //  · 한 번에 지우기: 샘플 경기와 그 경기 기록만 삭제
-import { S, mdPath } from './state.js?v=0.1.40';
-import { db, newId } from './store.js?v=0.1.40';
-import { draftState, rosters, teamColor, eventTeamsToTeams, closeTime } from './domain.js?v=0.1.40';
-import { shuffle, randomToken, todayISO } from './util.js?v=0.1.40';
+import { S, mdPath } from './state.js?v=0.1.41';
+import { db, newId } from './store.js?v=0.1.41';
+import { draftState, rosters, teamColor, eventTeamsToTeams, closeTime } from './domain.js?v=0.1.41';
+import { shuffle, randomToken, todayISO } from './util.js?v=0.1.41';
 
 export const SAMPLE_STAGES = [
   ['open', '신청 중', '회원이 참석·불참을 고르는 단계 (신청 마감 전 날짜)'],
@@ -34,11 +34,12 @@ function openSaturday() {
 }
 const rnd = (n) => Math.floor(Math.random() * n);
 
-export async function createSample({ stage = 'open', kind = 'normal', players = 26 } = {}) {
+export async function createSample({ stage = 'open', kind = 'normal', players = 26, me = null } = {}) {
   const now = Date.now();
   const id = 'sample_' + newId();
   const real = shuffle(S.members.filter((m) => m.active !== false && m.status !== 'left' && m.inSheet !== false));
-  const ids = real.slice(0, players + 4).map((m) => m.id);
+  let ids = real.slice(0, players + 4).map((m) => m.id);
+  if (me && S.members.some((m) => m.id === me)) ids = [me, ...ids.filter((x) => x !== me)].slice(0, players + 4);   // 체험판: 로그인한 회원이 1팀 주장
   const guests = {};
   while (ids.length < players + 4) { const g = 'g_s' + ids.length; guests[g] = { name: `게스트${ids.length + 1}`, host: '' }; ids.push(g); }
   const goIn = ids.slice(0, players), goOut = ids.slice(players, players + 2), goPend = ids.slice(players + 2, players + 3);

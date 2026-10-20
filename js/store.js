@@ -1,14 +1,16 @@
 // 저장소 계층 — 데모(localStorage) / Firebase(Firestore) 공통 인터페이스
 //   경로 규칙: 'collection/docId' 또는 'collection/docId/sub/subId'
-import { FIREBASE } from './config.js?v=0.1.40';
+import { FIREBASE } from './config.js?v=0.1.41';
 
 const clean = (o) => JSON.parse(JSON.stringify(o ?? null));
 export const newId = () =>
   Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
 // ───────────── 데모 모드 ─────────────
-function localBackend() {
-  const KEY = 'teamapp:db:v1';
+// 데모 체험(베타): 실제 데이터를 이 기기에 복사해 두고 그 안에서만 마음껏 시험 — 서버에는 아무것도 쓰지 않음
+export const SANDBOX_KEY = 'teamapp:sandbox:db';
+export const inSandbox = () => { try { return localStorage.getItem('teamapp:sandbox') === '1'; } catch { return false; } };
+function localBackend(KEY = 'teamapp:db:v1', mode = 'demo') {
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
   let data = load();
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { console.warn(e); } };
@@ -30,7 +32,7 @@ function localBackend() {
   const sub = (map, k, cb) => { if (!map.has(k)) map.set(k, new Set()); map.get(k).add(cb); return () => map.get(k).delete(cb); };
 
   return {
-    mode: 'demo',
+    mode,
     async get(path) { return data[path] ? { id: path.split('/').pop(), ...clean(data[path]) } : null; },
     async list(col) { return listOf(col); },
     async set(path, value, { merge = false } = {}) {
@@ -96,6 +98,7 @@ async function firebaseBackend(cfg) {
 
 export let db = null;
 export async function initStore() {
+  if (inSandbox()) { db = localBackend(SANDBOX_KEY, 'sandbox'); return db; }
   if (FIREBASE.apiKey && FIREBASE.projectId) {
     try { db = await firebaseBackend(FIREBASE); return db; }
     catch (e) { console.error('Firebase 연결 실패 → 데모 모드로 전환', e); }

@@ -1,11 +1,12 @@
-import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.40';
-import { S, memberById, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.40';
-import { db, newId } from '../store.js?v=0.1.40';
-import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js?v=0.1.40';
-import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js?v=0.1.40';
-import { esc, toast, fileToDataUrl, todayISO, byName, fmtDate } from '../util.js?v=0.1.40';
-import { modal, empty } from '../ui.js?v=0.1.40';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.40';
+import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.41';
+import { S, me, memberById, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.41';
+import { betaOn, inSandbox, enterSandbox } from '../sandbox.js?v=0.1.41';
+import { db, newId } from '../store.js?v=0.1.41';
+import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js?v=0.1.41';
+import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js?v=0.1.41';
+import { esc, toast, fileToDataUrl, todayISO, byName, fmtDate } from '../util.js?v=0.1.41';
+import { modal, empty } from '../ui.js?v=0.1.41';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.41';
 
 export function render(root) { return settings(root); }
 
@@ -44,7 +45,7 @@ function settings(root) {
   </section>
 
   <section class="card"><h2>데이터</h2>
-    <p class="muted small">저장 방식: <b>${db.mode === 'demo' ? '데모 모드 (이 브라우저에만 저장)' : 'Firebase (모든 회원 공유)'}</b> · ${APP_NAME} Ver.${APP_VERSION}</p>
+    <p class="muted small">저장 방식: <b>${db.mode === 'sandbox' ? '데모 체험판 (이 기기에만 · 실제 기록과 별개)' : db.mode === 'demo' ? '데모 모드 (이 브라우저에만 저장)' : 'Firebase (모든 회원 공유)'}</b> · ${APP_NAME} Ver.${APP_VERSION}</p>
     <div class="row wrap">
       <button class="btn ghost" data-backup>백업 파일 받기</button>
       ${db.mode === 'demo' ? `<label class="btn ghost file">백업 복원<input type="file" accept="application/json" data-restore hidden></label>
@@ -197,7 +198,12 @@ function betaCard() {
   const list = sampleList().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   const stLabel = (m) => (m.status === 'played' ? '경기 결과까지' : m.status === 'teams' ? '팀 확정' : ['drafting', 'captains'].includes(m.status) ? '드래프트 중' : m.status === 'closed' ? '신청 마감' : '신청 중');
   const kLabel = (m) => (m.event ? (m.eventMode === 'captains' ? '이벤트(주장만)' : '이벤트(팀원까지)') : '일반');
-  return `<section class="card beta"><h2>🧪 베타 테스트 <small>샘플 경기</small></h2>
+  const on = betaOn();
+  return `<section class="card beta"><h2>🧪 베타 테스트</h2>
+    <label class="switch-row"><span><b>베타 데모 기능</b><small class="muted">회원이 '데모 체험'으로 모든 기능(신청·주장 드래프트·포지션·경기 기록·결과)을 실제 기록과 상관없이 직접 해 볼 수 있어요. 끄면 회원 화면에서 데모 입구와 샘플 경기가 사라져요.</small></span>
+      <input type="checkbox" class="switch" data-betaon ${on ? 'checked' : ''} ${inSandbox() ? 'disabled' : ''}></label>
+    ${on ? `<div class="row wrap beta-demo">${inSandbox() ? '<span class="small">지금 이 기기는 <b>데모 체험판</b>이에요. 위쪽 띠의 [체험 끝내기]로 돌아가요.</span>' : '<button class="btn ghost" data-sbx>이 기기에서 데모 체험 시작</button>'}</div>
+    <h3 class="bh">샘플 경기 <small class="muted">실제 앱에 만드는 시험 경기</small></h3>
     <p class="muted small">원하는 단계까지 진행된 샘플 경기를 만들어 신청 → 주장 → 드래프트 → 팀 확정 → 경기 → 결과를 직접 시험해 보세요.
       샘플 경기는 <b>운영모드에서만</b> 보이고(회원 화면은 '이 기기에서 샘플 보기'를 켠 기기만), <b>개인 기록·출석·회차에는 들어가지 않아요.</b> 참가자는 실제 회원 중에서 무작위로 골라요.</p>
     <div class="fld"><span class="fl">시작 단계</span><div class="bopts">${SAMPLE_STAGES.map(([k, l, d]) => { const na = bKind === 'teams' && k === 'drafting';
@@ -207,15 +213,21 @@ function betaCard() {
     ${list.length ? `<h3 class="bh">만든 샘플 ${list.length}개</h3><ul class="list blist">${list.map((m) => `<li><span><b>${esc(stLabel(m))}</b> <small class="muted">${esc(kLabel(m))} · ${fmtDate(m.date, false)}</small></span>
       <button class="btn ghost sm" data-bgo="${m.id}">경기 메뉴에서 보기</button></li>`).join('')}</ul>
       <div class="row wrap"><button class="btn ghost danger" data-bclear>샘플 모두 지우기</button></div>` : ''}
-    <label class="chk"><input type="checkbox" data-bdevice ${samplesOnDevice() ? 'checked' : ''}><span>이 기기에서는 운영모드를 꺼도 샘플 경기 보기<small class="muted">회원·주장 화면 시험용</small></span></label>
+    <label class="chk"><input type="checkbox" data-bdevice ${samplesOnDevice() ? 'checked' : ''}><span>이 기기에서는 운영모드를 꺼도 샘플 경기 보기<small class="muted">회원·주장 화면 시험용</small></span></label>` : ''}
   </section>`;
 }
 function bindBeta(root) {
+  root.querySelector('[data-betaon]')?.addEventListener('change', async (e) => {
+    const v = e.target.checked;
+    await db.set('meta/team', { betaDemo: v }, { merge: true });
+    toast(v ? '베타 데모 기능을 켰어요' : '베타 데모 기능을 껐어요 — 회원 화면에서 데모 입구가 사라져요');
+  });
+  root.querySelector('[data-sbx]')?.addEventListener('click', () => { if (confirm('이 기기에서 데모 체험판으로 들어갈까요? 체험판에서 한 일은 실제 기록에 반영되지 않아요.')) enterSandbox(); });
   root.querySelectorAll('[data-bstage]').forEach((b) => b.addEventListener('click', () => { bStage = b.dataset.bstage; settings(root); }));
   root.querySelectorAll('[data-bkind]').forEach((b) => b.addEventListener('click', () => { bKind = b.dataset.bkind; if (bKind === 'teams' && bStage === 'drafting') bStage = 'teams'; settings(root); }));
   root.querySelector('[data-bmake]')?.addEventListener('click', async (e) => {
     e.target.disabled = true;
-    try { const id = await createSample({ stage: bStage, kind: bKind }); toast('샘플 경기를 만들었어요 — 경기 메뉴에서 이어서 진행해 보세요'); S.sel = id; S.step = null; location.hash = '#/run'; }
+    try { const id = await createSample({ stage: bStage, kind: bKind, me: inSandbox() ? me.id : null }); toast('샘플 경기를 만들었어요 — 경기 메뉴에서 이어서 진행해 보세요'); S.sel = id; S.step = null; location.hash = '#/run'; }
     catch (err) { console.error(err); toast('샘플을 만들지 못했어요: ' + (err.message || err)); e.target.disabled = false; }
   });
   root.querySelectorAll('[data-bgo]').forEach((b) => b.addEventListener('click', () => { S.sel = b.dataset.bgo; S.step = null; location.hash = '#/run'; }));

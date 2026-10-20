@@ -2,8 +2,8 @@
 //  · 경기 = 경기일 하나 (5라운드 합산 1경기). 핑크(A) vs 블루(B)
 //  · 승점 = 승×3 + 무, 승률 = 승 ÷ (승+패) (무승부 제외)
 //  · 승률·득점·MOM 순위는 RANK_MIN 경기 이상 출전한 회원끼리, 승점·출전 순위는 출전한 회원 전체
-import { S, memberById, nameOf } from './state.js?v=0.1.40';
-import { rosters, resultUnits, totals, teamColor, teamName, fmtOf } from './domain.js?v=0.1.40';
+import { S, memberById, nameOf } from './state.js?v=0.1.41';
+import { rosters, resultUnits, totals, teamColor, teamName, fmtOf } from './domain.js?v=0.1.41';
 
 export const RANK_MIN = 15;
 export const TEAM = { A: '핑크', B: '블루' };
@@ -29,7 +29,8 @@ function sides(md) {
 
 // 기록에 들어가는 경기일 (샘플·취소 제외, 끝난 라운드가 있는 2팀 경기)
 export function recordDays() {
-  return (S.allMatchdays || S.matchdays).filter((m) => !m.sample && !m.cancelled && rosters(m).length >= 2
+  const sbx = localStorage.getItem('teamapp:sandbox') === '1';   // 데모 체험판에서는 체험 경기 결과도 기록에 넣어 확인
+  return (S.allMatchdays || S.matchdays).filter((m) => (!m.sample || sbx) && !m.cancelled && rosters(m).length >= 2
     && S.games.some((g) => g.matchdayId === m.id && g.done))
     .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.createdAt || 0) - (b.createdAt || 0));
 }

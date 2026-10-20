@@ -101,7 +101,6 @@ textarea { resize: vertical; }
 .team-card header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .team-card ol { list-style: none; padding: 0; margin: 0; }
 .team-card li { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--soft); font-weight: 600; font-size: 14px; }
-.cap { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; background: var(--ink); color: #fff; font-size: 10px; }
 select.move { margin-left: auto; width: auto; padding: 2px 4px; font-size: 12px; }
 .cap-links > div { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--soft); font-weight: 600; }
 .tbl-wrap { overflow-x: auto; margin: 0 -4px; }
@@ -1300,3 +1299,20 @@ b.rec-score { display: block; font-family: var(--num); font-weight: 400; font-si
 /* 화면 확대·축소 막기: 두 번 탭 확대 없애기 + 아이폰은 글자 칸을 누를 때 16px 미만이면 자동 확대되므로 16px로 */
 html { touch-action: manipulation; }
 @supports (-webkit-touch-callout: none) { input, select, textarea { font-size: 16px !important; } }
+/* 베타 데모 체험 */
+.sbx-bar { position: relative; z-index: 25; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 12px; padding-top: calc(7px + env(safe-area-inset-top)); background: repeating-linear-gradient(135deg, #7c3aed 0 14px, #6d28d9 14px 28px); color: #fff; font-size: 12.5px; line-height: 1.35; }
+.sbx-bar b { color: #fde68a; }
+.sbx-bar button { flex: none; border: 0; border-radius: 99px; background: #fff; color: #5b21b6; font: 800 12.5px var(--font); padding: 6px 11px; cursor: pointer; }
+body.sandbox #topbar { top: 0; }
+body.sandbox #demo-banner { display: none; }
+.beta-entry { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1.5px dashed #8b5cf6; background: #faf7ff; }
+.beta-entry p { margin: 4px 0 0; }
+.beta-entry.sbx { border-style: solid; }
+.switch-row { display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 10px 0 12px; border-bottom: 1px solid var(--line); margin-bottom: 10px; cursor: pointer; }
+.switch-row > span { display: grid; gap: 3px; font-size: 15px; } .switch-row small { font-size: 12.5px; font-weight: 500; line-height: 1.45; }
+input.switch { appearance: none; -webkit-appearance: none; flex: none; width: 52px; height: 30px; min-height: 0; padding: 0; border-radius: 99px; background: #cbd5e1; border: 0; position: relative; cursor: pointer; transition: background .2s; margin-top: 2px; }
+input.switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s; }
+input.switch:checked { background: #16a34a; } input.switch:checked::after { transform: translateX(22px); }
+input.switch:disabled { opacity: .5; }
+.beta-demo { margin-bottom: 6px; }
+.lg-demo { margin-top: 10px; background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.35); }

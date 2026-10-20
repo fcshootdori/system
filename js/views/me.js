@@ -1,10 +1,12 @@
 // 내 정보 — 내 이름, 내 기록 요약, 앱 정보, 운영모드 입구 (WD_FUTSAL 내 정보와 같은 위치)
-import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.40';
-import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.40';
-import { modal } from '../ui.js?v=0.1.40';
-import { toast } from '../util.js?v=0.1.40';
-import { allStats, pct } from '../domain.js?v=0.1.40';
-import { esc } from '../util.js?v=0.1.40';
+import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.41';
+import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.41';
+import { modal } from '../ui.js?v=0.1.41';
+import { toast } from '../util.js?v=0.1.41';
+import { allStats, pct } from '../domain.js?v=0.1.41';
+import { esc } from '../util.js?v=0.1.41';
+import { betaOn, inSandbox, enterSandbox, exitSandbox } from '../sandbox.js?v=0.1.41';
+import { createSample } from '../sample.js?v=0.1.41';
 
 export function render(root) {
   const m = memberById(me.id);
@@ -28,9 +30,13 @@ export function render(root) {
       <p class="muted small">안드로이드 크롬: 메뉴 ⋮ → <b>홈 화면에 추가</b> · 아이폰 사파리: 공유 → <b>홈 화면에 추가</b> 하면 앱처럼 아이콘이 생겨요.</p>
       ${S.team.cafeUrl ? `<a class="btn ghost full" href="${esc(S.team.cafeUrl)}" target="_blank" rel="noopener">다음 카페 열기 ↗</a>` : ''}
     </section>
-    ${(S.allMatchdays || []).some((x) => x.sample) ? `<section class="card beta">
+    ${betaOn() || inSandbox() ? `<section class="card beta">
       <h2>🧪 베타 테스트</h2>
-      <label class="chk"><input type="checkbox" data-samples ${samplesOnDevice() ? 'checked' : ''}><span>이 기기에서 샘플 경기 보기<small class="muted">신청·드래프트 시험용, 기록에는 안 들어가요</small></span></label>
+      ${inSandbox() ? `<p class="small">지금 <b>데모 체험판</b>이에요. 여기서 한 일은 이 기기에만 남고 실제 기록에는 반영되지 않아요. 운영모드 PIN은 <b>0000</b>.</p>
+        <div class="row wrap"><button class="btn ghost" data-sbxnew>체험 경기 새로 만들기</button><button class="btn danger-fill" data-sbxexit>체험 끝내기</button></div>`
+      : `<p class="small muted">모든 기능(신청·주장 드래프트·포지션·경기 기록·결과)을 실제 기록과 상관없이 직접 해 볼 수 있어요.</p>
+        <button class="btn full" data-sbx>데모 체험 시작</button>
+        ${(S.allMatchdays || []).some((x) => x.sample) ? `<label class="chk"><input type="checkbox" data-samples ${samplesOnDevice() ? 'checked' : ''}><span>이 기기에서 샘플 경기 보기<small class="muted">운영진이 만든 시험 경기 · 기록에는 안 들어가요</small></span></label>` : ''}`}
     </section>` : ''}
     <section class="card op-entry">
       <h2>운영진</h2>
@@ -38,6 +44,13 @@ export function render(root) {
       <button class="btn ghost full" data-op>운영모드</button>
     </section>`;
   root.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => { location.hash = '#/login'; }));
+  root.querySelector('[data-sbx]')?.addEventListener('click', () => { if (confirm('데모 체험판으로 들어갈까요? 지금 기록을 이 기기에 복사해서 시험하고, 실제 기록에는 반영되지 않아요.')) enterSandbox(); });
+  root.querySelector('[data-sbxexit]')?.addEventListener('click', () => { if (confirm('데모 체험을 끝내고 실제 앱으로 돌아갈까요? 체험판에서 한 일은 지워져요.')) exitSandbox(); });
+  root.querySelector('[data-sbxnew]')?.addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    for (const [stage, kind] of [['open', 'normal'], ['drafting', 'normal'], ['teams', 'normal'], ['played', 'normal'], ['open', 'teams']]) await createSample({ stage, kind, me: me.id || null });
+    toast('체험 경기 5개를 새로 만들었어요'); e.target.disabled = false;
+  });
   root.querySelector('[data-samples]')?.addEventListener('change', (e) => { setSamplesOnDevice(e.target.checked); toast(e.target.checked ? '샘플 경기를 보여요' : '샘플 경기를 숨겨요'); });
   root.querySelector('[data-logout]')?.addEventListener('click', () => {
     if (!confirm('로그아웃할까요? 다음에는 닉네임과 비밀번호를 다시 입력해야 해요.')) return;

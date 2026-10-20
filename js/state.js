@@ -1,7 +1,7 @@
 // 앱 전역 상태 — 저장소를 구독해 화면이 항상 최신 데이터를 보도록 함
-import { db } from './store.js?v=0.1.40';
-import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.40';
-import { byName } from './util.js?v=0.1.40';
+import { db } from './store.js?v=0.1.41';
+import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.41';
+import { byName } from './util.js?v=0.1.41';
 
 export const S = {
   team: { ...DEFAULT_TEAM },
@@ -40,7 +40,7 @@ export function startSync() {
   db.watchDoc('meta/team', (d) => {
     S.team = { ...DEFAULT_TEAM, ...(d || {}), format: { ...DEFAULT_FORMAT, ...(d?.format || {}) },
       legacySheet: { ...DEFAULT_TEAM.legacySheet, ...(d?.legacySheet || {}) } };
-    emit();
+    applySampleFilter(); emit();
   });
   db.watchCol('members', (list) => {
     S.members = list.map((m) => (KNOWN_ALIASES[m.name] ? { ...m, aliases: [...new Set([...(m.aliases || []), ...KNOWN_ALIASES[m.name]])] } : m)).sort(byName);
@@ -55,7 +55,7 @@ export function startSync() {
 
 // 베타 테스트 샘플 경기(md.sample): 운영모드이거나 '이 기기에서 샘플 보기'를 켠 기기에서만 보임. 기록·출석·회차에는 들어가지 않음
 export const samplesOnDevice = () => { try { return localStorage.getItem('teamapp:samples') === '1'; } catch { return false; } };
-export const samplesVisible = () => S.operator || samplesOnDevice();
+export const samplesVisible = () => S.operator || localStorage.getItem('teamapp:sandbox') === '1' || (S.team.betaDemo !== false && samplesOnDevice());
 export function applySampleFilter() {
   const all = S.allMatchdays || [];
   S.matchdays = samplesVisible() ? all : all.filter((m) => !m.sample);
