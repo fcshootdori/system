@@ -1,13 +1,13 @@
 // 내 정보 — 내 이름, 내 기록 요약, 앱 정보, 운영모드 입구 (WD_FUTSAL 내 정보와 같은 위치)
-import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js';
-import { changePin, saveSession, isRemembered, validPin } from '../auth.js';
-import { modal } from '../ui.js';
-import { toast } from '../util.js';
-import { db } from '../store.js';
-import { APP_NAME, APP_VERSION } from '../config.js';
-import { allStats, pct } from '../domain.js';
-import { esc } from '../util.js';
-import { pickMe } from './pickme.js';
+import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.29';
+import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.29';
+import { modal } from '../ui.js?v=0.1.29';
+import { toast } from '../util.js?v=0.1.29';
+import { db } from '../store.js?v=0.1.29';
+import { APP_NAME, APP_VERSION } from '../config.js?v=0.1.29';
+import { allStats, pct } from '../domain.js?v=0.1.29';
+import { esc } from '../util.js?v=0.1.29';
+import { pickMe } from './pickme.js?v=0.1.29';
 
 export function render(root) {
   const m = memberById(me.id);

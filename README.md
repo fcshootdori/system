@@ -186,3 +186,4 @@ games/{id}              matchdayId · date · order · round · a · b · sa · 
 
 - 0.x는 정식 출시 전 버전, 수정마다 끝자리(0.1.1, 0.1.2…)를 올리고 "버전업" 때 0.2로 올림
 - 버전 표기: `js/config.js`의 `APP_VERSION`
+- 버전을 올린 뒤 `node scripts/stamp.mjs` 실행 → 모든 파일 주소에 `?v=버전` 꼬리표 (업데이트 직후 새 파일·예전 파일이 섞여 버튼이 안 먹는 캐시 꼬임 방지)

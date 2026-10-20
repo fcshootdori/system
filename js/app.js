@@ -3,29 +3,29 @@
 //   · 일반 회원: 홈 · 일정 · ⚽경기모드 · 경기결과 · 내 정보
 //   · 운영모드: 일정 · 경기 · 공지 · 회원 · 설정
 //   · 주장: 오른쪽 위 👑 드래프트 버튼으로 입장
-import { APP_NAME, APP_VERSION } from './config.js';
-import { initStore, db } from './store.js';
-import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go } from './state.js';
-import { esc, toast } from './util.js';
-import { modal, fitBoxes } from './ui.js';
+import { APP_NAME, APP_VERSION } from './config.js?v=0.1.29';
+import { initStore, db } from './store.js?v=0.1.29';
+import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go } from './state.js?v=0.1.29';
+import { esc, toast } from './util.js?v=0.1.29';
+import { modal, fitBoxes } from './ui.js?v=0.1.29';
 
-import * as home from './views/home.js';
-import * as schedule from './views/schedule.js';
-import * as matchmode from './views/matchmode.js';
-import * as results from './views/results.js';
-import * as myinfo from './views/me.js';
-import * as apply from './views/apply.js';
-import * as draft from './views/draft.js';
-import * as games from './views/games.js';
-import * as records from './views/records.js';
-import * as run from './views/run.js';
-import * as notice from './views/notice.js';
-import * as admin from './views/admin.js';
-import * as membersView from './views/members.js';
-import * as loginView from './views/login.js';
-import { loadSession, saveSession, verify } from './auth.js';
-import { startAutoSync } from './member-sync.js';
-import { closePassed, closeTime, teamEvent } from './domain.js';
+import * as home from './views/home.js?v=0.1.29';
+import * as schedule from './views/schedule.js?v=0.1.29';
+import * as matchmode from './views/matchmode.js?v=0.1.29';
+import * as results from './views/results.js?v=0.1.29';
+import * as myinfo from './views/me.js?v=0.1.29';
+import * as apply from './views/apply.js?v=0.1.29';
+import * as draft from './views/draft.js?v=0.1.29';
+import * as games from './views/games.js?v=0.1.29';
+import * as records from './views/records.js?v=0.1.29';
+import * as run from './views/run.js?v=0.1.29';
+import * as notice from './views/notice.js?v=0.1.29';
+import * as admin from './views/admin.js?v=0.1.29';
+import * as membersView from './views/members.js?v=0.1.29';
+import * as loginView from './views/login.js?v=0.1.29';
+import { loadSession, saveSession, verify } from './auth.js?v=0.1.29';
+import { startAutoSync } from './member-sync.js?v=0.1.29';
+import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.29';
 
 const MEMBER_TABS = [['home', '홈', '⌂'], ['sched', '일정', '▦'], ['mm', '경기모드', '⚽'], ['results', '경기결과', '▤'], ['me', '내 정보', '☺']];
 const OP_TABS = [['plan', '일정', '▦'], ['run', '경기', '⚑'], ['notice', '공지', '✉'], ['members', '회원', '☺'], ['settings', '설정', '⚙']];
@@ -140,6 +140,16 @@ function autoClose() {
       .catch(() => closing.delete('r' + md.id));
   });
 }
+
+// 저장·처리 중 오류가 나면 조용히 넘어가지 않고 알려 줌 (서버 거절·권한 문제 등)
+const errMsg = (e) => {
+  const m = String(e?.code || e?.message || e || '');
+  if (/permission/i.test(m)) return '권한이 없어 저장하지 못했어요 (Firestore 규칙 확인)';
+  if (/unavailable|network|offline|Failed to fetch/i.test(m)) return '인터넷 연결이 불안정해 저장하지 못했어요. 잠시 뒤 다시 눌러 주세요';
+  return '처리하지 못했어요: ' + m.slice(0, 120);
+};
+window.addEventListener('unhandledrejection', (ev) => { console.error(ev.reason); toast(errMsg(ev.reason)); });
+window.addEventListener('error', (ev) => { if (ev?.error) { console.error(ev.error); toast(errMsg(ev.error)); } });
 
 (async function boot() {
   const qs = new URLSearchParams(location.search);

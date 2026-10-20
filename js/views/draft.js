@@ -1,11 +1,11 @@
-import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js';
-import { db } from '../store.js';
-import { TEAM_COLORS } from '../config.js';
-import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, closeTime, closePassed, closeLabel } from '../domain.js';
-import { TEAM_COLORS as TC } from '../config.js';
-import { modal } from '../ui.js';
-import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js';
-import { empty, colorChip, teamLabel, teamChip } from '../ui.js';
+import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.29';
+import { db } from '../store.js?v=0.1.29';
+import { TEAM_COLORS } from '../config.js?v=0.1.29';
+import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.29';
+import { TEAM_COLORS as TC } from '../config.js?v=0.1.29';
+import { modal } from '../ui.js?v=0.1.29';
+import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.29';
+import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.29';
 
 let lastCtx = {};
 export function render(root, ctx = {}) {
@@ -70,14 +70,19 @@ function bindCaptainPicker(root, md) {
   root.querySelectorAll('[data-up]').forEach((b) => b.addEventListener('click', () => { const i = +b.dataset.up; [capSel[i - 1], capSel[i]] = [capSel[i], capSel[i - 1]]; rer(); }));
   root.querySelectorAll('[data-down]').forEach((b) => b.addEventListener('click', () => { const i = +b.dataset.down; [capSel[i + 1], capSel[i]] = [capSel[i], capSel[i + 1]]; rer(); }));
   root.querySelector('[data-shuffle]')?.addEventListener('click', () => { capSel = shuffle(capSel); rer(); });
-  root.querySelector('[data-start]')?.addEventListener('click', async () => {
-    await db.tx(mdPath(md.id), (cur) => {
+  root.querySelector('[data-start]')?.addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget; btn.disabled = true;
+    const early = !!closeTime(md) && !closePassed(md);
+    const ok = await db.tx(mdPath(md.id), (cur) => {
+      if (!cur) return null;
+      if (early) cur.earlyTeams = true;   // 운영진이 마감 전에 일부러 시작
       cur.captains = capSel.map((id) => ({ id, token: randomToken(), color: null }));
       cur.teamNames = capSel.map((id) => `${nameOf(id, cur)}팀`);   // 기본 팀 이름: 주장 닉네임 + 팀 (운영진이 바꿀 수 있음)
       cur.picks = []; cur.teams = []; cur.order = null; cur.cards = null; cur.pending = null; cur.status = 'drafting'; cur.draftStarted = true;
       return cur;
-    });
-    capSel = []; toast('드래프트를 시작했어요 — 팀 색을 배정해 주세요');
+    }).catch((e) => { btn.disabled = false; throw e; });
+    if (!ok) { btn.disabled = false; return toast('경기를 찾지 못했어요 — 화면을 새로 고쳐 주세요'); }
+    capSel = []; toast('드래프트를 시작했어요 — 주장들이 팀 색을 고를 차례예요');
   });
 }
 
