@@ -127,7 +127,7 @@ const KIND_OPTS = [['in', '참석'], ['tentative', '참석(미정)'], ['pending'
 function cafeImport(md) {
   const { el, close } = modal('카페 댓글로 참석자 가져오기', `
     <ol class="howto small">
-      <li>카페 신청 글에서 댓글 전체를 길게 눌러 선택 → 복사</li>
+      <li>카페 신청 글에서 댓글 전체를 선택해 복사 (PC·모바일 어느 쪽에서 복사해도 돼요)</li>
       <li>아래에 붙여넣고 <b>분석하기</b> (댓글이 여러 페이지면 이어서 붙여넣기)</li>
       <li>회원 일치 여부를 확인하고 <b>참석자 확정</b></li>
     </ol>
@@ -140,7 +140,7 @@ function cafeImport(md) {
   el.querySelector('[data-parse]').addEventListener('click', () => {
     const out = el.querySelector('[data-out]');
     const { rows, sections } = parseCafeComments(el.querySelector('[data-src]').value, S.members);
-    if (!rows.length) { out.innerHTML = `<p class="err">댓글을 찾지 못했어요. 닉네임 앞의 "*" 표시와 작성 시간이 함께 복사됐는지 확인해 주세요.</p>`; return; }
+    if (!rows.length) { out.innerHTML = `<p class="err">댓글을 찾지 못했어요. 닉네임과 작성 시간(예: 26.10.18 10:36)이 함께 복사됐는지 확인해 주세요.</p>`; return; }
     const groups = [...new Set(rows.map((r) => r.section))];
     out.innerHTML = `
       <div class="sum" data-sum></div>

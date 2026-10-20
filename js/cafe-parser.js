@@ -5,13 +5,18 @@
 //   · 회원은 그 머리 댓글에 대댓글로 참석 여부를 남김 (참석, 참, 참스억, 불 … 표현은 자유)
 //   · 복사하면 들여쓰기가 사라지므로, 머리 댓글 다음부터 다음 머리 댓글 전까지를 그 구역 댓글로 봄
 //
-//  댓글 한 개:  "* 닉네임" → ("작성자") 작성시간 [새글] → 내용 → "답글" → "기능 더보기"
+//  댓글 한 개(모바일 복사): "* 닉네임" → ("작성자") 작성시간 [새글] → 내용 → "답글" → "기능 더보기"
+//  댓글 한 개(PC 복사):     "닉네임(작성자) 작성시간 [새글]" → 내용 → "답글기능 더보기"
 //  작성시간:    26.10.18 10:14 (날짜+시간) 또는 12:00 (오늘 단 댓글은 시간만)
 export const norm = (s) => String(s || '').toLowerCase().replace(/[^0-9a-z가-힣]/g, '');
 
 const TIME_FULL = /(\d{2,4})[.\-/]\s?(\d{1,2})[.\-/]\s?(\d{1,2})\.?\s+(\d{1,2}):(\d{2})/;
 const TIME_ONLY = /(?:^|\s)(\d{1,2}):(\d{2})(?:\s|$)/;
-const NOISE = /^(답글|답글쓰기|기능 더보기|신고|수정|삭제|좋아요|더보기|베스트|new|새글|이전 목록으로 이동|다음 목록으로 이동|\d+)$/i;
+const NOISE = /^(답글|답글쓰기|기능 더보기|답글\s*기능\s*더보기|신고|수정|삭제|좋아요|더보기|베스트|new|새글|이전 목록으로 이동|다음 목록으로 이동|\d+)$/i;
+// PC에서 복사한 형식: 닉네임과 작성시간이 한 줄에 붙어 있음
+//   "라미란26.10.18 10:36" · "진이작성자 26.10.18 10:14" · "치즈12:00 새글"
+//   날짜는 항상 yy.mm.dd(두 자리씩)라서 "성이9826.10.18 10:36" → 성이98 / 26.10.18 로 나뉨
+const HEAD_INLINE = /^(.+?)\s*(작성자)?\s*((\d{2})\.(\d{2})\.(\d{2})\s+(\d{1,2}):(\d{2})|(\d{1,2}):(\d{2}))(\s*새글)?\s*$/;
 
 function parseTime(line, baseDate = new Date()) {
   let m = line.match(TIME_FULL);
@@ -28,12 +33,27 @@ function splitComments(text, baseDate) {
   const out = [];
   let cur = null;
   const push = () => { if (cur && cur.at != null) out.push(cur); cur = null; };
+  let boundary = true;
   lines.forEach((raw) => {
     if (!raw) return;
+    const wasBoundary = boundary; boundary = false;
+    const boundaryNow = wasBoundary;
     const bullet = raw.match(/^[*•·∙●○-]\s*(.+)$/);
-    if (bullet) {
+    const line = bullet ? bullet[1].trim() : raw;
+    const inl = line.match(HEAD_INLINE);
+    const waitingTime = cur && cur.at == null && !bullet;      // 모바일 형식: 닉네임 다음 줄이 시간
+    const nm = inl ? inl[1].trim() : '';
+    // 댓글 첫 줄로 인정: 첫 줄이거나, "답글기능 더보기" 바로 다음이거나, 날짜까지 붙은 형식일 때
+    //  (댓글 내용 "참석 10:00"처럼 시간으로 끝나는 줄을 새 댓글로 잘못 읽지 않도록)
+    const headOk = !cur || boundaryNow || (inl && inl[4] != null);
+    if (inl && !waitingTime && headOk && nm && !/^(작성자|답글|기능 더보기|새글)$/.test(nm)) {   // 숫자 닉네임(3232)도 허용   // 닉네임+시간이 한 줄 (PC 복사)
       push();
-      cur = { name: bullet[1].trim(), author: false, at: null, body: [] };
+      cur = { name: nm, author: !!inl[2], at: parseTime(inl[3], baseDate), body: [] };
+      return;
+    }
+    if (bullet) {                                             // "* 닉네임" 다음 줄에 시간 (모바일 복사)
+      push();
+      cur = { name: line, author: false, at: null, body: [] };
       return;
     }
     if (!cur) return;
@@ -42,7 +62,7 @@ function splitComments(text, baseDate) {
       cur.at = parseTime(raw, baseDate);
       return;
     }
-    if (NOISE.test(raw)) return;
+    if (NOISE.test(raw)) { boundary = true; return; }
     if (cur.at != null) cur.body.push(raw);
   });
   push();
