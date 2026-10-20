@@ -23,4 +23,6 @@ const pre = ['<!-- preload:start -->', ...mods.map((m) => `  <link rel="modulepr
   ...['app', 'firestore', 'auth'].map((x) => `  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-${x}.js" crossorigin>`), '  <!-- preload:end -->'].join('\n');
 h = /<!-- preload:start -->[\s\S]*?<!-- preload:end -->/.test(h) ? h.replace(/<!-- preload:start -->[\s\S]*?<!-- preload:end -->/, pre) : h.replace('</head>', '  ' + pre + '\n</head>');
 fs.writeFileSync(ip, h);
+// 앱이 새 버전을 알아채도록 (홈 화면 앱은 예전 화면을 오래 붙잡고 있음)
+fs.writeFileSync(path.join(root, 'version.json'), JSON.stringify({ v: ver }) + '\n');
 console.log(`버전 꼬리표 ${ver}: import ${n}곳 + index.html`);

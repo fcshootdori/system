@@ -1,5 +1,5 @@
 // 경기 방식 입력 폼 — 설정(기본값)과 경기일 수정(그날만 변경)에서 같이 사용
-import { TEAM_COLORS } from '../config.js?v=0.1.38';
+import { TEAM_COLORS } from '../config.js?v=0.1.39';
 
 const sel = (name, value, opts) => `<select name="${name}">${opts.map(([v, l]) =>
   `<option value="${v}" ${String(v) === String(value) ? 'selected' : ''}>${l}</option>`).join('')}</select>`;

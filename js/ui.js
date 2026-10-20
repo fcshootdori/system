@@ -1,6 +1,6 @@
-import { esc } from './util.js?v=0.1.38';
-import { TEAM_COLORS, STATUS } from './config.js?v=0.1.38';
-import { teamColor, teamName } from './domain.js?v=0.1.38';
+import { esc } from './util.js?v=0.1.39';
+import { TEAM_COLORS, STATUS } from './config.js?v=0.1.39';
+import { teamColor, teamName } from './domain.js?v=0.1.39';
 
 export function modal(title, bodyHtml, { wide = false } = {}) {
   const wrap = document.createElement('div');

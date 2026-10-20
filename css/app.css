@@ -1284,3 +1284,5 @@ html, body { overscroll-behavior-y: contain; }
 .lp-myteam { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; font-weight: 800; font-size: 14px; }
 .lp-myteam i { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); }
 .lp-myteam small { font-weight: 500; font-size: 12px; }
+.upd-bar { position: fixed; left: 50%; top: calc(64px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 60; border: 0; border-radius: 99px; padding: 9px 16px; background: var(--night); color: #fff; font: 600 13px var(--font); box-shadow: 0 8px 22px rgba(11,16,51,.35); white-space: nowrap; cursor: pointer; }
+.upd-bar b { color: var(--flood); }
