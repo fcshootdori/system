@@ -1,15 +1,15 @@
 // 회원 홈 — 경기장 사진 위 다음 경기 티켓(바로 참석·불참) + 지난 경기 전광판
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.35';
-import { db, newId } from '../store.js?v=0.1.35';
-import { STATUS } from '../config.js?v=0.1.35';
-import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds } from '../domain.js?v=0.1.35';
-import { icon } from '../icons.js?v=0.1.35';
-import { myBox, bindMy } from './apply.js?v=0.1.35';
-import { TEAM_COLORS } from '../config.js?v=0.1.35';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.35';
-import { norm } from '../cafe-parser.js?v=0.1.35';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.35';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.35';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.36';
+import { db, newId } from '../store.js?v=0.1.36';
+import { STATUS } from '../config.js?v=0.1.36';
+import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.36';
+import { icon } from '../icons.js?v=0.1.36';
+import { myBox, bindMy } from './apply.js?v=0.1.36';
+import { TEAM_COLORS } from '../config.js?v=0.1.36';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.36';
+import { norm } from '../cafe-parser.js?v=0.1.36';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.36';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.36';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);
@@ -140,9 +140,9 @@ export function editMatchday(md, presetDate) {
           <div class="row ev-row">
             <label>${i ? '오른쪽' : '왼쪽'} 팀 이름<input name="evn${i}" placeholder="예: ${i ? '준찬팀' : '지진희팀'}" value="${esc(ev0?.[i]?.name || '')}"></label>
             <label>색<select name="evc${i}">${TEAM_COLORS.filter((c) => ['pink', 'blue'].includes(c.key)).map((c) => `<option value="${c.key}" ${(ev0?.[i]?.color || ['pink', 'blue'][i]) === c.key ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label></div>
-          <label>주장 <span class="muted small" data-caphint></span><input name="evk${i}" list="ev-members" autocomplete="off" placeholder="카페 닉네임" value="${esc(ev0?.[i]?.captain ? nameOf(ev0[i].captain) : '')}"></label>
+          <label>주장 <span class="muted small" data-caphint></span><input name="evk${i}" autocomplete="off" placeholder="카페 닉네임 · 여러 명은 쉼표로 (예: 진이, 타로)" value="${esc(evCaps(ev0?.[i]).map((c) => nameOf(c)).join(', '))}"></label>
+          <p class="cap-check tiny" data-capchk="${i}"></p>
           <div class="ev-mem" data-evmem="${i}"></div></div>`).join('')}
-          <datalist id="ev-members">${S.members.filter((m) => m.active !== false).map((m) => `<option value="${esc(m.name)}">`).join('')}</datalist>
         </div>
         <p class="tiny muted" data-kindhint></p>
       </div>
@@ -172,7 +172,7 @@ export function editMatchday(md, presetDate) {
     form.querySelectorAll('[data-kind]').forEach((b) => b.classList.toggle('on', b.dataset.kind === kind));
     form.querySelectorAll('[data-emode]').forEach((b) => b.classList.toggle('on', b.dataset.emode === emode));
     form.querySelector('[data-evteams]').classList.toggle('hide', kind !== 'event');
-    form.querySelectorAll('[data-caphint]').forEach((x) => { x.textContent = emode === 'captains' ? '(필수)' : '(선택)'; });
+    form.querySelectorAll('[data-caphint]').forEach((x) => { x.textContent = emode === 'captains' ? '(필수 · 2명 이상 가능)' : '(선택 · 2명 이상 가능)'; });
     form.querySelector('[data-kindhint]').textContent = kind !== 'event'
       ? '신청(참석·불참·협의) → 마감 후 주장 선정 → 드래프트(팀 색 배정 · 우선순위 추첨 · 선수 선택) → 팀 확정'
       : emode === 'captains'
@@ -181,6 +181,14 @@ export function editMatchday(md, presetDate) {
     form.querySelectorAll('[data-evmem]').forEach((x) => x.classList.toggle('hide', emode !== 'teams'));
     paintMembers();
   };
+  // 주장 칸: 쉼표로 여러 명 — 입력하는 동안 회원 목록과 맞는지 바로 표시
+  const findCap = (v) => { const k = norm(v); return k ? S.members.find((m) => norm(m.name) === k) || S.members.find((m) => (m.aliases || []).some((a) => norm(a) === k)) : null; };
+  const paintCaps = () => form.querySelectorAll('[data-capchk]').forEach((p) => {
+    const names = capNames(form['evk' + p.dataset.capchk].value);
+    p.innerHTML = names.map((n) => { const m = findCap(n); return m ? `<span class="ok-t">👑 ${esc(m.name)}</span>` : `<span class="warn-t">✕ ${esc(n)} (회원 목록에 없음)</span>`; }).join(' ');
+  });
+  form.addEventListener('input', (e) => { if (/^evk\d$/.test(e.target.name)) paintCaps(); });
+  paintCaps();
   // 팀원까지 미리 정하는 경기: 팀별 명단
   const evMembers = [0, 1].map((i) => [...(ev0?.[i]?.members || [])]);
   const paintMembers = () => form.querySelectorAll('[data-evmem]').forEach((box) => {
@@ -235,14 +243,15 @@ export function editMatchday(md, presetDate) {
     if (kind === 'event') {
       // 주장: 카페 닉네임·별칭으로 회원 찾기
       const findM = (v) => { const k = norm(v); return k ? S.members.find((m) => norm(m.name) === k) || S.members.find((m) => (m.aliases || []).some((a) => norm(a) === k)) : null; };
-      const caps = [0, 1].map((i) => form['evk' + i].value.trim());
-      const capIds = caps.map((v) => (v ? findM(v)?.id || '' : ''));
-      const bad = caps.findIndex((v, i) => v && !capIds[i]);
-      if (bad >= 0) return toast(`"${caps[bad]}" — 회원 목록에 없는 닉네임이에요`);
-      if (emode === 'captains' && capIds.some((x) => !x)) return toast('주장만 미리 정하는 경기는 두 팀 주장을 모두 넣어 주세요');
-      if (capIds[0] && capIds[0] === capIds[1]) return toast('두 팀 주장이 같아요');
-      const teams = [0, 1].map((i) => ({ name: form['evn' + i].value.trim(), color: form['evc' + i].value, captain: capIds[i] || null,
-        members: emode === 'teams' ? [...new Set([capIds[i], ...evMembers[i]].filter(Boolean))] : [] }));
+      const caps = [0, 1].map((i) => capNames(form['evk' + i].value));
+      const bad = caps.flat().find((v) => !findM(v));
+      if (bad) return toast(`"${bad}" — 회원 목록에 없는 닉네임이에요`);
+      const capIds = caps.map((l) => [...new Set(l.map((v) => findM(v).id))]);
+      if (emode === 'captains' && capIds.some((x) => !x.length)) return toast('주장만 미리 정하는 경기는 두 팀 주장을 모두 넣어 주세요');
+      const both = capIds[0].find((x) => capIds[1].includes(x));
+      if (both) return toast(`${nameOf(both)} — 두 팀 주장에 모두 들어 있어요`);
+      const teams = [0, 1].map((i) => ({ name: form['evn' + i].value.trim(), color: form['evc' + i].value, captain: capIds[i][0] || null, captains: capIds[i],
+        members: emode === 'teams' ? [...new Set([...capIds[i], ...evMembers[i].filter((x) => !capIds[1 - i].includes(x))])] : [] }));
       if (emode === 'teams' && teams.some((t) => !t.members.length)) return toast('팀원까지 미리 정하는 경기는 두 팀 팀원을 모두 넣어 주세요');
       if (teams.some((t) => !t.name)) return toast('이벤트 경기는 두 팀 이름을 넣어 주세요');
       if (teams[0].color === teams[1].color) return toast('두 팀 색을 다르게 골라 주세요');
@@ -265,6 +274,8 @@ export function editMatchday(md, presetDate) {
     close();
   });
 }
+
+const capNames = (v) => String(v || '').split(/[,，、/]+/).map((x) => x.trim()).filter(Boolean);
 
 // 이벤트 경기 팀원 고르기: 회원 목록에서 누르거나 카페 닉네임을 붙여넣기 (다른 팀에 있던 사람은 이 팀으로 옮김)
 function pickMembers(i, evMembers, nameFn, done) {

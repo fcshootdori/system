@@ -1280,3 +1280,4 @@ html, body { overscroll-behavior-y: contain; }
 .ptr.spin .ptr-ball { animation: ptrspin .7s linear infinite; }
 @keyframes ptrspin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ptr.spin .ptr-ball { animation: none; } }
+.cap-check { margin: -4px 0 0; display: flex; flex-wrap: wrap; gap: 4px 10px; } .cap-check:empty { display: none; }

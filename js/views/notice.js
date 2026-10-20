@@ -1,9 +1,9 @@
-import { S, currentMatchday, matchdayById, nameOf } from '../state.js?v=0.1.35';
-import { APP_NAME, APP_VERSION } from '../config.js?v=0.1.35';
-import { applicants, rosters, dayStandings, teamColor, fmtOf, totals, noLabel } from '../domain.js?v=0.1.35';
-import { renderApplyImage, renderTeamsImage, renderResultImage, renderMatchImage, downloadCanvas, shareCanvas } from '../notice-image.js?v=0.1.35';
-import { esc, fmtDate, copyText, toast } from '../util.js?v=0.1.35';
-import { empty, teamLabel } from '../ui.js?v=0.1.35';
+import { S, currentMatchday, matchdayById, nameOf } from '../state.js?v=0.1.36';
+import { APP_NAME, APP_VERSION } from '../config.js?v=0.1.36';
+import { applicants, rosters, dayStandings, teamColor, fmtOf, totals, noLabel, captainIds } from '../domain.js?v=0.1.36';
+import { renderApplyImage, renderTeamsImage, renderResultImage, renderMatchImage, downloadCanvas, shareCanvas } from '../notice-image.js?v=0.1.36';
+import { esc, fmtDate, copyText, toast } from '../util.js?v=0.1.36';
+import { empty, teamLabel } from '../ui.js?v=0.1.36';
 
 let kind = null, mdId = null, lastCanvas = null;
 const KINDS = { apply: '신청 명단', teams: '팀 구성', result: '경기 결과' };
@@ -36,10 +36,8 @@ export function render(root) {
 }
 
 function teamsData(md) {
-  return rosters(md).map((ids, i) => ({
-    label: teamLabel(md, i), colorKey: teamColor(md, i),
-    members: ids.map((id, k) => ({ name: nameOf(id, md), captain: k === 0 && (md.captains || []).length > 0 })),
-  }));
+  return rosters(md).map((ids, i) => { const caps = captainIds(md, i);
+    return { label: teamLabel(md, i), colorKey: teamColor(md, i), members: ids.map((id) => ({ name: nameOf(id, md), captain: caps.includes(id) })) }; });
 }
 function goalsOf(md) {
   const games = S.games.filter((g) => g.matchdayId === md.id);

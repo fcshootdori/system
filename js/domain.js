@@ -1,7 +1,7 @@
 // 경기 운영 규칙 — 경기 방식, 신청 순서, 드래프트 순번, 대진, 결과, 개인 기록
 //  승률계산기 시트와 같은 규칙: 승률 = 승 ÷ (승+패), 승점 = 승×3 + 무
-import { S, memberById, matchdayById } from './state.js?v=0.1.35';
-import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.35';
+import { S, memberById, matchdayById } from './state.js?v=0.1.36';
+import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.36';
 
 // ── 경기 방식: 팀 기본값 + 경기일별 변경값 ──
 export function fmtOf(md) {
@@ -288,10 +288,12 @@ export function eventTeams(md) {
 export const eventMode = (md) => (eventTeams(md) ? (md.eventMode === 'captains' ? 'captains' : 'teams') : null);
 export const teamEvent = (md) => (eventMode(md) === 'teams' ? eventTeams(md) : null);
 export const capEvent = (md) => (eventMode(md) === 'captains' ? eventTeams(md) : null);
+// 이벤트 팀에 미리 정한 주장들 (여러 명 가능 — 첫 번째가 대표)
+export const evCaps = (t) => (t?.captains?.length ? t.captains : t?.captain ? [t.captain] : []);
 // 팀 i의 주장: 드래프트 주장 → 이벤트 경기에 미리 정한 주장
-export const captainOf = (md, i) => md?.captains?.[i]?.id || eventTeams(md)?.[i]?.captain || null;
+export const captainOf = (md, i) => md?.captains?.[i]?.id || evCaps(eventTeams(md)?.[i])[0] || null;
 // 팀 i의 주장 전원 (대표 + 공동 주장)
-export const captainIds = (md, i) => { const c = md?.captains?.[i]; return c ? [c.id, ...(c.co || [])] : [captainOf(md, i)].filter(Boolean); };
+export const captainIds = (md, i) => { const c = md?.captains?.[i]; return c ? [c.id, ...(c.co || [])] : evCaps(eventTeams(md)?.[i]); };
 export const teamName = (md, i) => md?.teamNames?.[i] || eventTeams(md)?.[i]?.name || null;
 
 // 참석·불참·협의 정리 (+ 이벤트 경기면 팀별로)
@@ -319,6 +321,6 @@ export function eventTeamsToTeams(md) {
   const teams = v.sides.map((s) => ({ color: s.color, members: s.ins.map((a) => a.id) }));
   v.noTeam.forEach((a) => teams.reduce((x, y) => (y.members.length < x.members.length ? y : x)).members.push(a.id));
   // 미리 정한 주장은 팀 맨 앞에
-  teams.forEach((t, i) => { const c = eventTeams(md)?.[i]?.captain; if (c && t.members.includes(c)) t.members = [c, ...t.members.filter((x) => x !== c)]; });
+  teams.forEach((t, i) => { const cs = evCaps(eventTeams(md)?.[i]).filter((c) => t.members.includes(c)); if (cs.length) t.members = [...cs, ...t.members.filter((x) => !cs.includes(x))]; });
   return teams;
 }

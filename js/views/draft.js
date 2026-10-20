@@ -1,11 +1,11 @@
-import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.35';
-import { db } from '../store.js?v=0.1.35';
-import { TEAM_COLORS } from '../config.js?v=0.1.35';
-import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.35';
-import { TEAM_COLORS as TC } from '../config.js?v=0.1.35';
-import { modal } from '../ui.js?v=0.1.35';
-import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.35';
-import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.35';
+import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.36';
+import { db } from '../store.js?v=0.1.36';
+import { TEAM_COLORS } from '../config.js?v=0.1.36';
+import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.36';
+import { TEAM_COLORS as TC } from '../config.js?v=0.1.36';
+import { modal } from '../ui.js?v=0.1.36';
+import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.36';
+import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.36';
 
 let lastCtx = {};
 export function render(root, ctx = {}) {
@@ -446,9 +446,9 @@ function bindBoard(root, md, myCap) {
 function presetCaptains(md) {
   const ev = capEvent(md);
   const early = !!closeTime(md) && !closePassed(md) && ['open', 'closed'].includes(md.status);
-  const missing = ev.some((t) => !t.captain);
+  const missing = ev.some((t) => !evCaps(t).length);
   return `<section class="card ${S.operator ? 'op' : ''}"><h2>이벤트 경기 — 주장이 미리 정해져 있어요</h2>
-    <div class="cap-links">${ev.map((t, i) => `<div><span>${i === 0 ? '왼쪽' : '오른쪽'} · ${colorChip(t.color, t.name)}</span><b>👑 ${t.captain ? esc(nameOf(t.captain, md)) : '<span class="warn-t">주장 미정</span>'}</b></div>`).join('')}</div>
+    <div class="cap-links">${ev.map((t, i) => `<div><span>${i === 0 ? '왼쪽' : '오른쪽'} · ${colorChip(t.color, t.name)}</span><b>👑 ${evCaps(t).length ? evCaps(t).map((c) => esc(nameOf(c, md))).join(' · ') : '<span class="warn-t">주장 미정</span>'}</b></div>`).join('')}</div>
     <p class="muted small">주장 선정 단계 없이 이 주장들로 드래프트를 해요. 팀 색도 미리 정해져 있어 바로 우선순위 추첨부터 시작해요.</p>
     ${S.operator ? (missing ? '<p class="small warn-t">경기일 수정에서 두 팀 주장을 모두 정해 주세요.</p>'
       : `${early ? `<p class="small deadline">⏰ 신청 ${esc(closeLabel(md))} — 마감 뒤에 시작하세요.</p>` : ''}<button class="btn" data-presetstart>${['open', 'closed'].includes(md.status) ? '신청 마감 · ' : ''}드래프트 시작</button>`)
@@ -459,12 +459,12 @@ function bindPreset(root, md) {
     const early = !!closeTime(md) && !closePassed(md) && ['open', 'closed'].includes(md.status);
     if (early && !confirm(`아직 신청 마감 시각(${closeLabel(md).replace(' 마감', '')}) 전이에요. 지금 드래프트를 시작하면 신청이 닫혀요. 시작할까요?`)) return;
     await db.tx(mdPath(md.id), (cur) => {
-      const ev = capEvent(cur); if (!ev || ev.some((t) => !t.captain)) return null;
-      cur.captains = ev.map((t) => ({ id: t.captain, token: randomToken(), color: t.color || null }));
+      const ev = capEvent(cur); if (!ev || ev.some((t) => !evCaps(t).length)) return null;
+      cur.captains = ev.map((t) => { const cs = evCaps(t); return { id: cs[0], co: cs.slice(1), token: randomToken(), color: t.color || null }; });
       cur.teamNames = ev.map((t) => t.name);
       // 주장은 참석으로
       cur.apps = cur.apps || {}; cur.declines = cur.declines || {};
-      ev.forEach((t) => { if (!cur.apps[t.captain]) cur.apps[t.captain] = { at: Date.now(), source: 'captain' }; delete cur.apps[t.captain].pending; delete cur.declines[t.captain]; });
+      ev.forEach((t) => evCaps(t).forEach((c) => { if (!cur.apps[c]) cur.apps[c] = { at: Date.now(), source: 'captain' }; delete cur.apps[c].pending; delete cur.declines[c]; }));
       cur.picks = []; cur.teams = []; cur.order = null; cur.cards = null; cur.pending = null;
       cur.status = 'drafting'; cur.draftStarted = true; if (early) cur.earlyTeams = true;
       return cur;
