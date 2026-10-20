@@ -17,6 +17,8 @@ export function fmtOf(md) {
 // ── 신청 ──  md.apps = { [memberId]: { at, source } }
 export function applicants(md) {
   const cap = fmtOf(md).capacity;
+  if (md?.source === 'sheet' && !Object.keys(md.apps || {}).length) // 시트 기록: 신청 내역이 없으니 출전 선수로 대신
+    return rosters(md).flat().map((id, i) => ({ id, at: i, source: 'sheet', wait: false, no: i + 1 }));
   return Object.entries(md?.apps || {})
     .map(([id, a]) => ({ id, ...a }))
     .filter((a) => !a.pending)                // 운영진 협의 대기는 승인 전까지 명단에서 제외
@@ -209,6 +211,15 @@ export function matchNumbers(extra) {
     if (e != null) next = { no: e, i };
     else if (!out.has(m.id) && next) out.set(m.id, { no: next.no - (next.i - i), auto: true });
   }
+  // 취소된 경기: 회차에서 빠지되, 그 회차 번호는 다음 경기가 이어받으므로 같은 번호로 표시 (예: 750회 취소 → 다음 경기도 750회)
+  const all = [...S.matchdays, ...(extra ? [extra] : [])].filter((m) => m.date).sort((a, b) => a.date.localeCompare(b.date) || (a.createdAt || 0) - (b.createdAt || 0));
+  all.forEach((m, i) => {
+    if (!m.cancelled || m.noExclude) return;
+    const nxt = all.slice(i + 1).find((x) => out.has(x.id));
+    if (nxt) { out.set(m.id, { no: out.get(nxt.id).no, auto: true, cancelled: true }); return; }
+    const prv = all.slice(0, i).reverse().find((x) => out.has(x.id) && !out.get(x.id).cancelled);
+    if (prv) out.set(m.id, { no: out.get(prv.id).no + 1, auto: true, cancelled: true });
+  });
   return out;
 }
 export const matchNo = (md) => (md ? matchNumbers().get(md.id)?.no ?? null : null);

@@ -6,7 +6,7 @@ import { parseCafeComments, norm } from '../cafe-parser.js';
 import { esc, fmtDate, fmtTime, toast, byName } from '../util.js';
 import { modal, empty } from '../ui.js';
 
-const SRC = { app: '앱', cafe: '카페', manual: '운영진' };
+const SRC = { app: '앱', cafe: '카페', manual: '운영진', sheet: '시트' };
 
 export function render(root, ctx = {}) {
   const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || nextMatchday();

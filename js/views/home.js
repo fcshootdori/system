@@ -11,6 +11,7 @@ export function fmtSummary(md) {
   const f = fmtOf(md);
   const teams = [...Array(f.teams)].map((_, i) => teamLabel(md, i));
   const vs = f.teamMode === 'fixed' ? teams.join(' vs ') : `${f.teams}팀`;
+  if (md?.source === 'sheet') return `${vs} · 승률계산기 기록`;
   return `${vs} · ${f.rounds}라운드${f.scoring === 'sum' ? ' 합산' : ''}`;
 }
 
@@ -100,6 +101,7 @@ export function render(root) {
 export function editMatchday(md, presetDate) {
   const isNew = !md;
   const f = fmtOf(md);
+  const t0 = parseTime(md?.time) || (isNew ? lastTime() : ['', '']);
   const custom = !!md?.format;
   const { el, close } = modal(isNew ? '경기 추가' : '경기일 수정', `
     <form class="stack">
@@ -109,10 +111,17 @@ export function editMatchday(md, presetDate) {
       </div>
       <p class="tiny muted no-hint" data-nohint></p>
       <label class="inline"><input type="checkbox" name="noExclude" ${md?.noExclude ? 'checked' : ''}> 회차에서 제외 <small class="muted">(친선·이벤트 경기)</small></label>
-      <label>시간<input name="time" placeholder="예: 07:00~09:00" value="${esc(md?.time || '')}"></label>
-      <label>장소<input name="venue" placeholder="구장 이름" value="${esc(md?.venue || '')}"></label>
+      <div class="row time-row">
+        <label>시작<select name="t1">${timeOpts(t0[0])}</select></label>
+        <span class="tilde">~</span>
+        <label>종료<select name="t2">${timeOpts(t0[1])}</select></label>
+      </div>
+      <label>장소<input name="venue" list="venue-list" placeholder="구장 이름" value="${esc(md?.venue || '')}" autocomplete="off">
+        <datalist id="venue-list">${venues().map((v) => `<option value="${esc(v)}">`).join('')}</datalist></label>
       <label>메모<textarea name="note" rows="2" placeholder="회비, 준비물 등">${esc(md?.note || '')}</textarea></label>
-      ${isNew ? '' : `<label>진행 상태<select name="status">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === md.status ? 'selected' : ''}>${v.step}. ${v.label}</option>`).join('')}</select></label>`}
+      <div class="fld"><span class="fl">진행 상태</span>
+        <input type="hidden" name="status" value="${esc(md?.status || 'open')}">
+        <ol class="stage-pick">${Object.entries(STATUS).map(([k, v]) => `<li><button type="button" data-st="${k}"><i>${v.step}</i><span>${v.label}</span></button></li>`).join('')}</ol></div>
       <details ${custom ? 'open' : ''}><summary>이날 경기 방식 <span class="muted small">${custom ? '(이날만 변경됨)' : '(기본값 사용 중)'}</span></summary>
         ${formatFields(f)}
         ${custom ? '<label class="inline"><input type="checkbox" name="reset"> 기본 경기 방식으로 되돌리기</label>' : ''}
@@ -121,6 +130,24 @@ export function editMatchday(md, presetDate) {
     </form>`);
   const form = el.querySelector('form');
   bindFormatFields(form);
+  // 진행 상태: 가로 단계에서 골라 저장
+  const paintStage = () => {
+    const cur = STATUS[form.status.value]?.step || 1;
+    form.querySelectorAll('[data-st]').forEach((b) => {
+      const s = STATUS[b.dataset.st].step;
+      b.className = s < cur ? 'done' : s === cur ? 'now' : '';
+    });
+  };
+  form.querySelectorAll('[data-st]').forEach((b) => b.addEventListener('click', () => { form.status.value = b.dataset.st; paintStage(); }));
+  paintStage();
+  // 시작 시간을 고르면 종료는 2시간 뒤로 맞춰 줌 (종료가 시작보다 빠를 때)
+  form.t1.addEventListener('change', () => {
+    if (!form.t1.value) return;
+    if (!form.t2.value || form.t2.value <= form.t1.value) {
+      const [h, m] = form.t1.value.split(':').map(Number); const e = Math.min(h + 2, 23);
+      form.t2.value = `${String(e).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    }
+  });
   // 회차 미리보기: 비워 두면 앞뒤 경기 기준으로 자동
   const hint = () => {
     const probe = { ...(md || {}), id: md?.id || '__new', date: form.date.value, no: form.no.value === '' ? null : +form.no.value,
@@ -129,7 +156,7 @@ export function editMatchday(md, presetDate) {
     const nums = md ? (() => { const keep = S.matchdays; S.matchdays = keep.map((m) => (m.id === md.id ? probe : m)); const r = matchNumbers(); S.matchdays = keep; return r; })() : matchNumbers(others);
     const n = nums.get(probe.id);
     const box = form.querySelector('[data-nohint]');
-    if (probe.cancelled) box.textContent = '취소된 경기는 회차에 들어가지 않아요.';
+    if (probe.cancelled) box.textContent = `취소된 경기는 회차를 쓰지 않고, 다음 경기와 같은 회차${n ? `(${n.no}회)` : ''}로 표시돼요.`;
     else if (probe.noExclude) box.textContent = '회차에 들어가지 않고, 다음 경기부터 이어서 매겨져요.';
     else if (form.no.value !== '') box.textContent = `${form.no.value}회로 지정 — 앞뒤 경기 회차가 이 번호를 기준으로 자동으로 맞춰져요.`;
     else box.textContent = n ? `자동: ${n.no}회 (앞뒤 경기 기준)` : '회차를 한 번 입력하면 앞뒤 경기는 자동으로 매겨져요.';
@@ -141,15 +168,15 @@ export function editMatchday(md, presetDate) {
   form.querySelector('details').addEventListener('change', () => { touched = true; });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const base = { date: form.date.value, time: form.time.value, venue: form.venue.value, note: form.note.value,
+    const time = form.t1.value ? (form.t2.value ? `${form.t1.value}~${form.t2.value}` : form.t1.value) : '';
+    const base = { date: form.date.value, time, venue: form.venue.value.trim(), note: form.note.value, status: form.status.value,
       no: form.no.value === '' ? null : +form.no.value, noExclude: form.noExclude.checked };
-    if (!isNew) base.status = form.status.value;
     let format = md?.format || null;
     if (form.reset?.checked) format = null;
     else if (touched) format = readFormat(form);
     if (isNew) {
       const id = newId();
-      await db.set(mdPath(id), { ...base, format, status: 'open', apps: {}, guests: {}, captains: [], picks: [], teams: [], mom: [], late: {}, createdAt: Date.now() });
+      await db.set(mdPath(id), { ...base, format, apps: {}, guests: {}, captains: [], picks: [], teams: [], mom: [], late: {}, createdAt: Date.now() });
       S.sel = id; S.step = null;
       toast('경기를 추가했어요 — 신청을 받을 수 있어요');
     } else {
@@ -178,4 +205,28 @@ export function cancelMatchday(md) {
     await db.set(mdPath(md.id), { cancelled: true, cancelReason: e.target.reason.value.trim(), cancelledAt: Date.now() }, { merge: true });
     close(); toast(`${fmtDate(md.date)} 경기를 취소로 표시했어요`);
   });
+}
+
+// ── 시간 선택 (30분 단위) ──
+const TIMES = (() => { const a = []; for (let h = 5; h <= 23; h++) for (const m of [0, 30]) a.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`); return a; })();
+function timeOpts(sel) {
+  const list = sel && !TIMES.includes(sel) ? [...TIMES, sel].sort() : TIMES;
+  return `<option value="">미정</option>${list.map((t) => `<option value="${t}" ${t === sel ? 'selected' : ''}>${t}</option>`).join('')}`;
+}
+function parseTime(s) {
+  const m = String(s || '').match(/(\d{1,2}):(\d{2})(?:\s*[~\-–]\s*(\d{1,2}):(\d{2}))?/);
+  if (!m) return null;
+  const f = (h, mm) => `${String(+h).padStart(2, '0')}:${mm}`;
+  return [f(m[1], m[2]), m[3] ? f(m[3], m[4]) : ''];
+}
+// 새 경기 기본 시간 = 가장 최근에 등록한 경기의 시간 (없으면 07:00~09:00)
+function lastTime() {
+  const m = [...S.matchdays].filter((x) => x.source !== 'sheet' && x.time).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+  return parseTime(m?.time) || ['07:00', '09:00'];
+}
+// 예전에 쓴 구장 이름 (자주 쓴 순)
+function venues() {
+  const c = new Map();
+  S.matchdays.forEach((m) => { if (m.venue) c.set(m.venue, (c.get(m.venue) || 0) + 1); });
+  return [...c].sort((a, b) => b[1] - a[1]).map(([v]) => v).slice(0, 12);
 }

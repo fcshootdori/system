@@ -416,3 +416,20 @@ select.cell.st-staff { color: #b45309; } select.cell.st-rest { color: var(--sub)
 .att-list .am { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .att-list .att-rate span { min-width: 76px; }
 .list.dates li { padding: 8px 0; border-bottom: 1px solid var(--soft); }
+
+/* ── 0.1.9: 경기 추가 폼 ── */
+.fld { display: flex; flex-direction: column; gap: 6px; }
+.fl { font-size: 13px; font-weight: 600; color: #334155; }
+.stage-pick { list-style: none; display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; padding: 0; margin: 0; position: relative; }
+.stage-pick li { position: relative; }
+.stage-pick li + li::before { content: ''; position: absolute; top: 15px; left: -50%; width: 100%; height: 3px; background: var(--line); z-index: 0; }
+.stage-pick li:has(button.done, button.now) + li::before { background: color-mix(in srgb, var(--brand) 40%, #fff); }
+.stage-pick li:has(+ li button.now)::after, .stage-pick li:has(+ li button.done)::after { content: none; }
+.stage-pick button { position: relative; z-index: 1; width: 100%; border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 0; font: 600 11px var(--font); color: #94a3b8; }
+.stage-pick i { font-style: normal; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px solid var(--line); font-size: 13px; font-weight: 800; }
+.stage-pick button.done i { background: color-mix(in srgb, var(--brand) 15%, #fff); border-color: color-mix(in srgb, var(--brand) 40%, #fff); color: var(--brand); }
+.stage-pick button.done { color: var(--brand); }
+.stage-pick button.now i { background: var(--brand); border-color: var(--brand); color: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 18%, transparent); }
+.stage-pick button.now { color: var(--ink); font-weight: 800; }
+.time-row { align-items: flex-end; margin-top: 0; }
+.time-row .tilde { padding-bottom: 12px; color: var(--sub); font-weight: 700; }

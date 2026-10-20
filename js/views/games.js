@@ -26,10 +26,11 @@ export function render(root, ctx = {}) {
   root.innerHTML = head + `
     ${sum ? scoreboard(md, games) : standingsCard(md, games)}
     <section class="card">
-      <h2>${sum ? '라운드' : '경기'} ${games.length ? `<small>${games.filter((g) => g.done).length}/${games.length} 완료</small>` : ''}</h2>
+      ${md.source === 'sheet' ? '<p class="muted small">승률계산기에서 가져온 기록이에요. 라운드별 점수 없이 최종 스코어·득점·MOM·지각·자책골이 들어 있어요.</p>' : ''}
+      <h2>${md.source === 'sheet' ? '스코어' : sum ? '라운드' : '경기'} ${games.length ? `<small>${games.filter((g) => g.done).length}/${games.length} 완료</small>` : ''}</h2>
       ${games.length ? `<ol class="games">${games.map((g, i) => `
         <li class="${g.done ? 'done' : ''}" ${S.operator ? `data-game="${g.id}"` : ''}>
-          <span class="gno">${sum ? `${g.round}R` : i + 1}${sum ? '' : `<small>R${g.round}</small>`}</span>
+          <span class="gno">${md.source === 'sheet' ? '최종' : sum ? `${g.round}R` : i + 1}${sum ? '' : `<small>R${g.round}</small>`}</span>
           <span class="ta">${teamChip(md, g.a)}</span>
           <span class="sc">${g.done || g.sa || g.sb ? `${g.sa} : ${g.sb}` : 'vs'}</span>
           <span class="tb">${teamChip(md, g.b)}</span>

@@ -28,9 +28,9 @@ export function stageOf(md) {
 }
 
 export function render(root) {
-  const list = S.matchdays.filter((m) => m.source !== 'sheet').sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const list = [...S.matchdays].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   let md = matchdayById(S.sel);
-  if (!md || md.source === 'sheet') { md = nextMatchday(); S.sel = md?.id || null; S.step = null; }
+  if (!md) { md = nextMatchday() || list[list.length - 1] || null; S.sel = md?.id || null; S.step = null; }
   if (!md) {
     root.innerHTML = `<section class="card center">${empty('경기가 없어요. 일정 메뉴에서 먼저 추가하세요.')}<button class="btn" data-add>＋ 경기 추가</button></section>`;
     root.querySelector('[data-add]').addEventListener('click', () => editMatchday());

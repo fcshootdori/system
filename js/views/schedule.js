@@ -82,7 +82,7 @@ function detail(md, op) {
   const f = fmtOf(md);
   const n = applicants(md).filter((a) => !a.wait).length;
   const played = md.status === 'played';
-  if (md.cancelled) return `<div class="eyebrow cancel-t">경기 취소</div>
+  if (md.cancelled) return `<div class="eyebrow cancel-t">${noLabel(md) ? noLabel(md) + ' · ' : ''}경기 취소</div>
     <h2 class="dt struck">${fmtDate(md.date)}${md.no ? ` <small>(${md.no}회 지정)</small>` : ''} ${md.time ? `<small>${esc(md.time)}</small>` : ''}</h2>
     <p class="muted small">${[md.venue, fmtSummary(md)].filter(Boolean).map(esc).join(' · ')}</p>
     <p class="cancel-box">이 경기는 취소됐어요${md.cancelReason ? ` — ${esc(md.cancelReason)}` : ''}.</p>
