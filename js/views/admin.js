@@ -1,12 +1,12 @@
-import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.44';
-import { S, me, memberById, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.44';
-import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.44';
-import { db, newId } from '../store.js?v=0.1.44';
-import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js?v=0.1.44';
-import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js?v=0.1.44';
-import { esc, toast, fileToDataUrl, todayISO, byName, fmtDate } from '../util.js?v=0.1.44';
-import { modal, empty } from '../ui.js?v=0.1.44';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.44';
+import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.45';
+import { S, me, memberById, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.45';
+import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.45';
+import { db, newId } from '../store.js?v=0.1.45';
+import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js?v=0.1.45';
+import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js?v=0.1.45';
+import { esc, toast, fileToDataUrl, todayISO, byName, fmtDate } from '../util.js?v=0.1.45';
+import { modal, empty } from '../ui.js?v=0.1.45';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.45';
 
 export function render(root) { return settings(root); }
 

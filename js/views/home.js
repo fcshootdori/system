@@ -1,16 +1,16 @@
 // 회원 홈 — 경기장 사진 위 다음 경기 티켓(바로 참석·불참) + 지난 경기 전광판
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.44';
-import { db, newId } from '../store.js?v=0.1.44';
-import { STATUS } from '../config.js?v=0.1.44';
-import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.44';
-import { icon } from '../icons.js?v=0.1.44';
-import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.44';
-import { myBox, bindMy } from './apply.js?v=0.1.44';
-import { TEAM_COLORS } from '../config.js?v=0.1.44';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.44';
-import { norm } from '../cafe-parser.js?v=0.1.44';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.44';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.44';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.45';
+import { db, newId } from '../store.js?v=0.1.45';
+import { STATUS } from '../config.js?v=0.1.45';
+import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.45';
+import { icon } from '../icons.js?v=0.1.45';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.45';
+import { myBox, bindMy } from './apply.js?v=0.1.45';
+import { TEAM_COLORS } from '../config.js?v=0.1.45';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.45';
+import { norm } from '../cafe-parser.js?v=0.1.45';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.45';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.45';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);
@@ -143,9 +143,9 @@ export function editMatchday(md, presetDate) {
           <div class="seg kind-seg ev-mode"><button type="button" data-emode="captains">주장만 미리 정함</button><button type="button" data-emode="teams">팀원까지 미리 정함</button></div>
           ${[0, 1].map((i) => `<div class="ev-team">
           <div class="row ev-row">
-            <label>${i ? '오른쪽' : '왼쪽'} 팀 이름<input name="evn${i}" placeholder="예: ${i ? '준찬팀' : '지진희팀'}" value="${esc(ev0?.[i]?.name || '')}"></label>
+            <label>${i ? '오른쪽' : '왼쪽'} 팀 이름<input name="evn${i}" value="${esc(ev0?.[i]?.name || '')}"></label>
             <label>색<select name="evc${i}">${TEAM_COLORS.filter((c) => ['pink', 'blue'].includes(c.key)).map((c) => `<option value="${c.key}" ${(ev0?.[i]?.color || ['pink', 'blue'][i]) === c.key ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label></div>
-          <label>주장 <span class="muted small" data-caphint></span><input name="evk${i}" autocomplete="off" placeholder="예: 진이, 타로 (여러 명은 쉼표로)" value="${esc(evCaps(ev0?.[i]).map((c) => nameOf(c)).join(', '))}"></label>
+          <label>주장 <span class="muted small" data-caphint></span><input name="evk${i}" autocomplete="off" placeholder="여러 명은 쉼표로 구분" value="${esc(evCaps(ev0?.[i]).map((c) => nameOf(c)).join(', '))}"></label>
           <p class="cap-check tiny" data-capchk="${i}"></p>
           <div class="ev-mem" data-evmem="${i}"></div></div>`).join('')}
         </div>
@@ -289,7 +289,7 @@ function pickMembers(i, evMembers, nameFn, done) {
   const list = S.members.filter((m) => m.active !== false || sel.has(m.id)).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
   const { el, close } = modal(`${nameFn()} 팀원`, `<div class="stack pick-mem">
     <input data-q placeholder="닉네임 검색" autocomplete="off">
-    <details><summary>카페 닉네임 붙여넣기</summary><textarea data-paste rows="3" placeholder="쉼표·줄바꿈으로 여러 명 (예: 진이, 타로, 자나)"></textarea>
+    <details><summary>카페 닉네임 붙여넣기</summary><textarea data-paste rows="3" placeholder="쉼표·줄바꿈으로 여러 명"></textarea>
       <button type="button" class="btn ghost sm" data-addpaste>명단에 넣기</button><p class="tiny" data-pastemsg></p></details>
     <p class="small"><b data-n></b> · <span class="muted">다른 팀 표시가 있는 사람을 누르면 이 팀으로 옮겨요</span></p>
     <div class="name-grid pick-grid" data-grid></div>
@@ -329,7 +329,7 @@ export function cancelMatchday(md) {
   const { el, close } = modal('경기 취소', `<form class="stack">
     <p class="small">${fmtDate(md.date)}${md.time ? ' ' + esc(md.time) : ''} ${esc(md.venue || '')} 경기를 취소해요. 일정에는 남고 "경기 취소"로 표시되며, 신청 명단은 그대로 보관돼요.</p>
     <div class="chips">${REASONS.map((r) => `<button type="button" class="xchip" data-r="${r}">${r}</button>`).join('')}</div>
-    <label>취소 사유 (선택)<input name="reason" placeholder="예: 우천으로 구장 폐쇄"></label>
+    <label>취소 사유 (선택)<input name="reason"></label>
     <button class="btn danger-fill">경기 취소</button></form>`);
   el.querySelectorAll('[data-r]').forEach((b) => b.addEventListener('click', () => { el.querySelector('[name=reason]').value = b.dataset.r; }));
   el.querySelector('form').addEventListener('submit', async (e) => {

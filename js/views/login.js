@@ -1,8 +1,8 @@
 // 로그인 — 카페 닉네임 → (처음) 비밀번호 정하기 / (다음부터) 비밀번호 입력, 자동 로그인
-import { S, refresh } from '../state.js?v=0.1.44';
-import { register, login, status, saveSession, validPin } from '../auth.js?v=0.1.44';
-import { norm } from '../cafe-parser.js?v=0.1.44';
-import { esc } from '../util.js?v=0.1.44';
+import { S, refresh } from '../state.js?v=0.1.45';
+import { register, login, status, saveSession, validPin } from '../auth.js?v=0.1.45';
+import { norm } from '../cafe-parser.js?v=0.1.45';
+import { esc } from '../util.js?v=0.1.45';
 
 let step = { pid: null, registered: false }, nick = '', err = '', denied = false;
 
@@ -21,7 +21,7 @@ export function render(root) {
     <p class="muted">카페 닉네임과 비밀번호(숫자 4자리)로 접속해요</p>
     <div class="card lg-card">
       ${!m ? `
-        <label>카페 닉네임<input name="nick" value="${esc(nick)}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="예: 진이" enterkeyhint="next"></label>
+        <label>카페 닉네임<input name="nick" value="${esc(nick)}" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="next"></label>
         <div class="lg-sug" data-sug></div>
         ${err ? `<p class="err">${esc(err)}</p>` : ''}
         <button class="btn full" data-next>다음</button>`
