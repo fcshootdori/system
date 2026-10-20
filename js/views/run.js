@@ -4,7 +4,7 @@ import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state
 import { db } from '../store.js';
 import { STATUS } from '../config.js';
 import { esc, fmtDate, toast } from '../util.js';
-import { noLabel, eventTeams, signupView, eventTeamsToTeams } from '../domain.js';
+import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel } from '../domain.js';
 import { colorChip } from '../ui.js';
 import { empty } from '../ui.js';
 import { fmtSummary, editMatchday, cancelMatchday } from './home.js';
@@ -56,6 +56,9 @@ export function render(root) {
 
   const body = root.querySelector('[data-body]');
   const ctx = { md, embedded: true };
+  // 신청 마감 시각 전 (경기일 전 목요일 0시)
+  const early = !!closeTime(md) && !closePassed(md);
+  const noGames = !S.games.some((g) => g.matchdayId === md.id);
   root.querySelector('[data-cancelmd]')?.addEventListener('click', () => cancelMatchday(md));
   if (md.cancelled) {
     body.innerHTML = `<section class="card cancel-card"><h2>취소된 경기예요</h2>
@@ -69,9 +72,12 @@ export function render(root) {
     body.innerHTML = `<section class="card op"><h2>이벤트 경기 — 팀이 미리 정해져 있어요</h2>
       <p class="small">${v.sides.map((s) => `${colorChip(s.color, s.name)} 참석 <b>${s.ins.length}</b>명`).join(' · ')}${v.noTeam.length ? ` · 팀 미정 ${v.noTeam.length}명(인원 적은 팀으로)` : ''}${v.pend.length ? ` · 협의 ${v.pend.length}명(승인 전)` : ''}</p>
       <p class="muted small">주장 선정·드래프트 없이 참석자 그대로 팀을 확정해요. 확정 뒤에도 팀 확정 단계에서 선수를 옮길 수 있어요.</p>
-      <button class="btn" data-evfinal>참석자로 팀 확정</button></section>`;
+      ${early ? `<p class="small deadline">⏰ 신청 ${esc(closeLabel(md))} — 마감 뒤에 팀을 확정하세요.</p>` : ''}
+      <button class="btn ${early ? 'ghost' : ''}" data-evfinal>${early ? '마감 전이지만 지금 팀 확정' : '참석자로 팀 확정'}</button></section>`;
     body.querySelector('[data-evfinal]').addEventListener('click', async () => {
+      if (early && !confirm(`아직 신청 마감 시각(${closeLabel(md).replace(' 마감', '')}) 전이에요. 지금 팀을 확정하면 신청이 닫혀요. 확정할까요?`)) return;
       await db.tx(mdPath(md.id), (cur) => {
+        if (early) cur.earlyTeams = true;
         cur.teams = eventTeamsToTeams(cur); cur.teamNames = eventTeams(cur).map((t) => t.name);
         cur.captains = []; cur.picks = []; cur.draftStarted = false; cur.status = 'teams'; return cur;
       });
@@ -90,6 +96,20 @@ export function render(root) {
       <button class="btn" data-notice2>결과 공지 이미지</button></div></section>`);
   }
 
+  // 마감 전인데 신청 다음 단계에 와 있으면 → 신청 단계로 되돌리기
+  if (!md.cancelled && early && noGames && ['captains', 'drafting', 'teams'].includes(md.status)) {
+    body.insertAdjacentHTML('afterbegin', `<section class="card warnbar"><b>⏰ 아직 신청 기간이에요 (${esc(closeLabel(md))})</b>
+      <p class="small">지금은 '${esc(STATUS[md.status]?.label || '')}' 단계라 회원이 신청할 수 없어요. 마감 전이면 신청 단계로 되돌려 주세요. ${eventTeams(md) ? '팀 배정은 그대로 남아요.' : '주장·드래프트 내용은 그대로 남아요.'}</p>
+      <button class="btn" data-reopen>신청 단계로 되돌리기</button></section>`);
+    body.querySelector('[data-reopen]').addEventListener('click', async () => {
+      await db.tx(mdPath(md.id), (cur) => {
+        cur.status = 'open'; cur.reopened = false; cur.earlyTeams = false;
+        if (eventTeams(cur)) cur.teams = [];   // 이벤트 경기: 팀은 마감 뒤 참석자로 다시 확정
+        return cur;
+      });
+      S.step = null; toast('신청 단계로 되돌렸어요 — 마감 때까지 신청을 받아요');
+    });
+  }
   root.querySelectorAll('[data-to]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.to) { S.sel = b.dataset.to; S.step = null; render(root); } }));
   root.querySelectorAll('[data-step]').forEach((b) => b.addEventListener('click', () => { S.step = b.dataset.step === auto ? null : b.dataset.step; render(root); window.scrollTo(0, 0); }));
   root.querySelector('[data-edit]').addEventListener('click', () => editMatchday(md));

@@ -4,7 +4,7 @@
 import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js';
 import { pickMe } from './pickme.js';
 import { db, newId } from '../store.js';
-import { isOpen, closeLabel, closePassed, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams } from '../domain.js';
+import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams } from '../domain.js';
 import { TEAM_COLORS } from '../config.js';
 import { parseCafeComments, norm } from '../cafe-parser.js';
 import { esc, fmtDate, fmtTime, toast, byName } from '../util.js';
@@ -277,6 +277,7 @@ function cafeImport(md) {
   el.querySelector('[data-parse]').addEventListener('click', () => {
     const out = el.querySelector('[data-out]');
     const { rows, sections, closed } = parseCafeComments(el.querySelector('[data-src]').value, S.members);
+    const early = !!closeTime(md) && !closePassed(md);   // 신청 마감 시각 전
     const teamSecs = sections.filter((x) => x.kind === 'in').map((x) => x.title);
     const secColors = defaultSectionColors(teamSecs, md);
     const evNow = eventTeams(md);
@@ -302,7 +303,7 @@ function cafeImport(md) {
         <div class="row wrap">${teamSecs.map((t, i) => `<label>${esc(t)}<select data-secc="${esc(t)}">${
           evNow ? evNow.map((x, k) => `<option value="${k}" ${k === secTeam(t, i) ? 'selected' : ''}>${esc(x.name)}</option>`).join('') + '<option value="">팀 없음</option>'
             : TEAM_COLORS.map((c) => `<option value="${c.key}" ${c.key === secColors[i] ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label>`).join('')}</div>
-        <label class="inline"><input type="checkbox" data-mkteams ${closed ? 'checked' : ''}> 참석자로 팀까지 확정 <small class="muted">${closed ? '("마감" 댓글이 있어 켜 뒀어요)' : ''}</small></label>
+        <label class="inline"><input type="checkbox" data-mkteams ${closed && !early ? 'checked' : ''}> 참석자로 팀까지 확정 <small class="muted">${early ? `(신청 ${esc(closeLabel(md))} 전이라 꺼 뒀어요)` : closed ? '("마감" 댓글이 있어 켜 뒀어요)' : ''}</small></label>
         <p class="tiny muted">협의 인원은 승인할 때 인원이 적은 팀에 들어가요.</p>
       </div>` : ''}
       <p class="muted small">게스트로 참석하는 사람은 개인 기록에 남지 않아요. 회원을 고르면 그 닉네임이 별칭으로 저장돼서 다음부터 자동으로 일치해요.</p>
@@ -374,10 +375,12 @@ function cafeImport(md) {
         return cur;
       });
       // 참석자로 팀까지 확정 (이벤트 경기)
-      const mk = out.querySelector('[data-mkteams]')?.checked && (evNow || newEvent);
+      let mk = out.querySelector('[data-mkteams]')?.checked && (evNow || newEvent);
+      if (mk && early && !confirm(`아직 신청 마감 시각(${closeLabel(md).replace(' 마감', '')}) 전이에요. 지금 팀을 확정하면 신청이 닫혀요. 확정할까요?`)) mk = false;
       if (mk) {
         await db.tx(mdPath(md.id), (cur) => {
           cur.teams = eventTeamsToTeams(cur); cur.captains = []; cur.picks = []; cur.draftStarted = false; cur.status = 'teams';
+          if (early) cur.earlyTeams = true;   // 운영진이 마감 전에 일부러 확정
           return cur;
         });
       }

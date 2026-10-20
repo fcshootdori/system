@@ -113,7 +113,9 @@ export function parseCafeComments(text, members, { baseDate = new Date() } = {})
   let closed = false;
   comments.forEach((c) => {
     if (c.author && !isHeader(c) && !/^(참|불|ㅊ|ㅂ)/.test(c.body.replace(/\s/g, ''))) {   // 운영진 공지 댓글
-      if (/마감/.test(c.body)) closed = true;
+      // 신청을 닫았다는 댓글만 "마감"으로 봄 (예: ————마감————, 신청 마감합니다). "목요일 0시 마감" 같은 안내는 제외
+      const t = c.body.replace(/[\s\-—–_=~*·.!^]/g, '');
+      if (/^(신청|참가|참석)?마감(합니다|되었습니다|됐습니다|완료|입니다|했습니다)?$/.test(t)) closed = true;
       return;
     }
     if (isHeader(c)) {
