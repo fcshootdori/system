@@ -1,0 +1,28 @@
+// 앱 아이콘 (선 아이콘 24×24, currentColor) — 하단 메뉴·버튼·정보 줄에서 공통 사용
+const P = {
+  home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="12" cy="15" r="1.4" fill="currentColor" stroke="none"/>',
+  ball: '<circle cx="12" cy="12" r="9"/><path d="m12 7.2 4.3 3.1-1.6 5h-5.4l-1.6-5z"/><path d="M12 3v4.2M16.3 10.3l4.2-1.4M14.7 15.3l2.6 3.6M9.3 15.3l-2.6 3.6M7.7 10.3 3.5 8.9"/>',
+  board: '<rect x="2.5" y="5" width="19" height="13" rx="2"/><path d="M12 5v13M7 18v3M17 18v3"/><path d="M6 10.5h2.5v3H6zM15.5 10.5H18v3h-2.5z"/>',
+  user: '<circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c1.2-4 4.3-6 8-6s6.8 2 8 6"/>',
+  whistle: '<path d="M14 9h7v4h-3"/><circle cx="9.5" cy="13.5" r="6"/><path d="M9 4.5 10.5 7"/><circle cx="9.5" cy="13.5" r="1.6" fill="currentColor" stroke="none"/>',
+  megaphone: '<path d="M3.5 10v4h3l8 5V5l-8 5z"/><path d="M18 9a4 4 0 0 1 0 6"/><path d="M6.5 14l1.5 6h3l-1-5"/>',
+  users: '<circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20c.9-3.4 3.4-5.3 6.5-5.3s5.6 1.9 6.5 5.3"/><circle cx="17" cy="9.5" r="2.8"/><path d="M16.5 14.5c2.6.1 4.4 1.8 5 4.5"/>',
+  gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/><circle cx="12" cy="12" r="6.5"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+  pin: '<path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  crown: '<path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"/>',
+  shirt: '<path d="M8.5 3.5 3 6.5l2 4.5 2.5-1V20.5h9V10l2.5 1 2-4.5-5.5-3a3.5 3.5 0 0 1-7 0z"/>',
+  check: '<path d="m4.5 12.5 4.5 4.5 10.5-11"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  chevron: '<path d="m9 5 7 7-7 7"/>',
+  back: '<path d="m15 5-7 7 7 7"/>',
+  flag: '<path d="M5 21V4M5 4.5h11l-2 4 2 4H5"/>',
+  ticket: '<path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 1 0-4V6H3z"/><path d="M14.5 6v12" stroke-dasharray="2 2"/>',
+  trophy: '<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1.5A3.5 3.5 0 0 0 7.5 11M17 6h3v1.5a3.5 3.5 0 0 1-3.5 3.5M12 14v4M8 20.5h8"/>',
+  logout: '<path d="M14 4H5v16h9"/><path d="M10 12h10M16.5 8.5 20 12l-3.5 3.5"/>',
+  external: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v6H4V6h6"/>',
+  swap: '<path d="M4 8h14l-3.5-3.5M20 16H6l3.5 3.5"/>',
+};
+export const icon = (name, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ''}</svg>`;

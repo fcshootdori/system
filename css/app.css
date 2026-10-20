@@ -796,3 +796,213 @@ details.tnote[open] { padding-bottom: 4px; }
 .cap-grid .name-btn.on.t1 { background: #0f766e; border-color: #0f766e; }
 .cap-grid .name-btn.on.t1 .ctag { color: #0f766e; }
 .cappick > .btn.full { margin-top: 12px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Ver.0.2 디자인 — "토요일 아침 홈 구장"
+   엠블럼 남색 → 잔디 녹색, 조명 노란색 강조 / 경기장 사진 위 매치데이 티켓 / 전광판 점수판
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --night: #0b1033; --navy: #171c61; --turf: #1f7a3d; --turf-d: #145a2c; --chalk: #f4f7f2; --flood: #ffcf3d; --flood-d: #e0a800;
+  --bg: #eef1ee; --card: #fff; --ink: #121633; --sub: #5f6680; --line: #dfe3ea; --soft: #f1f3f6;
+  --radius: 18px; --r-sm: 12px;
+  --display: "Black Han Sans", "Pretendard Variable", Pretendard, sans-serif;
+  --num: "Anton", "Black Han Sans", "Pretendard Variable", sans-serif;
+  --shadow: 0 1px 2px rgba(18,22,51,.06), 0 6px 18px -10px rgba(18,22,51,.25);
+}
+body { background: var(--bg); color: var(--ink); }
+h1 { font-family: var(--display); font-weight: 400; font-size: 26px; letter-spacing: -.01em; line-height: 1.2; }
+h2 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+.card { border: 1px solid #e6e9ef; box-shadow: var(--shadow); border-radius: var(--radius); }
+.card.op { border: 1.5px dashed #e0a800; background: #fffdf5; box-shadow: none; }
+.card.op h2::before { content: ''; }
+.ico { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; }
+
+/* 상단바: 남색 */
+#topbar { background: var(--navy); border-bottom: 0; color: #fff; padding: 10px 14px; box-shadow: 0 1px 0 rgba(255,255,255,.06) inset; }
+#topbar .brand { color: #fff; gap: 10px; }
+#topbar .brand span { font-family: var(--display); font-weight: 400; font-size: 20px; letter-spacing: .01em; }
+#topbar .brand img { width: 34px; height: 34px; background: #fff; border-radius: 9px; padding: 2px; }
+.op-tag { background: var(--flood); color: var(--night); border-radius: 6px; font-size: 11px; }
+#topbar .pill { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.22); color: #fff; padding: 7px 12px; font-size: 13px; }
+#topbar .pill.on { background: var(--flood); border-color: var(--flood); color: var(--night); }
+#topbar .pill.cap { background: var(--flood); border-color: var(--flood); color: var(--night); }
+body.op #topbar { background: linear-gradient(90deg, var(--navy), #232a85); box-shadow: inset 0 -3px 0 var(--flood); }
+
+/* 하단 메뉴: SVG 아이콘, 가운데 경기모드 공 */
+#tabbar { background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -6px 20px -14px rgba(18,22,51,.35); }
+#tabbar a { color: #8a90a6; gap: 2px; padding: 8px 0 6px; font-size: 11px; font-weight: 700; position: relative; }
+#tabbar a i { display: grid; place-items: center; height: 26px; font-size: 22px; }
+#tabbar a i .ico { width: 24px; height: 24px; }
+#tabbar a.on { color: var(--navy); }
+#tabbar a.on::before { content: ''; position: absolute; top: 0; left: 30%; right: 30%; height: 3px; border-radius: 0 0 3px 3px; background: var(--flood); }
+#tabbar a.mm::before { display: none; }
+#tabbar a.mm i { width: 50px; height: 50px; margin-top: -24px; background: radial-gradient(circle at 35% 30%, #2b3290, var(--navy)); border: 3px solid #fff; color: #fff; box-shadow: 0 6px 14px rgba(23,28,97,.35); }
+#tabbar a.mm i .ico { width: 28px; height: 28px; }
+#tabbar a.mm.on i { background: var(--flood); color: var(--night); }
+body.op #tabbar a.on { color: var(--navy); }
+
+/* 버튼: 남색(기본) · 조명 노란색(가장 중요한 한 가지) · 흰색(보조) */
+.btn { border-radius: var(--r-sm); background: var(--navy); font-weight: 800; min-height: 46px; padding: 11px 18px; letter-spacing: -.01em; transition: transform .08s, filter .15s; }
+.btn:not(:disabled):active { transform: scale(.98); }
+.btn:focus-visible, .pill:focus-visible, .name-btn:focus-visible, #tabbar a:focus-visible { outline: 3px solid var(--flood); outline-offset: 2px; }
+.btn.ghost { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
+.btn.ghost:not(:disabled):hover { box-shadow: inset 0 0 0 1.5px #b8bfcf; }
+.btn.ghost.danger { background: #fff; color: #c81e1e; box-shadow: inset 0 0 0 1.5px #f3c4c4; }
+.btn.go { background: var(--flood); color: var(--night); }
+.btn.sm { min-height: 34px; padding: 6px 12px; font-size: 13px; border-radius: 10px; }
+.btn .ico { width: 18px; height: 18px; }
+.icon-btn { background: #fff; box-shadow: inset 0 0 0 1.5px var(--line); }
+input, select, textarea { border: 1.5px solid var(--line); border-radius: var(--r-sm); min-height: 46px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(23,28,97,.12); }
+input[type=checkbox] { min-height: 0; accent-color: var(--navy); }
+.subnav, .seg { background: #e4e8ee; border-radius: 14px; }
+.subnav button.on, .seg button.on { color: var(--navy); box-shadow: 0 1px 2px rgba(18,22,51,.12), 0 4px 10px -6px rgba(18,22,51,.3); }
+.chip { background: #eef0f5; }
+.name-btn { border-radius: 12px; border: 1.5px solid var(--line); font-weight: 700; min-height: 44px; }
+.name-btn.on { background: var(--navy); border-color: var(--navy); }
+.back { display: inline-flex; align-items: center; gap: 2px; color: var(--sub); font-weight: 700; }
+
+/* 섹션 제목 */
+.sect { display: flex; flex-direction: column; gap: 10px; }
+.sect-hd { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 2px 0; }
+.sect-hd h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 20px; }
+.sect-hd small { color: var(--sub); font-weight: 600; }
+.link-card { display: flex; align-items: center; justify-content: space-between; color: var(--navy); font-weight: 800; }
+.cap-strip { display: flex; align-items: center; gap: 10px; background: #fff8dd; border-color: #f3d36b; color: #6b4b00; }
+.cap-strip span { flex: 1; }
+
+/* ── 홈: 경기장 사진 히어로 + 매치데이 티켓 ── */
+#view > .hero:first-child { margin-top: -14px; }
+.hero { position: relative; margin: 0 -16px; padding: 18px 16px 22px; color: #fff;
+  background: linear-gradient(180deg, rgba(23,28,97,.92) 0%, rgba(11,16,51,.55) 34%, rgba(11,16,51,.15) 62%, rgba(238,241,238,0) 100%), url(../assets/stadium-sm.jpg) center 30% / cover no-repeat, var(--night); }
+@media (min-width: 701px) { .hero { background-image: linear-gradient(180deg, rgba(23,28,97,.92) 0%, rgba(11,16,51,.55) 34%, rgba(11,16,51,.15) 62%, rgba(238,241,238,0) 100%), url(../assets/stadium.jpg); } }
+.hero-head { display: flex; align-items: center; gap: 12px; margin: 2px 2px 16px; }
+.hero-emb { width: 52px; height: 52px; object-fit: contain; background: #fff; border-radius: 14px; padding: 4px; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.hero-team { display: block; font-family: var(--display); font-weight: 400; font-size: 28px; line-height: 1.05; text-shadow: 0 2px 10px rgba(0,0,0,.35); }
+.hero-sub { font-size: 13px; font-weight: 700; color: var(--flood); }
+
+.ticket { position: relative; background: #fff; color: var(--ink); border-radius: 20px; box-shadow: 0 18px 40px -16px rgba(5,8,30,.65); overflow: hidden; }
+.ticket.empty-t { padding: 22px 20px; color: var(--sub); }
+.tk-main { display: grid; grid-template-columns: auto 1fr; gap: 16px; padding: 18px 18px 16px; background:
+  linear-gradient(90deg, var(--turf) 0 6px, transparent 6px); }
+.tk-when { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 92px; padding: 8px 6px; border-radius: 14px; background: var(--navy); color: #fff; }
+.tk-date { font-family: var(--num); font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: .01em; }
+.tk-dow { font-size: 13px; font-weight: 800; color: var(--flood); margin-top: 4px; }
+.tk-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tk-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 2px; }
+.tk-tags span { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 99px; background: #eef0f5; color: var(--sub); }
+.tk-tags .tk-dday { background: var(--flood); color: var(--night); }
+.tk-tags .tk-no { background: var(--navy); color: #fff; }
+.tk-line { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 15px; font-weight: 700; min-width: 0; }
+.tk-line span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tk-line .ico { color: var(--turf); }
+.tk-line.sub { font-size: 13px; font-weight: 600; color: var(--sub); }
+.tk-perf { position: relative; height: 0; border-top: 2px dashed #d7dce5; margin: 0 14px; }
+.tk-perf::before, .tk-perf::after { content: ''; position: absolute; top: -12px; width: 22px; height: 22px; border-radius: 50%; background: var(--bg); }
+.tk-perf::before { left: -26px; } .tk-perf::after { right: -26px; }
+.tk-stub { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 8px; }
+.tk-count { display: flex; justify-content: space-between; align-items: baseline; }
+.tk-count span { font-size: 14px; font-weight: 700; }
+.tk-count b { font-family: var(--num); font-weight: 400; font-size: 28px; margin-right: 2px; color: var(--navy); }
+.tk-count small { color: var(--sub); font-weight: 700; }
+.tk-bar { height: 8px; border-radius: 99px; background: #e8ebf1; overflow: hidden; }
+.tk-bar i { display: block; height: 100%; border-radius: 99px; background: var(--flood-d); transition: width .4s; }
+.tk-bar.ok i { background: var(--turf); }
+.tk-dl { display: flex; align-items: center; gap: 5px; margin: 0; font-size: 13px; font-weight: 700; color: #a15c00; }
+.tk-note { margin: 0; background: var(--soft); border-radius: 10px; padding: 8px 10px; font-size: 13px; white-space: pre-wrap; }
+.tk-me { margin: 0; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tk-reply .mine { margin: 2px 0 0; font-size: 14px; }
+.tk-reply .my-btns { margin-top: 8px; }
+.tk-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.tk-links .btn.ghost { box-shadow: none; background: var(--soft); }
+
+/* 참석·불참 버튼 (홈 티켓·신청 화면 공용): 크게, 선택하면 색이 채워짐 */
+.my-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.my-btns.wrap { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.my-btns .btn { min-height: 52px; font-size: 16px; }
+.my-btns .btn[data-my="in"]:not(.ghost) { background: var(--turf); }
+.my-btns .btn[data-my="in"]:not(.ghost)::before { content: '✓'; font-weight: 900; }
+.my-btns .btn.ghost[data-my="in"] { color: var(--turf-d); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--turf) 45%, #fff); }
+.my-btns .btn.danger-fill { background: #c81e1e; }
+
+/* 로그인: 경기장 사진 */
+body.gate { background: var(--night) url(../assets/stadium-sm.jpg) center 40% / cover no-repeat fixed; }
+@media (min-width: 701px) { body.gate { background-image: url(../assets/stadium.jpg); } }
+body.gate::before { content: ''; position: fixed; inset: 0; background: linear-gradient(180deg, rgba(11,16,51,.9), rgba(11,16,51,.45) 45%, rgba(11,16,51,.85)); pointer-events: none; }
+body.gate #view { position: relative; }
+body.gate .ver { position: relative; color: rgba(255,255,255,.5); }
+.lg { color: #fff; }
+.lg h1 { color: #fff; font-size: 34px; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
+.lg > .muted { color: rgba(255,255,255,.78); }
+.lg-emb { background: #fff; border-radius: 26px; padding: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.lg-card { color: var(--ink); border: 0; box-shadow: 0 24px 50px -20px rgba(0,0,0,.7); }
+.lg-op { color: rgba(255,255,255,.85) !important; }
+.lg .btn.ghost { background: rgba(255,255,255,.12); color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.3); }
+
+/* 전광판 점수판 (홈 지난 경기 · 경기 결과) */
+.board { background: radial-gradient(120% 140% at 50% 0%, #1d2470 0%, var(--night) 70%); color: #fff; border-radius: 18px; padding: 20px 12px 18px; position: relative; overflow: hidden; }
+.board::after { content: ''; position: absolute; inset: 0; background: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1.4px) 0 0 / 5px 5px; pointer-events: none; }
+.sb-score b { font-family: var(--num); font-weight: 400; color: #fff; font-size: 64px; letter-spacing: .02em; text-shadow: 0 0 18px rgba(255,207,61,.35); }
+.sb-score span { color: var(--flood); font-size: 36px; }
+.sb-team .chip { font-size: 15px; box-shadow: 0 0 0 2px rgba(255,255,255,.25); }
+.res { border-radius: 6px; font-size: 12px; }
+.board .res.w { background: var(--flood); color: var(--night); }
+.board .res.l { background: rgba(255,255,255,.14); color: rgba(255,255,255,.75); }
+.board .res.d { background: rgba(255,255,255,.22); color: #fff; }
+.board.mini { padding: 16px 8px 14px; border: 0; }
+.board.mini .sb-score b { font-size: 48px; }
+.review { padding: 10px; }
+.review-meta { padding: 10px 6px 0; gap: 4px; }
+.review .more { display: flex; align-items: center; justify-content: flex-end; gap: 2px; color: var(--navy); }
+.mom { background: var(--flood); color: var(--night); border-radius: 5px; padding: 0 5px; font-size: 11px; font-weight: 900; }
+
+/* 운영 경기 단계 막대 */
+.runbar { border-radius: 0 0 18px 18px; }
+.stages button { background: #eef0f5; color: #8a90a6; border-radius: 9px; min-height: 34px; }
+.stages button.done { background: color-mix(in srgb, var(--navy) 12%, #fff); color: var(--navy); }
+.stages button.now { background: var(--navy); color: #fff; }
+.stages button.sel { outline: 2.5px solid var(--flood-d); }
+
+/* 달력·목록 등 작은 정리 */
+.cal-head b { font-family: var(--display); font-weight: 400; font-size: 20px; }
+.empty { padding: 22px 8px; }
+.toast, #toast { border-radius: 14px; }
+
+/* PC 왼쪽 메뉴 */
+@media (min-width: 1024px) and (hover: hover) {
+  #tabbar { background: var(--navy); border-right: 0; box-shadow: none; }
+  #tabbar a { color: rgba(255,255,255,.7); }
+  #tabbar a.on { background: rgba(255,255,255,.1); color: #fff; }
+  #tabbar a.on::before { top: 10px; bottom: 10px; left: 0; right: auto; width: 3px; height: auto; border-radius: 0 3px 3px 0; }
+  #tabbar a.mm i { background: none; border: 0; box-shadow: none; width: 24px; height: 26px; margin: 0; }
+  #tabbar a.mm i .ico { width: 24px; height: 24px; }
+  #tabbar a.mm.on i { background: none; color: var(--flood); }
+  .nav-brand { color: #fff; font-family: var(--display); font-weight: 400; font-size: 22px; }
+  .nav-brand img { background: #fff; border-radius: 22px; padding: 8px; }
+  #topbar { background: transparent; box-shadow: none; position: sticky; }
+  body.op #topbar { background: transparent; box-shadow: none; }
+  #topbar .pill { background: var(--navy); }
+  #view > .hero:first-child { margin-top: 0; }
+  .hero { margin: 0; border-radius: 22px; padding: 26px 24px 28px; }
+}
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } .tk-bar i { transition: none; } }
+/* 0.2 손질: 제목 글꼴 대체 시에도 굵게, 히어로 제목, 티켓 구멍 제거, 전광판 긴 팀 이름 */
+h1, .sect-hd h2, .hero-title, #topbar .brand span, .cal-head b, .nav-brand, .lg h1 { font-weight: 800; font-synthesis: none; }
+.hero-head { justify-content: space-between; margin: 4px 2px 14px; }
+.hero-title { margin: 0; color: #fff; font-size: 30px; text-shadow: 0 2px 12px rgba(0,0,0,.35); }
+.hero-link { display: inline-flex; align-items: center; gap: 2px; color: rgba(255,255,255,.85); font-size: 13px; font-weight: 700; }
+.tk-perf::before, .tk-perf::after { display: none; }
+.tk-perf { margin: 0 18px; }
+.board { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+.board .sb-team { min-width: 0; }
+.board .sb-team .chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: block; }
+@media (max-width: 480px) {
+  .board .sb-team .chip { font-size: 13px; padding: 5px 10px; }
+  .sb-score b { font-size: 52px; min-width: 0; }
+  .board.mini .sb-score b { font-size: 42px; }
+  .sb-score { gap: 6px; }
+}
+@media (min-width: 1024px) and (hover: hover) {
+  #tabbar a { gap: 12px; }
+  body[data-route="home"] #view { max-width: 780px; }
+}

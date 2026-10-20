@@ -1,12 +1,12 @@
 // 경기결과 — [경기 결과 | 개인 기록]  (WD_FUTSAL 경기결과 메뉴와 같은 구성)
 //  경기 결과는 가장 최근 경기부터, 좌우 버튼이나 스와이프로 이전·이후 경기로 넘김
-import { S, playedDays } from '../state.js?v=0.1.31';
-import { esc, fmtDate } from '../util.js?v=0.1.31';
-import { empty } from '../ui.js?v=0.1.31';
-import * as games from './games.js?v=0.1.31';
-import * as records from './records.js?v=0.1.31';
-import { fmtSummary } from './home.js?v=0.1.31';
-import { noLabel } from '../domain.js?v=0.1.31';
+import { S, playedDays } from '../state.js?v=0.1.32';
+import { esc, fmtDate } from '../util.js?v=0.1.32';
+import { empty } from '../ui.js?v=0.1.32';
+import * as games from './games.js?v=0.1.32';
+import * as records from './records.js?v=0.1.32';
+import { fmtSummary } from './home.js?v=0.1.32';
+import { noLabel } from '../domain.js?v=0.1.32';
 
 let tab = 'res', cur = null;
 

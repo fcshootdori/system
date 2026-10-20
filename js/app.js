@@ -3,32 +3,33 @@
 //   · 일반 회원: 홈 · 일정 · ⚽경기모드 · 경기결과 · 내 정보
 //   · 운영모드: 일정 · 경기 · 공지 · 회원 · 설정
 //   · 주장: 오른쪽 위 👑 드래프트 버튼으로 입장
-import { APP_NAME, APP_VERSION } from './config.js?v=0.1.31';
-import { initStore, db } from './store.js?v=0.1.31';
-import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go } from './state.js?v=0.1.31';
-import { esc, toast } from './util.js?v=0.1.31';
-import { modal, fitBoxes } from './ui.js?v=0.1.31';
+import { APP_NAME, APP_VERSION } from './config.js?v=0.1.32';
+import { initStore, db } from './store.js?v=0.1.32';
+import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go } from './state.js?v=0.1.32';
+import { esc, toast } from './util.js?v=0.1.32';
+import { modal, fitBoxes } from './ui.js?v=0.1.32';
+import { icon } from './icons.js?v=0.1.32';
 
-import * as home from './views/home.js?v=0.1.31';
-import * as schedule from './views/schedule.js?v=0.1.31';
-import * as matchmode from './views/matchmode.js?v=0.1.31';
-import * as results from './views/results.js?v=0.1.31';
-import * as myinfo from './views/me.js?v=0.1.31';
-import * as apply from './views/apply.js?v=0.1.31';
-import * as draft from './views/draft.js?v=0.1.31';
-import * as games from './views/games.js?v=0.1.31';
-import * as records from './views/records.js?v=0.1.31';
-import * as run from './views/run.js?v=0.1.31';
-import * as notice from './views/notice.js?v=0.1.31';
-import * as admin from './views/admin.js?v=0.1.31';
-import * as membersView from './views/members.js?v=0.1.31';
-import * as loginView from './views/login.js?v=0.1.31';
-import { loadSession, saveSession, verify } from './auth.js?v=0.1.31';
-import { startAutoSync } from './member-sync.js?v=0.1.31';
-import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.31';
+import * as home from './views/home.js?v=0.1.32';
+import * as schedule from './views/schedule.js?v=0.1.32';
+import * as matchmode from './views/matchmode.js?v=0.1.32';
+import * as results from './views/results.js?v=0.1.32';
+import * as myinfo from './views/me.js?v=0.1.32';
+import * as apply from './views/apply.js?v=0.1.32';
+import * as draft from './views/draft.js?v=0.1.32';
+import * as games from './views/games.js?v=0.1.32';
+import * as records from './views/records.js?v=0.1.32';
+import * as run from './views/run.js?v=0.1.32';
+import * as notice from './views/notice.js?v=0.1.32';
+import * as admin from './views/admin.js?v=0.1.32';
+import * as membersView from './views/members.js?v=0.1.32';
+import * as loginView from './views/login.js?v=0.1.32';
+import { loadSession, saveSession, verify } from './auth.js?v=0.1.32';
+import { startAutoSync } from './member-sync.js?v=0.1.32';
+import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.32';
 
-const MEMBER_TABS = [['home', '홈', '⌂'], ['sched', '일정', '▦'], ['mm', '경기모드', '⚽'], ['results', '경기결과', '▤'], ['me', '내 정보', '☺']];
-const OP_TABS = [['plan', '일정', '▦'], ['run', '경기', '⚑'], ['notice', '공지', '✉'], ['members', '회원', '☺'], ['settings', '설정', '⚙']];
+const MEMBER_TABS = [['home', '홈', 'home'], ['sched', '일정', 'calendar'], ['mm', '경기모드', 'ball'], ['results', '경기결과', 'board'], ['me', '내 정보', 'user']];
+const OP_TABS = [['plan', '일정', 'calendar'], ['run', '경기 운영', 'whistle'], ['notice', '공지', 'megaphone'], ['members', '회원', 'users'], ['settings', '설정', 'gear']];
 
 const ROUTES = {
   // 회원 메뉴
@@ -59,14 +60,15 @@ function renderShell() {
       <span>${esc(S.team.name)}</span>${S.operator ? '<em class="op-tag">운영</em>' : ''}
     </a>
     <div class="top-actions">
-      ${capMd ? `<a class="pill cap" href="#/draft">👑 드래프트</a>` : ''}
-      ${S.operator || opDevice() ? `<button class="pill ${S.operator ? 'on' : 'ghost'}" data-op>${S.operator ? '운영모드 끄기' : '운영모드'}</button>` : ''}
+      ${capMd ? `<a class="pill cap" href="#/draft">${icon('crown')}<span>드래프트</span></a>` : ''}
+      ${S.operator || opDevice() ? `<button class="pill ${S.operator ? 'on' : 'ghost'}" data-op>${icon('whistle')}<span>${S.operator ? '운영 끄기' : '운영'}</span></button>` : ''}
     </div>`;
   const tabs = S.operator ? OP_TABS : MEMBER_TABS;
   const active = ROUTES[name]?.parent || name;
-  document.getElementById('tabbar').innerHTML = `<div class="nav-brand">${S.team.emblem ? `<img src="${S.team.emblem}" alt="">` : ''}<span>${esc(S.team.name)}</span></div>` + tabs.map(([k, label, icon]) =>
-    `<a href="#/${k}" class="${k === active ? 'on' : ''} ${k === 'mm' ? 'mm' : ''}" ${k === active ? 'aria-current="page"' : ''}><i>${icon}</i><span>${label}</span></a>`).join('');
+  document.getElementById('tabbar').innerHTML = `<div class="nav-brand">${S.team.emblem ? `<img src="${S.team.emblem}" alt="">` : ''}<span>${esc(S.team.name)}</span></div>` + tabs.map(([k, label, ic]) =>
+    `<a href="#/${k}" class="${k === active ? 'on' : ''} ${k === 'mm' ? 'mm' : ''}" ${k === active ? 'aria-current="page"' : ''}><i>${icon(ic)}</i><span>${label}</span></a>`).join('');
   document.body.classList.toggle('op', S.operator);
+  document.body.dataset.route = name;   // 화면별 배경(홈 경기장 사진 등)
   const banner = document.getElementById('demo-banner');
   if (db.authError) banner.textContent = 'Firebase 익명 로그인이 꺼져 있어 저장이 안 돼요 — 콘솔 Authentication › 로그인 방법 › 익명을 켜 주세요.';
   banner.hidden = db.mode !== 'demo' && !db.authError;
