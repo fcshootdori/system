@@ -1,8 +1,8 @@
 // ⚽ 경기모드 — 오늘(또는 진행 중인) 경기의 실시간 스코어
 //  회원은 보기, 운영진은 운영모드 > 경기 메뉴에서 기록
-import { S, today, playedDays } from '../state.js?v=0.1.32';
-import { fmtDate } from '../util.js?v=0.1.32';
-import * as games from './games.js?v=0.1.32';
+import { S, today, playedDays } from '../state.js?v=0.1.33';
+import { fmtDate } from '../util.js?v=0.1.33';
+import * as games from './games.js?v=0.1.33';
 
 export function liveMatchday() {
   const t = today();

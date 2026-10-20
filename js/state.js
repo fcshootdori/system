@@ -1,7 +1,7 @@
 // 앱 전역 상태 — 저장소를 구독해 화면이 항상 최신 데이터를 보도록 함
-import { db } from './store.js?v=0.1.32';
-import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.32';
-import { byName } from './util.js?v=0.1.32';
+import { db } from './store.js?v=0.1.33';
+import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.33';
+import { byName } from './util.js?v=0.1.33';
 
 export const S = {
   team: { ...DEFAULT_TEAM },
@@ -25,8 +25,18 @@ export const onChange = (fn) => { listeners.add(fn); return () => listeners.dele
 let raf = 0;
 const emit = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => listeners.forEach((f) => f())); };
 
+// 운영진에게만 필요한 구독 (비밀번호 등록 현황 · 회원 시트 반영 기록) — 회원 기기는 읽지 않아 사용량을 줄임
+let opSubs = null;
+function syncOps(on) {
+  if (on && !opSubs) {
+    opSubs = [
+      db.watchCol('authset', (list) => { S.authset = Object.fromEntries(list.map((d) => [d.id, d])); emit(); }),
+      db.watchDoc('meta/memberSheet', (d) => { S.msync = d; emit(); }),
+    ];
+  } else if (!on && opSubs) { opSubs.forEach((u) => typeof u === 'function' && u()); opSubs = null; S.authset = {}; }
+}
 export function startSync() {
-  db.watchDoc('meta/memberSheet', (d) => { S.msync = d; emit(); });
+  syncOps(S.operator);
   db.watchDoc('meta/team', (d) => {
     S.team = { ...DEFAULT_TEAM, ...(d || {}), format: { ...DEFAULT_FORMAT, ...(d?.format || {}) },
       legacySheet: { ...DEFAULT_TEAM.legacySheet, ...(d?.legacySheet || {}) } };
@@ -40,7 +50,6 @@ export function startSync() {
     S.allMatchdays = list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
     applySampleFilter(); emit();
   });
-  db.watchCol('authset', (list) => { S.authset = Object.fromEntries(list.map((d) => [d.id, d])); emit(); });
   db.watchCol('games', (list) => { S.games = list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); emit(); });
 }
 
@@ -54,7 +63,7 @@ export function applySampleFilter() {
 export function setSamplesOnDevice(on) { try { on ? localStorage.setItem('teamapp:samples', '1') : localStorage.removeItem('teamapp:samples'); } catch {} applySampleFilter(); emit(); }
 
 export function setOperator(on) {
-  S.operator = on; applySampleFilter();
+  S.operator = on; applySampleFilter(); syncOps(on);
   if (on) { sessionStorage.setItem('teamapp:op', '1'); localStorage.setItem('teamapp:opdev', '1'); }
   else sessionStorage.removeItem('teamapp:op');
   emit();

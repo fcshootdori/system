@@ -17,5 +17,10 @@ for (const f of walk(path.join(root, 'js')).filter((f) => f.endsWith('.js'))) {
 const ip = path.join(root, 'index.html');
 let h = fs.readFileSync(ip, 'utf8');
 h = h.replace(/(src="js\/app\.js)(\?v=[^"]*)?(")/, `$1?v=${ver}$3`).replace(/(href="css\/app\.css)(\?v=[^"]*)?(")/, `$1?v=${ver}$3`);
+// 모든 모듈을 처음부터 한꺼번에 받아 오도록(가져오기 사슬 대기 없앰) + Firebase SDK 미리 받기
+const mods = walk(path.join(root, 'js')).filter((f) => f.endsWith('.js')).map((f) => path.relative(root, f).split(path.sep).join('/')).sort();
+const pre = ['<!-- preload:start -->', ...mods.map((m) => `  <link rel="modulepreload" href="${m}?v=${ver}">`),
+  ...['app', 'firestore', 'auth'].map((x) => `  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-${x}.js" crossorigin>`), '  <!-- preload:end -->'].join('\n');
+h = /<!-- preload:start -->[\s\S]*?<!-- preload:end -->/.test(h) ? h.replace(/<!-- preload:start -->[\s\S]*?<!-- preload:end -->/, pre) : h.replace('</head>', '  ' + pre + '\n</head>');
 fs.writeFileSync(ip, h);
 console.log(`버전 꼬리표 ${ver}: import ${n}곳 + index.html`);

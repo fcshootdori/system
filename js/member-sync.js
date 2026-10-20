@@ -3,10 +3,10 @@
 //  - [새로 불러오기]: 바로 읽어 반영. 새 회원·비슷한 이름 짝이 있으면 먼저 확인
 //  - 자동 반영: 시트 주소가 저장된 기기에서 앱을 열 때 + 열어 둔 동안 30분마다
 //    (앱을 아무도 안 열어도 반영되게 하려면 GitHub Actions 자동 반영 — README 참고)
-import { db, newId } from './store.js?v=0.1.32';
-import { S, refresh } from './state.js?v=0.1.32';
-import { KNOWN_ALIASES } from './config.js?v=0.1.32';
-import { parseCSV, parseMemberTable, planSync, privateOf, syncSummary, norm } from './member-sheet.js?v=0.1.32';
+import { db, newId } from './store.js?v=0.1.33';
+import { S, refresh } from './state.js?v=0.1.33';
+import { KNOWN_ALIASES } from './config.js?v=0.1.33';
+import { parseCSV, parseMemberTable, planSync, privateOf, syncSummary, norm } from './member-sheet.js?v=0.1.33';
 
 const LS = 'teamapp:msheet';
 export function sheetLink() { try { return JSON.parse(localStorage.getItem(LS)) || null; } catch { return null; } }
@@ -84,7 +84,7 @@ export async function apply(pv, { by = 'manual', choices = {} } = {}) {
   S.msheet = { at: Date.now(), byId, updated: pv.updated, count: records.length };
   const sum = { created, updated, missing: plan.missing.length, count: records.length };
   const prevMeta = S.msync || {};
-  if (created || updated || sum.missing || by === 'manual' || Date.now() - (prevMeta.checkedAt || 0) > 3600e3) {
+  if (created || updated || sum.missing || by === 'manual' || (S.msync && Date.now() - (prevMeta.checkedAt || 0) > 3600e3)) {   // 회원 모드(기록 구독 없음)에서는 바뀐 게 있을 때만
     await db.set('meta/memberSheet', { checkedAt: Date.now(), by, count: records.length, sheetUpdated: pv.updated || '',
       ...(created || updated || sum.missing ? { changedAt: Date.now(), last: sum } : {}) }, { merge: true });
   }

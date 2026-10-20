@@ -1,64 +1,14 @@
-import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.32';
-import { S, memberById, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.32';
-import { db, newId } from '../store.js?v=0.1.32';
-import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js?v=0.1.32';
-import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js?v=0.1.32';
-import { esc, toast, fileToDataUrl, todayISO, byName, fmtDate } from '../util.js?v=0.1.32';
-import { modal, empty } from '../ui.js?v=0.1.32';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.32';
+import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.33';
+import { S, memberById, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.33';
+import { db, newId } from '../store.js?v=0.1.33';
+import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js?v=0.1.33';
+import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js?v=0.1.33';
+import { esc, toast, fileToDataUrl, todayISO, byName, fmtDate } from '../util.js?v=0.1.33';
+import { modal, empty } from '../ui.js?v=0.1.33';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.33';
 
-export function render(root, { sub }) { return sub === 'settings' ? settings(root) : members(root); }
+export function render(root) { return settings(root); }
 
-// ───────────── 회원 관리 ─────────────
-function members(root) {
-  const act = S.members.filter((m) => m.active !== false), off = S.members.filter((m) => m.active === false);
-  const li = (m) => `<li data-edit="${m.id}"><span class="nm">${esc(m.name)}</span>
-    <span class="aliases">${(m.aliases || []).map((a) => `<span class="chip sm">${esc(a)}</span>`).join('')}</span></li>`;
-  root.innerHTML = `<section class="card">
-    <h1>회원 <small>활동 ${act.length}명 · 휴면 ${off.length}명</small></h1>
-    <p class="muted small">회원 이름은 <b>카페 닉네임</b> 그대로 쓰는 걸 권해요. 그래야 카페 댓글을 자동으로 알아봐요.</p>
-    <form class="stack" data-add>
-      <label>회원 추가 <span class="muted small">(여러 명은 쉼표나 줄바꿈으로)</span><textarea name="names" rows="2" placeholder="닉네임1, 닉네임2"></textarea></label>
-      <button class="btn">추가</button>
-    </form></section>
-    <section class="card"><h2>활동 회원</h2>
-      <p class="muted small">이름을 누르면 수정할 수 있어요. 회색 칩은 별칭(오타·다른 표기)이에요.</p>
-      ${act.length ? `<ul class="members">${act.map(li).join('')}</ul>` : empty('등록된 회원이 없어요. 설정 → 승률계산기에서 가져오기로 한 번에 등록할 수 있어요.')}
-      ${off.length ? `<h2 class="mt">휴면 ${off.length}명</h2><ul class="members off">${off.map(li).join('')}</ul>` : ''}
-    </section>`;
-  root.querySelector('[data-add]').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const names = e.target.names.value.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
-    const exist = new Set(S.members.map((m) => m.name));
-    const fresh = [...new Set(names)].filter((n) => !exist.has(n));
-    await Promise.all(fresh.map((name) => db.set('members/' + newId(), { name, aliases: [], active: true, createdAt: Date.now() })));
-    e.target.reset(); e.target.names.blur();
-    toast(fresh.length ? `${fresh.length}명 추가` : '이미 있는 이름이에요');
-  });
-  root.querySelectorAll('[data-edit]').forEach((el) => el.addEventListener('click', () => editMember(el.dataset.edit)));
-}
-
-function editMember(id) {
-  const m = memberById(id);
-  const { el, close } = modal('회원 수정', `<form class="stack">
-    <label>이름 (카페 닉네임)<input name="name" required value="${esc(m.name)}"></label>
-    <label>별칭 <span class="muted small">(쉼표로 구분 — 오타·줄임말·다른 표기)</span><input name="aliases" value="${esc((m.aliases || []).join(', '))}"></label>
-    <label class="inline"><input type="checkbox" name="active" ${m.active !== false ? 'checked' : ''}> 활동 회원</label>
-    <div class="row"><button class="btn">저장</button><button type="button" class="btn ghost danger" data-del>삭제</button></div>
-  </form>`);
-  el.querySelector('form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const f = e.target;
-    await db.set('members/' + id, { name: f.name.value.trim(), aliases: f.aliases.value.split(',').map((s) => s.trim()).filter(Boolean), active: f.active.checked }, { merge: true });
-    toast('저장했어요'); close();
-  });
-  el.querySelector('[data-del]').addEventListener('click', async () => {
-    if (!confirm(`${m.name} 님을 삭제할까요? 지난 기록에서는 '(알 수 없음)'으로 보여요. 보통은 '활동 회원' 체크를 끄는 걸 권해요.`)) return;
-    await db.del('members/' + id); close();
-  });
-}
-
-// ───────────── 설정 ─────────────
 function settings(root) {
   const t = S.team;
   root.innerHTML = `
@@ -67,7 +17,7 @@ function settings(root) {
     <form class="stack" data-team>
       <label>팀 이름<input name="name" value="${esc(t.name)}"></label>
       <div class="row"><label>대표 색<input type="color" name="primary" value="${esc(t.primary)}"></label>
-        <label>엠블럼<div class="emblem-edit">${t.emblem ? `<img src="${t.emblem}" alt="">` : ''}<input type="file" accept="image/*" name="emblem"></div></label></div>
+        <label>엠블럼<div class="emblem-edit">${t.emblem ? `<img src="${t.emblem}" alt="">` : ''}<span class="btn ghost sm" data-embl>사진 바꾸기</span><input type="file" accept="image/*" name="emblem" class="vh"></div></label></div>
       <label>다음 카페 주소<input name="cafeUrl" placeholder="https://cafe.daum.net/..." value="${esc(t.cafeUrl || '')}"></label>
       <label>운영모드 PIN<input name="operatorPin" inputmode="numeric" value="${esc(t.operatorPin)}"></label>
       <label class="inline toggle"><input type="checkbox" name="cafeImport" ${t.cafeImport !== false ? 'checked' : ''}>
@@ -98,11 +48,11 @@ function settings(root) {
     <div class="row wrap">
       <button class="btn ghost" data-backup>백업 파일 받기</button>
       ${db.mode === 'demo' ? `<label class="btn ghost file">백업 복원<input type="file" accept="application/json" data-restore hidden></label>
-        <button class="btn ghost" data-sample>체험용 신청 데이터</button>
         <button class="btn ghost danger" data-wipe>전체 초기화</button>` : ''}
     </div>
   </section>`;
 
+  root.querySelector('[data-team] [name=emblem]').addEventListener('change', (e) => { const f = e.target.files[0]; root.querySelector('[data-embl]').textContent = f ? f.name : '사진 바꾸기'; });
   root.querySelector('[data-team]').addEventListener('submit', async (e) => {
     e.preventDefault(); const fm = e.target;
     const patch = { name: fm.name.value.trim() || DEFAULT_TEAM.name, primary: fm.primary.value, cafeUrl: fm.cafeUrl.value.trim(), operatorPin: fm.operatorPin.value.trim() || '0000', cafeImport: fm.cafeImport.checked };
@@ -122,7 +72,6 @@ function settings(root) {
     if (!confirm('지금 데이터를 백업 파일 내용으로 바꿀까요?')) return;
     await db.importAll(JSON.parse(await file.text())); toast('복원했어요');
   });
-  root.querySelector('[data-sample]')?.addEventListener('click', seedSample);
   bindBeta(root);
   root.querySelector('[data-wipe]')?.addEventListener('click', async () => {
     if (!confirm('이 브라우저의 모든 데이터를 지울까요?')) return;
@@ -241,21 +190,6 @@ function backup() {
 }
 
 // 체험용: 활동 회원 중 28명이 신청한 경기일 (회원이 없으면 임시 회원 생성)
-async function seedSample() {
-  let pool = S.members.filter((m) => m.active !== false);
-  if (pool.length < 28) {
-    const add = [];
-    for (let i = pool.length; i < 30; i++) { const id = newId(); add.push({ id, name: `체험${String(i + 1).padStart(2, '0')}` }); }
-    await Promise.all(add.map((m) => db.set('members/' + m.id, { name: m.name, aliases: [], active: true, createdAt: Date.now() })));
-    pool = [...pool, ...add];
-  }
-  const pick = pool.slice().sort(() => Math.random() - 0.5).slice(0, 28);
-  const now = Date.now();
-  const apps = Object.fromEntries(pick.map((m, i) => [m.id, { at: now - (28 - i) * 300000, source: i % 3 ? 'cafe' : 'app' }]));
-  await db.set('matchdays/' + newId(), { date: todayISO(), time: '07:00~09:00', venue: '체험 구장', note: '체험용 경기일', status: 'open', format: null,
-    apps, guests: {}, captains: [], picks: [], teams: [], mom: [], late: {}, createdAt: now });
-  toast('체험용 경기일을 만들었어요');
-}
 
 // ── 베타 테스트: 샘플 경기 ──
 let bStage = 'open', bKind = 'normal';
@@ -273,7 +207,7 @@ function betaCard() {
     ${list.length ? `<h3 class="bh">만든 샘플 ${list.length}개</h3><ul class="list blist">${list.map((m) => `<li><span><b>${esc(stLabel(m))}</b> <small class="muted">${esc(kLabel(m))} · ${fmtDate(m.date, false)}</small></span>
       <button class="btn ghost sm" data-bgo="${m.id}">경기 메뉴에서 보기</button></li>`).join('')}</ul>
       <div class="row wrap"><button class="btn ghost danger" data-bclear>샘플 모두 지우기</button></div>` : ''}
-    <label class="inline small"><input type="checkbox" data-bdevice ${samplesOnDevice() ? 'checked' : ''}> 이 기기에서는 운영모드를 꺼도 샘플 경기 보기 <small class="muted">(회원·주장 화면 시험용)</small></label>
+    <label class="chk"><input type="checkbox" data-bdevice ${samplesOnDevice() ? 'checked' : ''}><span>이 기기에서는 운영모드를 꺼도 샘플 경기 보기<small class="muted">회원·주장 화면 시험용</small></span></label>
   </section>`;
 }
 function bindBeta(root) {

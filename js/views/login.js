@@ -1,8 +1,8 @@
 // 로그인 — 카페 닉네임 → (처음) 비밀번호 정하기 / (다음부터) 비밀번호 입력, 자동 로그인
-import { S, refresh } from '../state.js?v=0.1.32';
-import { register, login, status, saveSession, validPin } from '../auth.js?v=0.1.32';
-import { norm } from '../cafe-parser.js?v=0.1.32';
-import { esc } from '../util.js?v=0.1.32';
+import { S, refresh } from '../state.js?v=0.1.33';
+import { register, login, status, saveSession, validPin } from '../auth.js?v=0.1.33';
+import { norm } from '../cafe-parser.js?v=0.1.33';
+import { esc } from '../util.js?v=0.1.33';
 
 let step = { pid: null, registered: false }, nick = '', err = '', denied = false;
 
@@ -50,6 +50,7 @@ export function render(root) {
   const done = (sess) => {
     saveSession(sess, q('[name=auto]')?.checked !== false);
     S.auth = sess; step = { pid: null, registered: false }; err = ''; nick = '';
+    document.activeElement?.blur();   // 입력칸에 포커스가 남아 있으면 화면 갱신이 미뤄짐
     document.body.classList.remove('gate');
     location.hash = '#/home'; refresh();
   };
@@ -89,7 +90,7 @@ export function render(root) {
     if (!mm) { err = '먼저 카페 닉네임을 입력해 주세요.'; return rer(); }
     const sess = { pid: mm.id, temp: true };
     saveSession(sess, false); S.auth = sess; denied = false; err = ''; step = { pid: null, registered: false };
-    document.body.classList.remove('gate'); location.hash = '#/home'; refresh();
+    document.activeElement?.blur(); document.body.classList.remove('gate'); location.hash = '#/home'; refresh();
   });
   q('[data-back]')?.addEventListener('click', () => { step = { pid: null, registered: false }; err = ''; rer(); });
 

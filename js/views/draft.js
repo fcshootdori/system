@@ -1,11 +1,11 @@
-import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.32';
-import { db } from '../store.js?v=0.1.32';
-import { TEAM_COLORS } from '../config.js?v=0.1.32';
-import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.32';
-import { TEAM_COLORS as TC } from '../config.js?v=0.1.32';
-import { modal } from '../ui.js?v=0.1.32';
-import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.32';
-import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.32';
+import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.33';
+import { db } from '../store.js?v=0.1.33';
+import { TEAM_COLORS } from '../config.js?v=0.1.33';
+import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.33';
+import { TEAM_COLORS as TC } from '../config.js?v=0.1.33';
+import { modal } from '../ui.js?v=0.1.33';
+import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.33';
+import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.33';
 
 let lastCtx = {};
 export function render(root, ctx = {}) {
@@ -109,8 +109,9 @@ const FIG_SVG = '<svg class="pfs" viewBox="0 0 80 72" aria-hidden="true"><path c
 // 닉네임이 길면(5글자 이상) 두 줄로 — 어절(띄어쓰기) 단위로 줄을 바꿈. 괄호 부분은 따로 한 어절로 봄 (스테이(stay) → 스테이 / (stay))
 //  띄어쓰기가 없는 한 낱말 닉네임은 읽기 좋게 가운데에서 (앞줄을 한 글자 길게: 그림자호수 → 그림자 / 호수)
 export function nameLines(name, min = 5) {   // min 글자부터 두 줄 (팀 칸의 작은 유니폼은 4글자부터)
-  const n = String(name || '').trim(), len = [...n].length;
-  if (len < min) return [n];
+  const n = String(name || '').trim();
+  const wid = [...n].reduce((w, c) => w + (/[\x20-\x7e]/.test(c) ? 0.6 : 1), 0);   // 영문·숫자는 한글보다 좁게
+  if (wid < min) return [n];
   const words = n.split(/\s+/).filter(Boolean);
   if (words.length > 1) {   // 어절 단위: 두 줄 길이가 가장 비슷해지는 곳에서
     let best = null;

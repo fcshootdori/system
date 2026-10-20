@@ -1,7 +1,7 @@
 // 경기 운영 규칙 — 경기 방식, 신청 순서, 드래프트 순번, 대진, 결과, 개인 기록
 //  승률계산기 시트와 같은 규칙: 승률 = 승 ÷ (승+패), 승점 = 승×3 + 무
-import { S, memberById, matchdayById } from './state.js?v=0.1.32';
-import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.32';
+import { S, memberById, matchdayById } from './state.js?v=0.1.33';
+import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.33';
 
 // ── 경기 방식: 팀 기본값 + 경기일별 변경값 ──
 export function fmtOf(md) {
@@ -262,16 +262,6 @@ export function matchNumbers(extra) {
 export const matchNo = (md) => (md ? matchNumbers().get(md.id)?.no ?? null : null);
 export const noLabel = (md) => { if (md?.sample) return '샘플'; const n = matchNo(md); return n != null ? `${n}회` : ''; };
 
-// 카페 댓글 구역대로 팀 만들기 — picks: [{ group, color }]
-//  구역 없이 들어온 참가자(협의 승인 등)는 인원이 적은 팀부터 넣음 (748회: 협의 토토로 → 핑크 15명)
-export function teamsFromGroups(md, picks) {
-  const groups = appGroups(md);
-  const teams = picks.map((p) => ({ color: p.color, members: [...(groups.get(p.group) || [])] }));
-  const used = new Set(teams.flatMap((t) => t.members));
-  confirmed(md).map((a) => a.id).filter((id) => !used.has(id))
-    .forEach((id) => teams.reduce((a, b) => (b.members.length < a.members.length ? b : a)).members.push(id));
-  return teams;
-}
 // 구역 이름별 팀 색: 예전에 정한 색 → 없으면 머리 댓글 순서(첫 구역 = 1번 팀 색)
 export function defaultSectionColors(titles, md) {
   const fixed = fmtOf(md).fixedColors || ['pink', 'blue'];
@@ -294,7 +284,6 @@ export function eventTeams(md) {
   if (md.event === undefined) { const n = matchNo(md), sd = n != null ? EVENT_SEEDS[n] : null; if (sd && sd.date === md.date) return sd.teams; }
   return null;
 }
-export const isEvent = (md) => !!eventTeams(md);
 // 이벤트 방식: 'teams' = 팀원까지 미리 정함(주장·드래프트 없음) / 'captains' = 주장만 미리 정함(신청은 일반, 주장 단계 없이 드래프트)
 export const eventMode = (md) => (eventTeams(md) ? (md.eventMode === 'captains' ? 'captains' : 'teams') : null);
 export const teamEvent = (md) => (eventMode(md) === 'teams' ? eventTeams(md) : null);

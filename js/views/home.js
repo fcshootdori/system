@@ -1,15 +1,15 @@
 // 회원 홈 — 경기장 사진 위 다음 경기 티켓(바로 참석·불참) + 지난 경기 전광판
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.32';
-import { db, newId } from '../store.js?v=0.1.32';
-import { STATUS } from '../config.js?v=0.1.32';
-import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView } from '../domain.js?v=0.1.32';
-import { icon } from '../icons.js?v=0.1.32';
-import { myBox, bindMy } from './apply.js?v=0.1.32';
-import { TEAM_COLORS } from '../config.js?v=0.1.32';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.32';
-import { norm } from '../cafe-parser.js?v=0.1.32';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.32';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.32';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.33';
+import { db, newId } from '../store.js?v=0.1.33';
+import { STATUS } from '../config.js?v=0.1.33';
+import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView } from '../domain.js?v=0.1.33';
+import { icon } from '../icons.js?v=0.1.33';
+import { myBox, bindMy } from './apply.js?v=0.1.33';
+import { TEAM_COLORS } from '../config.js?v=0.1.33';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.33';
+import { norm } from '../cafe-parser.js?v=0.1.33';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.33';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.33';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);

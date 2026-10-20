@@ -1,10 +1,10 @@
-import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.32';
-import { db, newId } from '../store.js?v=0.1.32';
-import { rosters, schedule, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.32';
-import { TEAM_COLORS } from '../config.js?v=0.1.32';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.32';
-import { modal, empty, teamChip, teamLabel } from '../ui.js?v=0.1.32';
-import { fmtSummary } from './home.js?v=0.1.32';
+import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.33';
+import { db, newId } from '../store.js?v=0.1.33';
+import { rosters, schedule, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.33';
+import { TEAM_COLORS } from '../config.js?v=0.1.33';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.33';
+import { modal, empty, teamChip, teamLabel } from '../ui.js?v=0.1.33';
+import { fmtSummary } from './home.js?v=0.1.33';
 
 let openGame = null; // 편집 중인 경기 id
 

@@ -1,6 +1,6 @@
-import { esc } from './util.js?v=0.1.32';
-import { TEAM_COLORS, STATUS } from './config.js?v=0.1.32';
-import { teamColor, teamName } from './domain.js?v=0.1.32';
+import { esc } from './util.js?v=0.1.33';
+import { TEAM_COLORS, STATUS } from './config.js?v=0.1.33';
+import { teamColor, teamName } from './domain.js?v=0.1.33';
 
 export function modal(title, bodyHtml, { wide = false } = {}) {
   const wrap = document.createElement('div');
@@ -14,7 +14,6 @@ export function modal(title, bodyHtml, { wide = false } = {}) {
   return { el: wrap.querySelector('.modal'), close };
 }
 
-export function confirmBox(msg) { return Promise.resolve(window.confirm(msg)); }
 
 export function colorChip(key, label) {
   const c = TEAM_COLORS.find((x) => x.key === key);

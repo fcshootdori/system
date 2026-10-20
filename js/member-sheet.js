@@ -116,7 +116,6 @@ export function parseMemberTable(rows) {
   return { records, updated, hasFees: fees.some((x) => x >= 0) };
 }
 
-export const LEFT = '탈퇴회원';
 export const isLeftGrade = (g) => /탈퇴|방출/.test(g || '');
 
 // 서버(Firestore)에 저장하는 항목

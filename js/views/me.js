@@ -1,13 +1,10 @@
 // 내 정보 — 내 이름, 내 기록 요약, 앱 정보, 운영모드 입구 (WD_FUTSAL 내 정보와 같은 위치)
-import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.32';
-import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.32';
-import { modal } from '../ui.js?v=0.1.32';
-import { toast } from '../util.js?v=0.1.32';
-import { db } from '../store.js?v=0.1.32';
-import { APP_NAME, APP_VERSION } from '../config.js?v=0.1.32';
-import { allStats, pct } from '../domain.js?v=0.1.32';
-import { esc } from '../util.js?v=0.1.32';
-import { pickMe } from './pickme.js?v=0.1.32';
+import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.33';
+import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.33';
+import { modal } from '../ui.js?v=0.1.33';
+import { toast } from '../util.js?v=0.1.33';
+import { allStats, pct } from '../domain.js?v=0.1.33';
+import { esc } from '../util.js?v=0.1.33';
 
 export function render(root) {
   const m = memberById(me.id);
@@ -33,15 +30,14 @@ export function render(root) {
     </section>
     ${(S.allMatchdays || []).some((x) => x.sample) ? `<section class="card beta">
       <h2>🧪 베타 테스트</h2>
-      <label class="inline small"><input type="checkbox" data-samples ${samplesOnDevice() ? 'checked' : ''}> 이 기기에서 샘플 경기 보기 <small class="muted">(신청·드래프트 시험용, 기록에는 안 들어가요)</small></label>
+      <label class="chk"><input type="checkbox" data-samples ${samplesOnDevice() ? 'checked' : ''}><span>이 기기에서 샘플 경기 보기<small class="muted">신청·드래프트 시험용, 기록에는 안 들어가요</small></span></label>
     </section>` : ''}
     <section class="card op-entry">
       <h2>운영진</h2>
       <p class="muted small">운영진은 비밀번호로 운영모드에 들어가요.${opDevice() ? ' 이 기기는 오른쪽 위 버튼으로도 들어갈 수 있어요.' : ''}</p>
       <button class="btn ghost full" data-op>운영모드</button>
-    </section>
-    <p class="muted tiny center">${APP_NAME} Ver.${APP_VERSION} · ${db.mode === 'demo' ? '데모 모드' : '서버 연결됨'}</p>`;
-  root.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => pickMe()));
+    </section>`;
+  root.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => { location.hash = '#/login'; }));
   root.querySelector('[data-samples]')?.addEventListener('change', (e) => { setSamplesOnDevice(e.target.checked); toast(e.target.checked ? '샘플 경기를 보여요' : '샘플 경기를 숨겨요'); });
   root.querySelector('[data-logout]')?.addEventListener('click', () => {
     if (!confirm('로그아웃할까요? 다음에는 닉네임과 비밀번호를 다시 입력해야 해요.')) return;
