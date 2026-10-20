@@ -2,14 +2,14 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.43';
-import { db, newId } from '../store.js?v=0.1.43';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.43';
-import { TEAM_COLORS } from '../config.js?v=0.1.43';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.43';
-import { icon } from '../icons.js?v=0.1.43';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.43';
-import { figHTML } from './draft.js?v=0.1.43';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.44';
+import { db, newId } from '../store.js?v=0.1.44';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.44';
+import { TEAM_COLORS } from '../config.js?v=0.1.44';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.44';
+import { icon } from '../icons.js?v=0.1.44';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.44';
+import { figHTML } from './draft.js?v=0.1.44';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -174,7 +174,7 @@ function pitchHTML(md, ti, lu, editable) {
 }
 function lineupCard(md, capOf, op) {
   const R = ui.round, ros = rosters(md);
-  const canEdit = (i) => md.status !== 'played' && (op || capOf.includes(i));
+  const canEdit = (i) => md.status !== 'played' && capOf.includes(i);   // 포지션은 그 팀 주장만 정함 (운영진은 두 팀 보기만)
   // 포지션은 그 팀 선수(주장 포함)만 볼 수 있음 — 상대 팀 포지션은 숨김. 운영진은 두 팀 모두
   const mine = [0, 1].filter((i) => capOf.includes(i) || (ros[i] || []).includes(me.id));
   const vis = op ? [0, 1] : mine;

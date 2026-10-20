@@ -2,8 +2,8 @@
 //  · 경기 = 경기일 하나 (5라운드 합산 1경기). 핑크(A) vs 블루(B)
 //  · 승점 = 승×3 + 무, 승률 = 승 ÷ (승+패) (무승부 제외)
 //  · 승률·득점·MOM 순위는 RANK_MIN 경기 이상 출전한 회원끼리, 승점·출전 순위는 출전한 회원 전체
-import { S, memberById, nameOf } from './state.js?v=0.1.43';
-import { rosters, resultUnits, totals, teamColor, teamName, fmtOf } from './domain.js?v=0.1.43';
+import { S, memberById, nameOf } from './state.js?v=0.1.44';
+import { rosters, resultUnits, totals, teamColor, teamName, fmtOf } from './domain.js?v=0.1.44';
 
 export const RANK_MIN = 15;
 export const TEAM = { A: '핑크', B: '블루' };

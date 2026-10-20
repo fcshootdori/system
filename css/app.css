@@ -1355,3 +1355,51 @@ label:not(.inline):not(.chk):not(.switch-row):not(.btn) > :is(input, select, tex
   .emblem-edit { flex-wrap: wrap; }
 }
 @media (max-width: 340px) { .hide-xxs { display: none; } }
+/* ═════ 드래프트: 한 화면 구성 ═════ */
+.dwrap { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.dhead { position: relative; background: #fff; border-radius: 16px; padding: 8px 10px 9px; box-shadow: var(--shadow); text-align: center; display: grid; gap: 5px; flex: none; }
+.dmini { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 4px; list-style: none; margin: 0; padding: 0 64px 0 0; font-size: 11px; font-weight: 700; color: #64748b; }
+.dmini li { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.dmini li + li::before { content: '›'; color: #cbd5e1; margin-right: 1px; }
+.dmini i { font-style: normal; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: #e2e8f0; color: #475569; font-size: 10px; }
+.dmini .done { color: var(--navy); } .dmini .done i { background: var(--navy); color: #fff; }
+.dmini .now { color: var(--ink); } .dmini .now i { background: var(--flood); color: var(--night); }
+.dh-op { position: absolute; right: 8px; top: 6px; border: 1.5px solid var(--line); background: #fff; border-radius: 8px; font: 800 11.5px var(--font); color: var(--navy); padding: 3px 8px; cursor: pointer; }
+.dh-body { display: grid; gap: 4px; justify-items: center; }
+.dh-body > b { font-size: 15px; line-height: 1.3; }
+.dh-body p { margin: 0; font-size: 12px; color: var(--sub); }
+.dh-body .row { margin-top: 2px; }
+.dh-body .ocards { gap: 10px; margin: 0; }
+.dh-body .ocard { width: 56px; height: 76px; border-radius: 10px; }
+.dh-body .ocard.up em { font-size: 30px; }
+.dturn { color: var(--tc, var(--ink)); }
+.dh-body .flow i { width: 20px; height: 20px; font-size: 10px; }
+.dwrap .dboard { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding-top: 20px; gap: 6px; }
+.dwrap .capbar { flex: none; }
+.dwrap .capcard .h-hd { padding: 6px 8px; }
+.dwrap .pitch { flex: 1 1 auto; min-height: 0; }
+.dwrap .half { padding: 6px 4px 8px; gap: 4px; }
+.dwrap .half.h0 { padding-right: 12px; } .dwrap .half.h1 { padding-left: 12px; }
+.dwrap .pitch .stk .jf.mini { --fw: var(--mfw, 52px); }
+.dwrap .dpool { flex: none; overflow-y: auto; padding: 8px 6px; }
+.dwrap .dpool .pool-hd { margin: 0 4px 6px; }
+.dwrap .dpool .jf.pfb { --fw: var(--pfw, 58px); }
+.dwrap .swapside { width: 30px; padding: 0; font-size: 16px; }
+.dpop-wrap { position: fixed; inset: 0; z-index: 80; background: rgba(11,16,51,.5); display: grid; place-items: center; padding: 20px; animation: dpopIn .15s ease-out; }
+.dpop { background: #fff; border-radius: 22px; padding: 16px 18px; width: min(300px, 88vw); text-align: center; display: grid; gap: 6px; justify-items: center; box-shadow: 0 20px 50px rgba(0,0,0,.35); border-top: 7px solid var(--tc, var(--navy)); }
+.dpop small { font-size: 12.5px; font-weight: 700; color: var(--sub); }
+.dpop .dpop-j { --fw: 108px; cursor: default; }
+.dpop b { font-size: 21px; }
+.dpop-btns { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; width: 100%; margin-top: 6px; }
+.dpop-btns .btn { min-height: 48px; }
+@keyframes dpopIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dpop-wrap { animation: none; } }
+body:has(.dwrap) .ver { display: none; }
+#view:has(.dwrap) { padding-bottom: 6px; }
+.dwrap .capcard .h-hd { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: 5px; row-gap: 1px; padding: 6px 40px 6px 8px; }
+.dwrap .capcard .h-hd .tn, .dwrap .capcard .h-hd .tn-edit { flex: 1 1 100%; }
+.dwrap .capcard .h-hd .hcap { font-size: 14px; flex: 0 1 auto; min-width: 0; }
+.dwrap .capcard .h-hd .meb { position: absolute; right: 8px; bottom: 6px; }
+.dwrap .capcard .h-hd .cnt { top: 6px; }
+.dwrap .capcard .h-sw .csw { padding: 6px 2px; }
+.dmini { padding-right: 58px; }
