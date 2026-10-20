@@ -750,3 +750,9 @@ details.tnote[open] { padding-bottom: 4px; }
 @keyframes tbShadow { 0% { transform: scale(.45); opacity: .35; } 100% { transform: scale(1); opacity: .9; } }
 .half { padding-top: 34px; }
 @media (prefers-reduced-motion: reduce) { .pfb.pend, .stk .jf.mini.new, .stk .jf.mini.pendstk, .tball .tb-b, .tball .tb-sh { animation: none; } }
+
+/* ── 0.1.27 유니폼 이름 두 줄 (어절 단위) ── */
+.jf b.pfn span { display: block; text-align: center; }
+.jf b.pfn.two { line-height: 1.04; top: 57%; font-size: min(calc(var(--fw) * .19), calc(var(--fw) * .66 / var(--nl, 3))); }
+.jf.pfb b.pfn.two { font-size: min(calc(var(--fw) * .2), calc(var(--fw) * .7 / var(--nl, 3))); }
+.stk .jf.mini b.pfn.two { top: 58%; font-size: min(12.5px, calc(var(--fw) * .66 / var(--nl, 3))); line-height: 1.02; }

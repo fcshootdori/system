@@ -92,7 +92,32 @@ let wasMyTurn = false;
 
 // ── 선수 유니폼 아이콘 (WD_FUTSAL과 같은 반팔 유니폼 + 가슴에 이름) ──
 const FIG_SVG = '<svg class="pfs" viewBox="0 0 80 72" aria-hidden="true"><path class="pf-body" d="M27 4Q40 11 53 4L66 7Q73 9 76 17L79 33L65 35L64 67Q40 71 16 67L15 35L1 33L4 17Q7 9 14 7Z"/><path class="pf-cuff" d="M1.9 28.6L15 30.6V35L1 33ZM78.1 28.6L65 30.6V35L79 33Z"/><path class="pf-seam" d="M15 31V21M65 31V21"/><path class="pf-colw" d="M27 4Q40 12.5 53 4"/><path class="pf-coll" d="M27 4Q40 11 53 4M25.5 5.4Q40 15.5 54.5 5.4"/></svg>';
-const figHTML = (n) => `${FIG_SVG}<b class="pfn" style="--nl:${Math.max(2, [...String(n)].length)}">${esc(n)}</b>`;
+// 닉네임이 길면(5글자 이상) 두 줄로 — 어절(띄어쓰기) 단위로 줄을 바꿈. 괄호 부분은 따로 한 어절로 봄 (스테이(stay) → 스테이 / (stay))
+//  띄어쓰기가 없는 한 낱말 닉네임은 읽기 좋게 가운데에서 (앞줄을 한 글자 길게: 그림자호수 → 그림자 / 호수)
+export function nameLines(name, min = 5) {   // min 글자부터 두 줄 (팀 칸의 작은 유니폼은 4글자부터)
+  const n = String(name || '').trim(), len = [...n].length;
+  if (len < min) return [n];
+  const words = n.split(/\s+/).filter(Boolean);
+  if (words.length > 1) {   // 어절 단위: 두 줄 길이가 가장 비슷해지는 곳에서
+    let best = null;
+    for (let k = 1; k < words.length; k++) {
+      const a = words.slice(0, k).join(' '), b = words.slice(k).join(' ');
+      const score = Math.max([...a].length, [...b].length);
+      if (!best || score < best.score) best = { a, b, score };
+    }
+    return [best.a, best.b];
+  }
+  const m = n.match(/^(.+?)(\(.+\))$/) || n.match(/^(.+?_)(.+)$/);
+  if (m) return [m[1], m[2]];
+  const cs = [...n], cut = Math.ceil(cs.length / 2);
+  return [cs.slice(0, cut).join(''), cs.slice(cut).join('')];
+}
+const figHTML = (n, tail = '', min = 5) => {
+  const ls = nameLines(n, min);
+  if (tail) ls[ls.length - 1] += tail;
+  const nl = Math.max(2, ...ls.map((l) => [...l].length));
+  return `${FIG_SVG}<b class="pfn ${ls.length > 1 ? 'two' : ''}" style="--nl:${nl}">${ls.map((l) => `<span>${esc(l)}</span>`).join('')}</b>`;
+};
 // 차례 축구공 (WD_FUTSAL과 같은 공 — 차례인 팀 위에서 통통 튀고, 차례가 넘어가면 다음 팀으로 패스)
 const BALL_SVG = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18.5" fill="#fff" stroke="#131C2B" stroke-width="2"/><path d="M20 12.5l7 5.1-2.7 8.2h-8.6L13 17.6z" fill="#131C2B"/><path d="M20 12.5V3.2M27 17.6l8.6-2.9M24.3 25.8l5.4 7.4M15.7 25.8l-5.4 7.4M13 17.6l-8.6-2.9" stroke="#131C2B" stroke-width="2" fill="none"/><path d="M14.5 2.6L20 3.2l5.5-.6M35.6 14.7l2 5.3-.9 5.6M29.7 33.2l-4.7 3-5.4.9M10.3 33.2l4.7 3M4.4 14.7l-2 5.3.9 5.6" stroke="#131C2B" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -175,9 +200,9 @@ function half(md, i, { ph, ds, myCap, final }) {
     const undo = !final && S.operator && last && last.id === id && last.team === i;
     const move = final && S.operator && md.status !== 'played';
     const nm = nameOf(id, md);
-    if (undo) return `<button class="jf mini vest undo ${nw ? 'new' : ''}" data-unpick data-pid="${id}" title="눌러서 선택 취소">${figHTML(nm + ' ✕')}</button>`;
-    if (move) return `<button class="jf mini vest ${nw ? 'new' : ''}" data-swap="${i}:${id}" data-pid="${id}" title="눌러서 ${esc(teamLabel(md, (i + 1) % nTeams))}(으)로 옮기기">${figHTML(nm)}</button>`;
-    return `<div class="jf mini vest ${nw ? 'new' : ''}" data-pid="${id}">${figHTML(nm)}</div>`;
+    if (undo) return `<button class="jf mini vest undo ${nw ? 'new' : ''}" data-unpick data-pid="${id}" title="눌러서 선택 취소">${figHTML(nm, ' ✕', 4)}</button>`;
+    if (move) return `<button class="jf mini vest ${nw ? 'new' : ''}" data-swap="${i}:${id}" data-pid="${id}" title="눌러서 ${esc(teamLabel(md, (i + 1) % nTeams))}(으)로 옮기기">${figHTML(nm, '', 4)}</button>`;
+    return `<div class="jf mini vest ${nw ? 'new' : ''}" data-pid="${id}">${figHTML(nm, '', 4)}</div>`;
   };
   return `<div class="half h${i} ${turn ? 'turn' : ''} ${mine ? 'mine' : ''} ${col ? '' : 'nocolor'}" data-k="${i}" style="${col ? `--tc:${col.hex};--ti:${col.text}` : ''}">
     <div class="h-hd">
@@ -189,7 +214,7 @@ function half(md, i, { ph, ds, myCap, final }) {
     </div>
     ${canColor ? `<div class="h-sw">${palette(md).map((c) => { const by = caps.findIndex((x) => x.color === c.key);
       return `<button class="csw ${caps[i].color === c.key ? 'on' : ''}" style="--c:${c.hex};--ct:${c.text}" data-color="${i}:${c.key}">${c.label}</button>`; }).join('')}</div>` : ''}
-    <div class="stk pfs-row">${others.map(player).join('')}${pend ? `<div class="jf mini vest pendstk" title="선택 중">${figHTML(nameOf(pend, md))}</div>` : ''}</div>
+    <div class="stk pfs-row">${others.map(player).join('')}${pend ? `<div class="jf mini vest pendstk" title="선택 중">${figHTML(nameOf(pend, md), '', 4)}</div>` : ''}</div>
     ${turn ? `<div class="h-turn">${mine ? '내 차례예요!' : '지명 차례'}</div>` : ''}
   </div>`;
 }
