@@ -58,7 +58,7 @@ function renderShell() {
     </div>`;
   const tabs = S.operator ? OP_TABS : MEMBER_TABS;
   const active = ROUTES[name]?.parent || name;
-  document.getElementById('tabbar').innerHTML = `<div class="nav-brand">${esc(S.team.name)}</div>` + tabs.map(([k, label, icon]) =>
+  document.getElementById('tabbar').innerHTML = `<div class="nav-brand">${S.team.emblem ? `<img src="${S.team.emblem}" alt="">` : ''}<span>${esc(S.team.name)}</span></div>` + tabs.map(([k, label, icon]) =>
     `<a href="#/${k}" class="${k === active ? 'on' : ''} ${k === 'mm' ? 'mm' : ''}" ${k === active ? 'aria-current="page"' : ''}><i>${icon}</i><span>${label}</span></a>`).join('');
   document.body.classList.toggle('op', S.operator);
   const banner = document.getElementById('demo-banner');

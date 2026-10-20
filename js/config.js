@@ -7,7 +7,7 @@
 //    경기 방식은 경기일마다 따로 바꿀 수도 있습니다 (경기일 수정 화면).
 // ─────────────────────────────────────────────────────────────
 export const APP_NAME = 'SHOOTDORI';
-export const APP_VERSION = '0.1.5';
+export const APP_VERSION = '0.1.6';
 
 // Firebase 프로젝트: fcshootdori (웹 앱 설정값 — 공개되어도 되는 값이며, 보안은 Firestore 규칙으로 지킴)
 export const FIREBASE = {
@@ -33,8 +33,8 @@ export const DEFAULT_FORMAT = {
 
 export const DEFAULT_TEAM = {
   name: '슛도리',
-  emblem: '',                  // 설정 화면에서 업로드 (dataURL, 256px로 축소 저장)
-  primary: '#1e3a8a',
+  emblem: 'assets/emblem.png', // 슛도리 엠블럼 (설정 화면에서 다른 이미지로 바꿀 수 있음)
+  primary: '#171c61',          // 엠블럼 네이비
   operatorPin: '0000',         // 운영모드 PIN — 설정 화면에서 반드시 변경
   format: DEFAULT_FORMAT,
   winRate: 'wl',               // wl: 승÷(승+패) [승률계산기와 동일] · win: 승÷경기 · point: (승+무×0.5)÷경기

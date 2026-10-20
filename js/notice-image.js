@@ -27,9 +27,9 @@ async function drawHeader(ctx, team, title, md) {
   const emblem = await loadImg(team.emblem);
   let x = PAD;
   if (emblem) {
-    ctx.save(); ctx.beginPath(); ctx.arc(PAD + 70, 150, 70, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.clip();
-    ctx.drawImage(emblem, PAD, 80, 140, 140); ctx.restore();
-    x = PAD + 172;
+    ctx.save(); rr(ctx, PAD, 72, 156, 156, 28); ctx.fillStyle = '#fff'; ctx.fill(); ctx.clip();
+    ctx.drawImage(emblem, PAD + 8, 80, 140, 140); ctx.restore();
+    x = PAD + 188;
   }
   ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.font = f(600, 34); ctx.fillText(team.name || '', x, 118);
   ctx.fillStyle = '#fff'; ctx.font = f(800, 68); ctx.fillText(fit(ctx, title, W - x - PAD), x, 196);
