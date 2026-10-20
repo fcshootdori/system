@@ -580,3 +580,14 @@ details.tnote[open] { padding-bottom: 4px; }
 .gseg::-webkit-scrollbar { display: none; }
 .gseg button { flex: 0 0 auto; }
 @media (max-width: 480px) { .msh-t small { display: none; } .mshcard.compact { padding: 8px 10px; } }
+
+/* ── 0.1.22 표 상자 공통 (.vfit): 제목줄 고정 ── */
+.vfit { overflow: auto; }
+.tbl-wrap.vfit { margin: 0 -4px; }
+.vfit .tbl thead th { position: sticky; top: 0; z-index: 2; background: var(--card, #fff); box-shadow: inset 0 -1px 0 var(--line); }
+@media (max-width: 719px) {
+  .leads { display: flex; overflow-x: auto; scrollbar-width: none; margin-right: -18px; padding-right: 18px; }
+  .leads::-webkit-scrollbar { display: none; }
+  .lead { flex: 0 0 auto; min-width: 112px; padding: 8px 10px; }
+  .lead .lv { font-size: 16px; }
+}

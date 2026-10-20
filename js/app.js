@@ -7,7 +7,7 @@ import { APP_NAME, APP_VERSION } from './config.js';
 import { initStore, db } from './store.js';
 import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go } from './state.js';
 import { esc, toast } from './util.js';
-import { modal } from './ui.js';
+import { modal, fitBoxes } from './ui.js';
 
 import * as home from './views/home.js';
 import * as schedule from './views/schedule.js';
@@ -115,6 +115,12 @@ document.addEventListener('focusout', () => setTimeout(() => {
   if (pending && !typing()) { pending = false; renderShell(); render(); }
 }, 0));
 window.addEventListener('hashchange', () => { renderShell(); render(); window.scrollTo(0, 0); });
+// 표 상자(.vfit) 높이 맞춤: 화면이 다시 그려지거나 크기가 바뀔 때마다 (모든 화면 공통)
+let fitRaf = 0;
+const refit = () => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(() => fitBoxes()); };
+new MutationObserver(refit).observe(document.getElementById('view'), { childList: true, subtree: true });
+window.addEventListener('resize', refit);
+document.addEventListener('toggle', refit, true);
 
 // 신청 자동 마감: 마감 시각이 지난 신청 중 경기 → '신청 마감' (운영진이 다시 연 경기는 제외)
 const closing = new Set();

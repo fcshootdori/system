@@ -38,10 +38,10 @@ export function render(root, { sub }) {
 
   if (op && view === 'list') {
     const all = [...S.matchdays].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-    root.innerHTML = head + `<section class="card"><div class="tbl-wrap"><table class="tbl plan"><thead><tr><th>회차</th><th>날짜</th><th>시간</th><th>장소</th><th>상태</th><th>참가</th></tr></thead><tbody>
+    root.innerHTML = head + `<section class="card"><p class="muted small">줄을 누르면 수정할 수 있어요.</p><div class="tbl-wrap vfit" data-key="plan"><table class="tbl plan"><thead><tr><th>회차</th><th>날짜</th><th>시간</th><th>장소</th><th>상태</th><th>참가</th></tr></thead><tbody>
       ${all.map((m) => `<tr data-edit="${m.id}"><td>${noLabel(m) || '-'}</td><td class="nm">${fmtDate(m.date)}</td><td>${esc(m.time || '')}</td><td>${esc(m.venue || '')}</td>
         <td><span class="st st-${kindOf(m)}">${statusLabel(m, STATUS)}</span></td><td>${m.source === 'sheet' ? '-' : applicants(m).filter((a) => !a.wait).length}</td></tr>`).join('')}
-      </tbody></table></div><p class="muted small">줄을 누르면 수정할 수 있어요.</p></section>`;
+      </tbody></table></div></section>`;
     bindCommon(root);
     root.querySelectorAll('[data-edit]').forEach((tr) => tr.addEventListener('click', () => editMatchday(S.matchdays.find((m) => m.id === tr.dataset.edit))));
     return;

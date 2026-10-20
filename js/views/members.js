@@ -6,7 +6,7 @@ import { db, newId } from '../store.js';
 import { APP_NAME } from '../config.js';
 import { rosters } from '../domain.js';
 import { esc, toast, fmtDate, todayISO, koSort } from '../util.js';
-import { modal, empty } from '../ui.js';
+import { modal, empty, fitBoxes } from '../ui.js';
 import { norm } from '../cafe-parser.js';
 import { resetPin } from '../auth.js';
 import { sheetLink, setSheetLink, parseLink, sheetUrl, preview, apply, needsReview, startAutoSync, autoSync, holdAuto } from '../member-sync.js';
@@ -50,32 +50,9 @@ export function render(root) {
   root.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; render(root); }));
   const body = root.querySelector('[data-body]');
   if (tab === 'att') attView(body, root); else if (tab === 'fee') feeView(body, root); else listView(body, root);
-  fitTables(root);
+  fitBoxes(root);
 }
 
-// 표는 화면 높이에 맞춘 상자 안에서 위아래·옆으로 넘김 (페이지와 표가 따로 세로로 스크롤되지 않게)
-//  다시 그려도 표 안 스크롤 위치는 그대로 유지
-const tpos = {};
-function fitTables(root) {
-  // 표 화면에서는 아래 버전 표시를 숨겨 표 자리를 넓힘 (다른 화면으로 가면 다시 보임)
-  const ver = document.getElementById('ver');
-  if (ver) ver.style.display = root.querySelector('.vfit') ? 'none' : '';
-  const top = document.getElementById('topbar')?.getBoundingClientRect().height || 0;
-  // 표 상자를 화면 아래 끝까지 채움 → 페이지는 스크롤되지 않고 표 안에서만 위아래 스크롤, 가로 스크롤 막대는 늘 화면 아래에 보임
-  //  (화면이 너무 낮아 상자가 작아지면, 페이지를 조금 내렸을 때 상자가 화면에 딱 맞는 높이로)
-  root.querySelectorAll('.vfit').forEach((w, i) => {
-    const key = tab + i;
-    const r = w.getBoundingClientRect();
-    const below = Math.max(0, document.documentElement.scrollHeight - (r.bottom + window.scrollY));
-    const fill = Math.floor(window.innerHeight - (r.top + window.scrollY) - below - 2);
-    const fit = Math.floor(window.innerHeight - top - below - 6);
-    w.style.height = w.style.maxHeight = Math.max(200, fill >= 200 ? fill : fit) + 'px';
-    if (tpos[key]) { w.scrollTop = tpos[key][0]; w.scrollLeft = tpos[key][1]; }
-    w.onscroll = () => { tpos[key] = [w.scrollTop, w.scrollLeft]; document.querySelectorAll('.abs-pop').forEach((x) => { if (Date.now() - (+x.dataset.t || 0) > 400) x.remove(); }); };
-  });
-}
-window.addEventListener('hashchange', () => { const v = document.getElementById('ver'); if (v) v.style.display = ''; });
-window.addEventListener('resize', () => { const v = document.getElementById('view'); if (v?.querySelector('.vfit')) fitTables(v); });
 
 // ───────────── 회원 시트 (구글 시트 연결 · 새로 불러오기) ─────────────
 const ago = (ts) => {
@@ -257,7 +234,7 @@ function listView(body, root) {
       <button class="btn ghost sm" data-bulkstaff="1">운영진 지정</button><button class="btn ghost sm" data-bulkstaff="0">운영진 해제</button>
       <button class="btn ghost sm" data-selclear>선택 해제</button><button class="btn ghost danger sm" data-seldel>선택 삭제</button></div>` : ''}
 
-    ${rows.length ? `<div class="card sheetwrap vfit">${table([...main, ...left], 'all')}</div>` : `<section class="card">${empty(q || filt !== 'all' ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
+    ${rows.length ? `<div class="card sheetwrap vfit" data-key="mlist">${table([...main, ...left], 'all')}</div>` : `<section class="card">${empty(q || filt !== 'all' ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
 `;
 
   const rer = () => render(root);
@@ -334,7 +311,7 @@ function feeView(body, root) {
       <div class="feesum">${[...Object.keys(FEE_KINDS), 'etc', 'none'].filter((x) => cnt[x]).map((x) => `<div><b>${cnt[x]}</b>${x === 'none' ? '<span class="fee f-none">-</span> 없음' : x === 'etc' ? '기타' : pill(FEE_KINDS[x].label)}</div>`).join('')}</div></section>
     <div class="mtools"><input class="search" type="search" placeholder="닉네임·이름 검색" value="${esc(q)}" data-q></div>
 
-    <div class="card sheetwrap vfit"><table class="grid fgrid"><thead><tr><th class="stick">닉네임</th><th>등급</th>${Array.from({ length: 12 }, (_, i) => `<th class="${i === mon ? 'on' : ''}">${i + 1}월</th>`).join('')}</tr></thead><tbody>
+    <div class="card sheetwrap vfit" data-key="mfee"><table class="grid fgrid"><thead><tr><th class="stick">닉네임</th><th>등급</th>${Array.from({ length: 12 }, (_, i) => `<th class="${i === mon ? 'on' : ''}">${i + 1}월</th>`).join('')}</tr></thead><tbody>
       ${list.map(({ m, f }) => `<tr class="${isLeft(m) ? 'st-row-left' : ''}"><td class="stick"><b>${esc(m.name)}</b></td><td>${m.grade ? `<span class="grade g-${GRADES.indexOf(m.grade)}">${esc(m.grade)}</span>` : ''}</td>
         ${Array.from({ length: 12 }, (_, i) => `<td class="${i === mon ? 'cur' : ''}">${pill(f[i])}</td>`).join('')}</tr>`).join('')}
     </tbody></table></div>

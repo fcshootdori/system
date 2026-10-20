@@ -46,7 +46,7 @@ export function render(root, { params }) {
       ${L.none ? '<b class="muted">-</b>' : `<b class="lv">${L.val}</b><span class="lw">${L.who.slice(0, 3).map((r) => esc(r.name)).join(' · ')}${L.who.length > 3 ? ` 외 ${L.who.length - 3}명` : ''}${L.who.length > 1 ? ' <small>(공동)</small>' : ''}</span>`}
     </button>`).join('')}</div>
     <p class="tiny muted lead-note">${minGames ? `최소 ${minGames}경기 이상 회원 기준` : '전체 회원 기준'} · 부문을 누르면 그 순서로 정렬돼요</p>` : ''}
-    ${rows.length ? `<div class="tbl-wrap"><table class="tbl rec"><thead><tr><th>#</th>${COLS.map(([k, l]) =>
+    ${rows.length ? `<div class="tbl-wrap vfit" data-key="rec"><table class="tbl rec"><thead><tr><th>#</th>${COLS.map(([k, l]) =>
       `<th data-sort="${k}" class="${k === sortKey ? 'on' : ''} ${k === 'name' ? 'nm' : ''}">${l}</th>`).join('')}</tr></thead><tbody>
       ${rows.map((r, i) => `<tr class="${r.id === me.id ? 'me' : ''}" data-m="${r.id}"><td>${i + 1}</td>
         <td class="nm">${esc(r.name)}</td><td>${r.games}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
