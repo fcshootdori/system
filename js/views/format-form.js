@@ -19,8 +19,9 @@ export function formatFields(f) {
       <label>최소 인원<input type="number" name="minPlayers" min="0" value="${f.minPlayers}"></label>
       <label>최대 정원<input type="number" name="capacity" min="0" value="${f.capacity}"></label>
     </div>
+    <label>신청 마감${sel('closeRule', f.closeRule || 'thu', [['thu', '경기일 전 목요일 0시에 자동 마감'], ['manual', '운영진이 직접 마감']])}</label>
     <label>드래프트 순서${sel('draft', f.draft, [['snake', '스네이크 (1-2-2-1…)'], ['round', '순환 (1-2-1-2…)']])}</label>
-    <p class="muted small">최대 정원 0은 제한 없음. 합산 방식은 2팀일 때만 적용되고, 3팀 이상이면 라운드마다 따로 계산해요.</p>
+    <p class="muted small">최소 인원을 채워도 신청은 마감 시각까지 계속 받아요. 최대 정원 0은 제한 없음(정원을 넣으면 넘는 인원은 대기). 합산 방식은 2팀일 때만 적용되고, 3팀 이상이면 라운드마다 따로 계산해요.</p>
   </div>`;
 }
 
@@ -36,6 +37,6 @@ export function readFormat(form) {
   return {
     teams: +form.teams.value, rounds: Math.max(1, +form.rounds.value || 1), scoring: form.scoring.value,
     teamMode: form.teamMode.value, fixedColors: [0, 1, 2, 3].map((i) => form['fc' + i].value),
-    minPlayers: Math.max(0, +form.minPlayers.value || 0), capacity: Math.max(0, +form.capacity.value || 0), draft: form.draft.value,
+    minPlayers: Math.max(0, +form.minPlayers.value || 0), capacity: Math.max(0, +form.capacity.value || 0), closeRule: form.closeRule.value, draft: form.draft.value,
   };
 }

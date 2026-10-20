@@ -2,7 +2,7 @@
 import { S, go, mdPath, today, statusLabel } from '../state.js';
 import { db } from '../store.js';
 import { STATUS } from '../config.js';
-import { applicants, fmtOf, noLabel } from '../domain.js';
+import { applicants, fmtOf, noLabel, isOpen, closeLabel } from '../domain.js';
 import { esc, fmtDate, toast } from '../util.js';
 import { empty } from '../ui.js';
 import { editMatchday, fmtSummary, reviewCard, cancelMatchday } from './home.js';
@@ -91,10 +91,10 @@ function detail(md, op) {
     <h2 class="dt">${fmtDate(md.date)} ${md.time ? `<small>${esc(md.time)}</small>` : ''}</h2>
     <p class="muted small">${[md.venue, fmtSummary(md)].filter(Boolean).map(esc).join(' · ')}</p>
     ${md.note ? `<p class="note">${esc(md.note)}</p>` : ''}
-    ${played ? reviewCard(md) : `<p class="small">참가 ${n}명${f.minPlayers ? ` / 최소 ${f.minPlayers}명` : ''}${f.capacity ? ` · 정원 ${f.capacity}명` : ''}</p>`}
+    ${played ? reviewCard(md) : `<p class="small">참가 ${n}명${f.minPlayers ? ` / 최소 ${f.minPlayers}명` : ''}${f.capacity ? ` · 정원 ${f.capacity}명` : ''}${isOpen(md) && closeLabel(md) && !md.reopened ? ` · ⏰ ${closeLabel(md)}` : ''}</p>`}
     <div class="row wrap">
       ${op ? `<button class="btn" data-run>경기 메뉴로</button><button class="btn ghost" data-editmd>수정</button>${played ? '' : '<button class="btn ghost danger" data-cancel>경기 취소</button>'}<button class="btn ghost danger" data-delmd>삭제</button>`
         : played ? `<a class="btn" href="#/games/${md.id}">결과 보기</a>`
-        : md.status === 'open' ? `<button class="btn" data-go="apply/${md.id}">참가 신청</button>` : `<button class="btn ghost" data-go="apply/${md.id}">신청 명단</button>`}
+        : isOpen(md) ? `<button class="btn" data-go="apply/${md.id}">참가 신청</button>` : `<button class="btn ghost" data-go="apply/${md.id}">신청 명단</button>`}
     </div>`;
 }

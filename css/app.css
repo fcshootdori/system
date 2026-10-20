@@ -524,3 +524,10 @@ select.cell.st-left { color: #9ca3af; }
 .feesum { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .feesum > div { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; }
 .feesum b { font-size: 16px; }
+
+/* ── 0.1.16 신청 마감 안내 ── */
+.deadline { margin: 6px 0 0; color: #b45309; font-weight: 600; }
+.dock-dl { margin: 0 0 6px; text-align: center; font-size: 12px; font-weight: 700; color: #b45309; }
+.left-hd { margin: 22px 4px 8px; font-size: 15px; color: var(--sub); }
+.left-hd small { font-weight: 500; font-size: 12px; }
+.left-wrap { opacity: .85; }

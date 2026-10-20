@@ -25,6 +25,7 @@ import * as membersView from './views/members.js';
 import * as loginView from './views/login.js';
 import { loadSession, saveSession, verify } from './auth.js';
 import { startAutoSync } from './member-sync.js';
+import { closePassed } from './domain.js';
 
 const MEMBER_TABS = [['home', '홈', '⌂'], ['sched', '일정', '▦'], ['mm', '경기모드', '⚽'], ['results', '경기결과', '▤'], ['me', '내 정보', '☺']];
 const OP_TABS = [['plan', '일정', '▦'], ['run', '경기', '⚑'], ['notice', '공지', '✉'], ['members', '회원', '☺'], ['settings', '설정', '⚙']];
@@ -115,6 +116,16 @@ document.addEventListener('focusout', () => setTimeout(() => {
 }, 0));
 window.addEventListener('hashchange', () => { renderShell(); render(); window.scrollTo(0, 0); });
 
+// 신청 자동 마감: 마감 시각이 지난 신청 중 경기 → '신청 마감' (운영진이 다시 연 경기는 제외)
+const closing = new Set();
+function autoClose() {
+  S.matchdays.forEach((md) => {
+    if (md.status !== 'open' || md.cancelled || md.reopened || md.source === 'sheet' || closing.has(md.id) || !closePassed(md)) return;
+    closing.add(md.id);
+    db.set('matchdays/' + md.id, { status: 'closed', autoClosedAt: Date.now() }, { merge: true }).catch(() => closing.delete(md.id));
+  });
+}
+
 (async function boot() {
   const qs = new URLSearchParams(location.search);
   if (qs.get('c')) localStorage.setItem('teamapp:captain', qs.get('c'));
@@ -125,6 +136,7 @@ window.addEventListener('hashchange', () => { renderShell(); render(); window.sc
   startSync();
   startAutoSync();   // 회원 시트 주소가 저장된 운영진 기기: 회원 정보 자동 반영
   onChange(safeRender);
+  onChange(autoClose); setInterval(autoClose, 60e3);   // 경기일 전 목요일 0시 신청 자동 마감
   renderShell(); render();
   // 자동 로그인 정보 확인 (비밀번호가 바뀌었거나 운영진이 초기화했으면 다시 로그인)
   if (S.auth) verify(S.auth).then((ok) => {

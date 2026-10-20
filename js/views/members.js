@@ -174,27 +174,13 @@ function listView(body, root) {
   const th = (key, label, cls = '') => `<th data-sort="${key}" class="${cls} ${sort.k === key ? 'on' : ''}">${label}${sort.k === key ? (sort.d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
   const gcnt = (g) => all.filter((r) => (g === '-' ? !r.inSheet : r.grade === g)).length;
   const lock = '<span class="muted" title="시트를 읽으면 보여요">🔒</span>';
-
-  body.innerHTML = `
-    ${sheetCard()}
-    <div class="mg-top"><h2>회원 ${all.length}명</h2>
-      <div class="row nowrap"><button class="btn ghost sm" data-bulk>명단 붙여넣기</button><button class="btn ghost sm" data-csv>CSV 저장</button><button class="btn sm" data-add>＋ 회원 추가</button></div></div>
-    <div class="mtools">
-      <input class="search" type="search" placeholder="닉네임·이름·별칭·연락처 검색" value="${esc(q)}" data-q>
-      <div class="seg mseg">${[['all', `전체 ${all.length}`], ...Object.entries(MSTAT).map(([s, l]) => [s, `${l} ${cnt(s)}`])].map(([s, l]) =>
-        `<button data-f="${s}" class="${filt === s ? 'on' : ''}">${l}</button>`).join('')}</div>
-      <select class="gsel" data-grade><option value="">등급 전체</option>${[...GRADES, '-'].filter((g) => gcnt(g)).map((g) => `<option value="${g}" ${grade === g ? 'selected' : ''}>${g === '-' ? '시트에 없음' : g} ${gcnt(g)}</option>`).join('')}</select>
-    </div>
-    ${dups.length ? `<div class="card warnbar"><b>⚠️ 같은 이름으로 보이는 회원 ${dups.length}쌍</b>
-      <p class="small muted">${dups.map((g) => g.map((m) => esc(m.name)).join(' · ')).join(' / ')} — 이름을 고치거나 한 명을 휴면·삭제해 주세요.</p></div>` : ''}
-    ${sel.size ? `<div class="bulkbar"><b>${sel.size}명 선택</b>
-      <select data-bulkstat><option value="">유형 바꾸기</option>${Object.entries(MSTAT).map(([s, l]) => `<option value="${s}">${l}로</option>`).join('')}</select>
-      <button class="btn ghost sm" data-selclear>선택 해제</button><button class="btn ghost danger sm" data-seldel>선택 삭제</button></div>` : ''}
-    ${rows.length ? `<div class="card sheetwrap"><table class="grid mgrid"><thead><tr>
-      <th class="ck"><input type="checkbox" data-selall ${rows.length && rows.every((r) => sel.has(r.id)) ? 'checked' : ''} aria-label="모두 선택"></th>
+  // 탈퇴 회원은 아래쪽에 따로
+  const main = rows.filter((r) => r.status !== 'left'), left = rows.filter((r) => r.status === 'left');
+  const table = (list, key) => `<table class="grid mgrid"><thead><tr>
+      <th class="ck"><input type="checkbox" data-selall="${key}" ${list.length && list.every((r) => sel.has(r.id)) ? 'checked' : ''} aria-label="모두 선택"></th>
       ${th('name', '닉네임', 'stick')}${th('no', '연번', 'num')}${th('joined', '가입일자')}${th('grade', '등급')}${th('realName', '이름')}${th('birth', '생년월일')}${th('phone', '연락처')}${th('staffHist', '운영진 이력')}${th('absent', '장불여부')}<th>장불 사유</th>${th('absFrom', '장불시작일자')}${th('absTo', '장불해제일자')}${th('bday', '생일')}
       <th class="gap"></th>${th('status', '유형')}${th('login', '로그인')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
-      ${rows.map((r) => `<tr class="${sel.has(r.id) ? 'msel' : ''} st-row-${r.status}">
+      ${list.map((r) => `<tr class="${sel.has(r.id) ? 'msel' : ''} st-row-${r.status}">
         <td class="ck"><input type="checkbox" data-sel="${r.id}" ${sel.has(r.id) ? 'checked' : ''} aria-label="${esc(r.name)} 선택"></td>
         <td class="stick">${r.inSheet ? `<span class="cell ro" title="닉네임은 회원 시트에서 고쳐 주세요">${esc(r.name)}</span>` : `<input class="cell w-name" value="${esc(r.name)}" data-cell="name" data-id="${r.id}"><small class="nosheet">시트에 없음</small>`}</td>
         <td class="num">${esc(r.sheetNo) || '-'}</td>
@@ -216,7 +202,26 @@ function listView(body, root) {
         <td class="num"><div class="att-rate"><div class="att-bar"><i style="width:${r.rate}%"></i></div><span>${r.rate}%</span></div></td>
         <td class="num">${r.last ? r.last.slice(2).replace(/-/g, '.') : '-'}</td>
         <td><button class="btn ghost danger sm" data-del="${r.id}">삭제</button></td></tr>`).join('')}
-      </tbody></table></div>` : `<section class="card">${empty(q || filt !== 'all' || grade ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
+      </tbody></table>`;
+
+  body.innerHTML = `
+    ${sheetCard()}
+    <div class="mg-top"><h2>회원 ${all.length}명</h2>
+      <div class="row nowrap"><button class="btn ghost sm" data-bulk>명단 붙여넣기</button><button class="btn ghost sm" data-csv>CSV 저장</button><button class="btn sm" data-add>＋ 회원 추가</button></div></div>
+    <div class="mtools">
+      <input class="search" type="search" placeholder="닉네임·이름·별칭·연락처 검색" value="${esc(q)}" data-q>
+      <div class="seg mseg">${[['all', `전체 ${all.length}`], ...Object.entries(MSTAT).map(([s, l]) => [s, `${l} ${cnt(s)}`])].map(([s, l]) =>
+        `<button data-f="${s}" class="${filt === s ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <select class="gsel" data-grade><option value="">등급 전체</option>${[...GRADES, '-'].filter((g) => gcnt(g)).map((g) => `<option value="${g}" ${grade === g ? 'selected' : ''}>${g === '-' ? '시트에 없음' : g} ${gcnt(g)}</option>`).join('')}</select>
+    </div>
+    ${dups.length ? `<div class="card warnbar"><b>⚠️ 같은 이름으로 보이는 회원 ${dups.length}쌍</b>
+      <p class="small muted">${dups.map((g) => g.map((m) => esc(m.name)).join(' · ')).join(' / ')} — 이름을 고치거나 한 명을 휴면·삭제해 주세요.</p></div>` : ''}
+    ${sel.size ? `<div class="bulkbar"><b>${sel.size}명 선택</b>
+      <select data-bulkstat><option value="">유형 바꾸기</option>${Object.entries(MSTAT).map(([s, l]) => `<option value="${s}">${l}로</option>`).join('')}</select>
+      <button class="btn ghost sm" data-selclear>선택 해제</button><button class="btn ghost danger sm" data-seldel>선택 삭제</button></div>` : ''}
+    ${main.length ? `<div class="card sheetwrap">${table(main, 'main')}</div>` : rows.length ? '' : `<section class="card">${empty(q || filt !== 'all' || grade ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
+    ${left.length ? `<h3 class="left-hd">탈퇴 회원 ${left.length}명 <small class="muted">회원 시트 등급 '탈퇴회원' — 지난 기록은 그대로 남아요</small></h3>
+      <div class="card sheetwrap left-wrap">${table(left, 'left')}</div>` : ''}
     <p class="note small muted">연번~생일은 회원 시트 내용 그대로예요(시트에서 고치면 반영돼요). 유형·별칭은 앱에서 바로 고치면 저장돼요. 별칭에는 오타·다른 표기를 쉼표로 넣으세요(카페 댓글·로그인에서 알아봐요).
       회원 유형: 운영진 · 정회원 · 휴면(쉬는 회원 — 신청·이름 선택에서 빠지고 지난 기록은 그대로 남아요) · 탈퇴(시트 등급이 탈퇴회원). 출석률은 기록이 있는 전체 경기 기준이에요.</p>`;
 
@@ -228,7 +233,7 @@ function listView(body, root) {
   body.querySelectorAll('[data-sort]').forEach((t) => t.addEventListener('click', () => {
     const key = t.dataset.sort; sort = sort.k === key ? { k: key, d: -sort.d } : { k: key, d: ['att', 'rate', 'last', 'joined'].includes(key) ? -1 : 1 }; rer();
   }));
-  body.querySelector('[data-selall]')?.addEventListener('change', (e) => { rows.forEach((r) => (e.target.checked ? sel.add(r.id) : sel.delete(r.id))); rer(); });
+  body.querySelectorAll('[data-selall]').forEach((c) => c.addEventListener('change', (e) => { (c.dataset.selall === 'left' ? left : main).forEach((r) => (e.target.checked ? sel.add(r.id) : sel.delete(r.id))); rer(); }));
   body.querySelectorAll('[data-sel]').forEach((c) => c.addEventListener('change', () => { c.checked ? sel.add(c.dataset.sel) : sel.delete(c.dataset.sel); rer(); }));
   body.querySelector('[data-selclear]')?.addEventListener('click', () => { sel.clear(); rer(); });
   body.querySelector('[data-bulkstat]')?.addEventListener('change', async (e) => {

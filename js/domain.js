@@ -14,6 +14,28 @@ export function fmtOf(md) {
   return f;
 }
 
+// ── 신청 마감 ──  경기일 전 목요일 0시(한국 시간)에 자동 마감 (최소 인원을 채워도 그때까지 계속 받음)
+//  운영진이 마감 시각 뒤에 다시 열면 md.reopened = true → 자동 마감하지 않음
+export function closeDate(md) {
+  if (!md?.date || fmtOf(md).closeRule === 'manual') return '';
+  const d = new Date(md.date + 'T00:00:00Z');
+  if (isNaN(d)) return '';
+  const back = ((d.getUTCDay() - 4 + 7) % 7) || 7;   // 경기일 직전 목요일 (경기일이 목요일이면 한 주 전)
+  d.setUTCDate(d.getUTCDate() - back);
+  return d.toISOString().slice(0, 10);
+}
+export const closeTime = (md) => { const c = closeDate(md); return c ? Date.parse(c + 'T00:00:00+09:00') : 0; };
+export const closePassed = (md, now = Date.now()) => { const t = closeTime(md); return !!t && now >= t; };
+// 지금 신청을 받는 중인지
+export const isOpen = (md) => !!md && md.status === 'open' && !md.cancelled && !(closePassed(md) && !md.reopened);
+// 마감 안내 문구: "10월 22일 (목) 0시 마감"
+export function closeLabel(md) {
+  const c = closeDate(md);
+  if (!c) return '';
+  const d = new Date(c + 'T00:00:00');
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (목) 0시 마감`;
+}
+
 // ── 신청 ──  md.apps = { [memberId]: { at, source } }
 export function applicants(md) {
   const cap = fmtOf(md).capacity;

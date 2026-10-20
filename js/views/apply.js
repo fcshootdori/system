@@ -4,7 +4,7 @@
 import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js';
 import { pickMe } from './pickme.js';
 import { db, newId } from '../store.js';
-import { applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams } from '../domain.js';
+import { isOpen, closeLabel, closePassed, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams } from '../domain.js';
 import { TEAM_COLORS } from '../config.js';
 import { parseCafeComments, norm } from '../cafe-parser.js';
 import { esc, fmtDate, fmtTime, toast, byName } from '../util.js';
@@ -20,7 +20,7 @@ export function render(root, ctx = {}) {
   const f = fmtOf(md), cap = f.capacity;
   const nIn = v.ins.length;
   const short = f.minPlayers && nIn < f.minPlayers ? f.minPlayers - nIn : 0;
-  const open = md.status === 'open';
+  const open = isOpen(md);
   const op = S.operator && !md.cancelled;
   const teamsSet = md.teams?.length > 0;
 
@@ -32,6 +32,7 @@ export function render(root, ctx = {}) {
       ${v.ev ? `<p class="small">${v.ev.map((t) => colorChip(t.color, t.name)).join(' vs ')} <span class="muted">· 팀이 미리 정해진 경기</span></p>` : ''}
       ${f.minPlayers ? `<div class="meter ${short ? '' : 'ok'}"><i style="width:${Math.min(100, nIn / f.minPlayers * 100)}%"></i></div>
         <p class="small ${short ? 'warn-t' : 'ok-t'}">${short ? `최소 ${f.minPlayers}명까지 ${short}명 더 필요해요` : `최소 인원 ${f.minPlayers}명 충족`}</p>` : ''}
+      ${md.status === 'open' && !md.cancelled && md.source !== 'sheet' ? `<p class="small deadline">⏰ ${open ? (md.reopened && closePassed(md) ? '운영진이 신청을 다시 열었어요' : closeLabel(md) ? `신청 ${closeLabel(md)}` : '운영진이 마감할 때까지 신청을 받아요') : '신청이 마감됐어요'}</p>` : ''}
       ${myBox(md, v, open)}
     </section>
     ${op ? `<section class="card op"><h2>운영</h2><div class="row wrap">
@@ -154,8 +155,9 @@ function bind(root, md, v) {
   root.querySelector('[data-add]')?.addEventListener('click', () => addPeople(md, null));
   root.querySelectorAll('[data-addto]').forEach((b) => b.addEventListener('click', () => addPeople(md, +b.dataset.addto)));
   root.querySelector('[data-close]')?.addEventListener('click', async () => {
-    const open = md.status === 'open';
-    await db.set(path, { status: open ? 'closed' : 'open' }, { merge: true });
+    const open = isOpen(md);
+    // 마감 시각이 지난 뒤 다시 열면 자동 마감하지 않음
+    await db.set(path, open ? { status: 'closed', reopened: false } : { status: 'open', reopened: closePassed(md) }, { merge: true });
     toast(open ? '신청을 마감했어요' : '신청을 다시 열었어요');
   });
   root.querySelectorAll('[data-approve]').forEach((b) => b.addEventListener('click', async () => {

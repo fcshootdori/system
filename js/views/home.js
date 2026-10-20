@@ -2,7 +2,7 @@
 import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js';
 import { db, newId } from '../store.js';
 import { STATUS } from '../config.js';
-import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams } from '../domain.js';
+import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel } from '../domain.js';
 import { TEAM_COLORS } from '../config.js';
 import { esc, fmtDate, todayISO, toast } from '../util.js';
 import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js';
@@ -54,11 +54,12 @@ export function render(root) {
     const myTeam = md.teams?.length ? ros.findIndex((ids) => ids.includes(me.id)) : -1;
     const ds = md.status === 'drafting' ? draftState(md) : null;
     const short = f.minPlayers && nIn < f.minPlayers ? f.minPlayers - nIn : 0;
-    if (md.status === 'open') dock = `<div class="dock"><button class="btn full" data-go="apply/${md.id}">${mine ? (mine.wait ? `대기 ${mine.no}번 · 신청 현황` : `신청 완료 (${mine.no}번) · 신청 현황`) : '참가 신청하기'}</button></div>`;
+    if (isOpen(md)) dock = `<div class="dock">${closeLabel(md) && !md.reopened ? `<p class="dock-dl">⏰ 신청 ${closeLabel(md)}</p>` : ''}<button class="btn full" data-go="apply/${md.id}">${mine ? (mine.wait ? `대기 ${mine.no}번 · 신청 현황` : `신청 완료 (${mine.no}번) · 신청 현황`) : '참가 신청하기'}</button></div>`;
     next = `<section class="card day">
       <div class="eyebrow">${[noLabel(md), STATUS[md.status]?.label].filter(Boolean).join(' · ')}</div>
       <h1>${fmtDate(md.date)}${md.time ? ` <small>${esc(md.time)}</small>` : ''}</h1>
       <p class="muted">${[md.venue, fmtSummary(md)].filter(Boolean).map(esc).join(' · ')}</p>
+      ${isOpen(md) && closeLabel(md) && !md.reopened ? `<p class="small deadline">⏰ 신청 ${closeLabel(md)} · 최소 인원을 채워도 그때까지 받아요</p>` : ''}
       ${stepper(md.status)}
       ${md.note ? `<p class="note">${esc(md.note)}</p>` : ''}
       <div class="stats3">
