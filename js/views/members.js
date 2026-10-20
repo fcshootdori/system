@@ -58,14 +58,13 @@ export function render(root) {
 const tpos = {};
 function fitTables(root) {
   const top = document.getElementById('topbar')?.getBoundingClientRect().height || 0;
-  const tb = document.getElementById('tabbar');
-  const bottom = tb && getComputedStyle(tb).flexDirection === 'row' ? tb.getBoundingClientRect().height : 0;
-  const h = Math.max(260, window.innerHeight - top - bottom - 16);
+  // 페이지 맨 아래까지 내렸을 때 표 상자가 위 막대 바로 아래에 딱 맞게: 화면 높이 - 위 막대 - 표 아래에 남는 페이지 길이(버전 표시·아래 메뉴 자리)
   root.querySelectorAll('.vfit').forEach((w, i) => {
     const key = tab + i;
-    w.style.maxHeight = h + 'px';
+    const below = document.documentElement.scrollHeight - (w.getBoundingClientRect().bottom + window.scrollY);
+    w.style.maxHeight = Math.max(260, Math.floor(window.innerHeight - top - Math.max(0, below) - 6)) + 'px';
     if (tpos[key]) { w.scrollTop = tpos[key][0]; w.scrollLeft = tpos[key][1]; }
-    w.addEventListener('scroll', () => { tpos[key] = [w.scrollTop, w.scrollLeft]; document.querySelectorAll('.abs-pop').forEach((x) => x.remove()); }, { passive: true });
+    w.addEventListener('scroll', () => { tpos[key] = [w.scrollTop, w.scrollLeft]; document.querySelectorAll('.abs-pop').forEach((x) => { if (Date.now() - (+x.dataset.t || 0) > 400) x.remove(); }); }, { passive: true });
   });
 }
 window.addEventListener('resize', () => { const v = document.getElementById('view'); if (v?.querySelector('.vfit')) fitTables(v); });
@@ -199,13 +198,14 @@ function listView(body, root) {
   // 장불 정보 말풍선: 사유 · 시작일자 · 해제일자
   const absInfo = (r, pv) => [`장불 사유: ${pv ? r.p?.absReason || '적힌 사유 없음' : '🔒 회원 시트를 읽으면 보여요'}`,
     `장불 시작일자: ${dot(r.absFrom) || '-'}`, `장불 해제일자: ${dot(r.absTo) || '-'}`].join('\n');
-  // 탈퇴 회원은 아래쪽에 따로
+  // 탈퇴 회원은 같은 표 맨 아래에 구분줄과 함께
   const main = rows.filter((r) => !r.left), left = rows.filter((r) => r.left);
+  const leftDiv = `<tr class="left-div"><td colspan="17"><span>탈퇴 회원 ${left.length}명 <small>회원 시트 등급 '탈퇴회원' — 지난 기록은 그대로 남아요</small></span></td></tr>`;
   const table = (list, key) => `<table class="grid mgrid"><thead><tr>
       <th class="ck"><input type="checkbox" data-selall="${key}" ${list.length && list.every((r) => sel.has(r.id)) ? 'checked' : ''} aria-label="모두 선택"></th>
       ${th('name', '닉네임', 'stick')}${th('grank', '등급')}${th('staff', '운영진')}${th('joined', '가입일자')}${th('realName', '이름')}${th('birth', '생년월일')}${th('phone', '연락처')}${th('staffHist', '운영진 이력')}${th('absent', '장불여부')}
       <th class="gap"></th>${th('login', '로그인')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
-      ${list.map((r) => `<tr class="${sel.has(r.id) ? 'msel' : ''} ${r.left ? 'st-row-left' : r.rest || !r.inSheet ? 'st-row-rest' : ''}">
+      ${list.map((r, i) => `${r.left && (i === 0 || !list[i - 1].left) ? leftDiv : ''}<tr class="${sel.has(r.id) ? 'msel' : ''} ${r.left ? 'st-row-left' : r.rest || !r.inSheet ? 'st-row-rest' : ''}">
         <td class="ck"><input type="checkbox" data-sel="${r.id}" ${sel.has(r.id) ? 'checked' : ''} aria-label="${esc(r.name)} 선택"></td>
         <td class="stick">${r.inSheet ? `<span class="cell ro" title="닉네임은 회원 시트에서 고쳐 주세요">${esc(r.name)}</span>` : `<input class="cell w-name" value="${esc(r.name)}" data-cell="name" data-id="${r.id}"><small class="nosheet">시트에 없음</small>`}</td>
         <td>${r.grade ? `<span class="grade g-${GRADES.indexOf(r.grade)}">${esc(r.grade)}</span>` : '-'}</td>
@@ -239,11 +239,10 @@ function listView(body, root) {
     ${sel.size ? `<div class="bulkbar"><b>${sel.size}명 선택</b>
       <button class="btn ghost sm" data-bulkstaff="1">운영진 지정</button><button class="btn ghost sm" data-bulkstaff="0">운영진 해제</button>
       <button class="btn ghost sm" data-selclear>선택 해제</button><button class="btn ghost danger sm" data-seldel>선택 삭제</button></div>` : ''}
-    ${main.length ? `<div class="card sheetwrap vfit">${table(main, 'main')}</div>` : rows.length ? '' : `<section class="card">${empty(q || filt !== 'all' ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
-    ${left.length ? `<h3 class="left-hd">탈퇴 회원 ${left.length}명 <small class="muted">회원 시트 등급 '탈퇴회원' — 지난 기록은 그대로 남아요</small></h3>
-      <div class="card sheetwrap vfit left-wrap">${table(left, 'left')}</div>` : ''}
     <p class="note small muted">등급·가입일자~장불여부는 회원 시트 내용 그대로예요(시트에서 고치면 반영돼요). 회원 구분은 시트 등급(VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원)을 따르고, 운영진은 체크로 따로 지정해요.
-      장불여부를 누르거나 마우스를 올리면 장불 사유·시작일자·해제일자가 보여요. 표가 길면 표 안에서 위아래·옆으로 넘겨 보세요. 별칭에는 오타·다른 표기를 쉼표로 넣으세요(카페 댓글·로그인에서 알아봐요). 출석률은 기록이 있는 전체 경기 기준이에요.</p>`;
+      장불여부를 누르거나 마우스를 올리면 장불 사유·시작일자·해제일자가 보여요. 표가 길면 표 안에서 위아래·옆으로 넘겨 보세요. 별칭에는 오타·다른 표기를 쉼표로 넣으세요(카페 댓글·로그인에서 알아봐요). 출석률은 기록이 있는 전체 경기 기준이에요.</p>
+    ${rows.length ? `<div class="card sheetwrap vfit">${table([...main, ...left], 'all')}</div>` : `<section class="card">${empty(q || filt !== 'all' ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
+`;
 
   const rer = () => render(root);
   bindSheetCard(body, root);
@@ -252,7 +251,7 @@ function listView(body, root) {
   body.querySelectorAll('[data-sort]').forEach((t) => t.addEventListener('click', () => {
     const key = t.dataset.sort; sort = sort.k === key ? { k: key, d: -sort.d } : { k: key, d: ['att', 'rate', 'last', 'joined'].includes(key) ? -1 : 1 }; rer();
   }));
-  body.querySelectorAll('[data-selall]').forEach((c) => c.addEventListener('change', (e) => { (c.dataset.selall === 'left' ? left : main).forEach((r) => (e.target.checked ? sel.add(r.id) : sel.delete(r.id))); rer(); }));
+  body.querySelectorAll('[data-selall]').forEach((c) => c.addEventListener('change', (e) => { [...main, ...left].forEach((r) => (e.target.checked ? sel.add(r.id) : sel.delete(r.id))); rer(); }));
   body.querySelectorAll('[data-sel]').forEach((c) => c.addEventListener('change', () => { c.checked ? sel.add(c.dataset.sel) : sel.delete(c.dataset.sel); rer(); }));
   body.querySelector('[data-selclear]')?.addEventListener('click', () => { sel.clear(); rer(); });
   body.querySelectorAll('[data-bulkstaff]').forEach((b) => b.addEventListener('click', async () => {
@@ -268,7 +267,7 @@ function listView(body, root) {
   body.querySelectorAll('[data-absr]').forEach((b) => b.addEventListener('click', (e) => {
     e.stopPropagation();
     document.querySelectorAll('.abs-pop').forEach((x) => x.remove());
-    const pop = document.createElement('div'); pop.className = 'abs-pop'; pop.textContent = b.title;
+    const pop = document.createElement('div'); pop.className = 'abs-pop'; pop.dataset.t = Date.now(); pop.textContent = b.title;
     document.body.appendChild(pop);
     const rc = b.getBoundingClientRect();
     pop.style.top = `${rc.bottom + window.scrollY + 6}px`;
@@ -316,11 +315,12 @@ function feeView(body, root) {
       <label class="inline small"><input type="checkbox" data-hl ${hideLeft ? 'checked' : ''}> 탈퇴 회원 숨기기</label></div>
       <div class="feesum">${[...Object.keys(FEE_KINDS), 'etc', 'none'].filter((x) => cnt[x]).map((x) => `<div><b>${cnt[x]}</b>${x === 'none' ? '<span class="fee f-none">-</span> 없음' : x === 'etc' ? '기타' : pill(FEE_KINDS[x].label)}</div>`).join('')}</div></section>
     <div class="mtools"><input class="search" type="search" placeholder="닉네임·이름 검색" value="${esc(q)}" data-q></div>
+    <p class="note small muted">◎ 연납 · ♥ 선납 · O 월납 · ▲ 장불 · ■ 면제 · - 없음 — 회원 시트의 1~12월 회비 칸 그대로예요. 고칠 때는 시트에서 고쳐 주세요.</p>
     <div class="card sheetwrap vfit"><table class="grid fgrid"><thead><tr><th class="stick">닉네임</th><th>등급</th>${Array.from({ length: 12 }, (_, i) => `<th class="${i === mon ? 'on' : ''}">${i + 1}월</th>`).join('')}</tr></thead><tbody>
       ${list.map(({ m, f }) => `<tr class="${isLeft(m) ? 'st-row-left' : ''}"><td class="stick"><b>${esc(m.name)}</b></td><td>${m.grade ? `<span class="grade g-${GRADES.indexOf(m.grade)}">${esc(m.grade)}</span>` : ''}</td>
         ${Array.from({ length: 12 }, (_, i) => `<td class="${i === mon ? 'cur' : ''}">${pill(f[i])}</td>`).join('')}</tr>`).join('')}
     </tbody></table></div>
-    <p class="note small muted">◎ 연납 · ♥ 선납 · O 월납 · ▲ 장불 · ■ 면제 · - 없음 — 회원 시트의 1~12월 회비 칸 그대로예요. 고칠 때는 시트에서 고쳐 주세요.</p>`}`;
+`}`;
   bindSheetCard(body, root);
   body.querySelector('[data-hl]')?.addEventListener('change', (e) => { hideLeft = e.target.checked; render(root); });
   body.querySelector('[data-q]')?.addEventListener('input', (e) => { q = e.target.value; const pos = e.target.selectionStart; render(root); const i = root.querySelector('[data-q]'); i.focus(); i.setSelectionRange(pos, pos); });
