@@ -68,6 +68,8 @@ function settings(root) {
         <label>엠블럼<div class="emblem-edit">${t.emblem ? `<img src="${t.emblem}" alt="">` : ''}<input type="file" accept="image/*" name="emblem"></div></label></div>
       <label>다음 카페 주소<input name="cafeUrl" placeholder="https://cafe.daum.net/..." value="${esc(t.cafeUrl || '')}"></label>
       <label>운영모드 PIN<input name="operatorPin" inputmode="numeric" value="${esc(t.operatorPin)}"></label>
+      <label class="inline toggle"><input type="checkbox" name="cafeImport" ${t.cafeImport !== false ? 'checked' : ''}>
+        <span>카페 댓글로 참석 받기 <small class="muted">임시 기능 · 정식 서비스에서 앱으로만 신청받으면 끄세요</small></span></label>
       <button class="btn">저장</button>
     </form></section>
 
@@ -101,7 +103,7 @@ function settings(root) {
 
   root.querySelector('[data-team]').addEventListener('submit', async (e) => {
     e.preventDefault(); const fm = e.target;
-    const patch = { name: fm.name.value.trim() || DEFAULT_TEAM.name, primary: fm.primary.value, cafeUrl: fm.cafeUrl.value.trim(), operatorPin: fm.operatorPin.value.trim() || '0000' };
+    const patch = { name: fm.name.value.trim() || DEFAULT_TEAM.name, primary: fm.primary.value, cafeUrl: fm.cafeUrl.value.trim(), operatorPin: fm.operatorPin.value.trim() || '0000', cafeImport: fm.cafeImport.checked };
     if (fm.emblem.files[0]) patch.emblem = await fileToDataUrl(fm.emblem.files[0]);
     await db.set('meta/team', patch, { merge: true }); toast('저장했어요');
   });

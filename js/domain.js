@@ -19,10 +19,21 @@ export function applicants(md) {
   const cap = fmtOf(md).capacity;
   return Object.entries(md?.apps || {})
     .map(([id, a]) => ({ id, ...a }))
+    .filter((a) => !a.pending)                // 운영진 협의 대기는 승인 전까지 명단에서 제외
     .sort((a, b) => (a.at || 0) - (b.at || 0))
     .map((a, i) => ({ ...a, wait: cap > 0 && i >= cap, no: i + 1 }));
 }
 export const confirmed = (md) => applicants(md).filter((a) => !a.wait);
+export const pendingApps = (md) => Object.entries(md?.apps || {}).map(([id, a]) => ({ id, ...a })).filter((a) => a.pending)
+  .sort((a, b) => (a.at || 0) - (b.at || 0));
+// 카페 댓글 구역(예: 준찬팀·지진희팀)별 참가자
+export function appGroups(md) {
+  const g = new Map();
+  (md?.groupOrder || []).forEach((t) => g.set(t, []));
+  confirmed(md).forEach((a) => { if (!a.group) return; if (!g.has(a.group)) g.set(a.group, []); g.get(a.group).push(a.id); });
+  [...g].forEach(([k, v]) => { if (!v.length) g.delete(k); });
+  return g;
+}
 
 // ── 드래프트 ──
 export function pickSequence(nTeams, nPicks, mode = 'snake') {

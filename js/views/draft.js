@@ -1,7 +1,9 @@
 import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js';
 import { db } from '../store.js';
 import { TEAM_COLORS } from '../config.js';
-import { confirmed, draftState, rosters, fmtOf, teamColor } from '../domain.js';
+import { confirmed, draftState, rosters, fmtOf, teamColor, appGroups } from '../domain.js';
+import { TEAM_COLORS as TC } from '../config.js';
+import { modal } from '../ui.js';
 import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js';
 import { empty, colorChip, teamLabel, teamChip } from '../ui.js';
 
@@ -35,7 +37,11 @@ function captainPicker(md) {
   const pre = (md.captains || []).map((c) => c.id);
   if (!capSel.length && pre.length) capSel = pre;
   capSel = capSel.filter((id) => list.some((a) => a.id === id));
-  return `<section class="card op">
+  const groups = appGroups(md);
+  const groupCard = groups.size >= 2 ? `<section class="card op"><h2>카페 댓글 구역대로 팀 나누기</h2>
+    <p class="muted small">${[...groups].map(([g, ids]) => `<b>${esc(g)}</b> ${ids.length}명`).join(' · ')} — 드래프트 없이 댓글 구역 그대로 팀을 만들고, 팀 확정 단계에서 선수를 옮겨 밸런스를 맞출 수 있어요.</p>
+    <button class="btn" data-groupsplit>구역대로 팀 만들기</button></section>` : '';
+  return groupCard + `<section class="card op">
     <h2>주장 ${n}명 선택 <small>${capSel.length}/${n}</small></h2>
     <p class="muted small">누른 순서가 지명 순서예요${f.teamMode === 'fixed' ? ` (1번 주장 = ${teamLabel(md, 0)})` : ''}. 순서는 아래에서 바꾸거나 무작위로 섞을 수 있어요.</p>
     ${list.length ? `<div class="name-grid">${list.map((a) => {
@@ -50,6 +56,7 @@ function captainPicker(md) {
     </div></section>`;
 }
 function bindCaptainPicker(root, md) {
+  root.querySelector('[data-groupsplit]')?.addEventListener('click', () => groupSplit(md));
   const n = fmtOf(md).teams;
   const rer = () => render(root, lastCtx);
   root.querySelectorAll('[data-cap]').forEach((b) => b.addEventListener('click', () => {
@@ -89,7 +96,7 @@ function board(md, myCap) {
     <section class="teams-grid n${caps.length}">${ros.map((ids, i) => `
       <div class="team-card ${myCap === i ? 'mine' : ''} ${ds.turn === i ? 'turn' : ''}">
         <header>${teamColor(md, i) ? teamChip(md, i) : `<span class="chip">${i + 1}번 주장</span>`}<small>${ids.length}명</small></header>
-        <ol>${ids.map((id, k) => `<li>${k === 0 ? '<b class="cap">C</b>' : ''}${esc(nameOf(id, md))}</li>`).join('')}</ol>
+        <ol>${ids.map((id, k) => `<li>${k === 0 && (md.captains || []).length ? '<b class="cap">C</b>' : ''}${esc(nameOf(id, md))}</li>`).join('')}</ol>
         ${!fixed && ds.done && (S.operator || myCap === i) ? `<div class="color-pick">${TEAM_COLORS.map((c) =>
           `<button class="swatch ${caps[i].color === c.key ? 'on' : ''}" style="--c:${c.hex}" data-color="${i}:${c.key}" ${usedColors.has(c.key) && caps[i].color !== c.key ? 'disabled' : ''} title="${c.label}"></button>`).join('')}</div>` : ''}
       </div>`).join('')}</section>
@@ -151,7 +158,7 @@ function teamsView(md) {
   return `<section class="teams-grid n${ros.length}">${ros.map((ids, i) => `
     <div class="team-card ${ids.includes(me.id) ? 'mine' : ''}">
       <header>${teamChip(md, i)}<small>${ids.length}명</small></header>
-      <ol>${ids.map((id, k) => `<li>${k === 0 ? '<b class="cap">C</b>' : ''}${esc(nameOf(id, md))}
+      <ol>${ids.map((id, k) => `<li>${k === 0 && (md.captains || []).length ? '<b class="cap">C</b>' : ''}${esc(nameOf(id, md))}
         ${S.operator && k > 0 && md.status !== 'played' ? `<select class="move" data-move="${i}:${id}"><option value="">이동</option>${ros.map((_, j) => j !== i ? `<option value="${j}">${teamLabel(md, j)}</option>` : '').join('')}</select>` : ''}</li>`).join('')}</ol>
     </div>`).join('')}</section>
     ${S.operator && md.status === 'teams' ? `<section class="card op"><div class="row wrap">
@@ -171,5 +178,31 @@ function bindTeams(root, md) {
   root.querySelector('[data-reopen]')?.addEventListener('click', async () => {
     if (!confirm('확정을 풀고 드래프트 화면으로 돌아갈까요? (선수 이동 내역은 지워져요)')) return;
     await db.tx(mdPath(md.id), (cur) => { cur.teams = []; cur.status = 'drafting'; return cur; });
+  });
+}
+
+// 카페 댓글 구역(예: [준찬팀]·[지진희팀]) → 팀 색 지정 → 팀 확정
+function groupSplit(md) {
+  const groups = [...appGroups(md)];
+  const f = fmtOf(md);
+  const colors = f.fixedColors?.length ? f.fixedColors : TC.map((c) => c.key);
+  const rest = confirmed(md).map((a) => a.id).filter((id) => !groups.some(([, ids]) => ids.includes(id)));
+  const { el, close } = modal('구역대로 팀 만들기', `<form class="stack">
+    ${groups.map(([g, ids], i) => `<label>${esc(g)} <small class="muted">${ids.length}명</small><select name="g${i}">${TC.map((c) =>
+      `<option value="${c.key}" ${c.key === colors[i % colors.length] ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label>`).join('')}
+    ${rest.length ? `<p class="small muted">구역 없이 신청한 ${rest.length}명(${rest.map((id) => esc(nameOf(id, md))).join(', ')})은 인원이 적은 팀부터 넣어요.</p>` : ''}
+    <button class="btn">팀 확정</button></form>`);
+  el.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const picks = groups.map((_, i) => e.target['g' + i].value);
+    if (new Set(picks).size !== picks.length) return toast('구역마다 다른 팀 색을 골라 주세요');
+    const teams = groups.map(([, ids], i) => ({ color: picks[i], members: [...ids] }));
+    rest.forEach((id) => teams.reduce((a, b) => (b.members.length < a.members.length ? b : a)).members.push(id));
+    await db.tx(mdPath(md.id), (cur) => {
+      cur.captains = []; cur.picks = []; cur.teams = teams; cur.status = 'teams'; cur.draftStarted = false;
+      cur.format = { ...fmtOf(cur), teams: teams.length, teamMode: 'fixed', fixedColors: [...picks, ...colors.filter((c) => !picks.includes(c))] };
+      return cur;
+    });
+    close(); toast('구역대로 팀을 만들었어요 — 팀 확정 단계에서 선수를 옮길 수 있어요');
   });
 }

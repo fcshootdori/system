@@ -332,3 +332,17 @@ h2.dt { margin: 2px 0; } h2.dt small { font-size: 14px; color: var(--sub); }
   #toast { bottom: 30px; }
 }
 .pill { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+
+/* ── 0.1.4: 카페 댓글 가져오기 ── */
+.grp { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: #eef2ff; color: #4338ca; white-space: nowrap; }
+.tag { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: #fff7ed; color: #c2410c; white-space: nowrap; }
+.howto { margin: 0 0 10px; padding-left: 18px; color: var(--sub); }
+h3.sec { margin: 16px 0 6px; font-size: 15px; padding: 6px 10px; background: var(--soft); border-radius: 8px; }
+.sum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 12px 0 6px; }
+.sum span { background: var(--soft); border-radius: 10px; padding: 8px 4px; text-align: center; font-size: 12px; color: var(--sub); }
+.sum b { display: block; font-size: 19px; color: var(--ink); }
+.tbl.parse tr.guest td { background: var(--warn); }
+.tbl.parse td:first-child { min-width: 90px; }
+.toggle { align-items: flex-start; }
+.toggle span { display: flex; flex-direction: column; font-weight: 600; }
+.apps .btn.sm { padding: 5px 10px; }
