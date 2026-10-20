@@ -681,3 +681,8 @@ details.tnote[open] { padding-bottom: 4px; }
   .csw { padding: 10px 2px; font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) { .pl.new, .ocard.up, .half.turn .h-hd, .pl.pend { animation: none; } }
+.stages button.off { opacity: .45; text-decoration: line-through; cursor: not-allowed; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.stages button.off small { font-size: 9px; text-decoration: none; display: block; }
+.ev-mode { margin: 8px 0 4px; }
+.ev-team { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 10px; margin-top: 8px; display: grid; gap: 6px; }
+.ev-team .ev-row { margin: 0; }

@@ -7,7 +7,7 @@
 //    경기 방식은 경기일마다 따로 바꿀 수도 있습니다 (경기일 수정 화면).
 // ─────────────────────────────────────────────────────────────
 export const APP_NAME = 'SHOOTDORI';
-export const APP_VERSION = '0.1.23';
+export const APP_VERSION = '0.1.24';
 
 // Firebase 프로젝트: fcshootdori (웹 앱 설정값 — 공개되어도 되는 값이며, 보안은 Firestore 규칙으로 지킴)
 export const FIREBASE = {
@@ -25,7 +25,7 @@ export const DEFAULT_FORMAT = {
   rounds: 5,                   // 라운드 수 (2팀이면 핑크 vs 블루 5번)
   scoring: 'sum',              // sum: 라운드 점수 합산 = 경기일 1경기 / each: 라운드마다 별도 경기
   teamMode: 'choose',          // choose: 드래프트 때 주장이 팀 색 선택 / fixed: 주장 순서대로 고정
-  fixedColors: ['pink', 'blue', 'yellow', 'green'], // 팀 색 후보 (choose: 주장이 이 중에서 고름 / fixed: 1번·2번… 순서대로)
+  fixedColors: ['pink', 'blue'], // 팀 색: 핑크·블루 (choose: 드래프트에서 운영진이 배정 / fixed: 1번·2번 순서대로)
   minPlayers: 26,              // 최소 인원 (모자라면 홈·신청 화면에 표시)
   capacity: 0,                 // 최대 정원 (0 = 제한 없음, 넘으면 대기) — 최소 인원을 채워도 신청은 계속 받음
   closeRule: 'thu',            // 신청 마감: 'thu' = 경기일 전 목요일 0시 자동 마감, 'manual' = 운영진이 직접
@@ -61,7 +61,7 @@ export const KNOWN_ALIASES = {
 };
 
 export const TEAM_COLORS = [
-  { key: 'pink',   label: '핑크',   hex: '#ec4899', text: '#ffffff' },
+  { key: 'pink',   label: '핑크',   hex: '#e11d48', text: '#ffffff' },   // 레드에 가까운 핑크
   { key: 'blue',   label: '블루',   hex: '#2563eb', text: '#ffffff' },
   { key: 'black',  label: '블랙',   hex: '#111827', text: '#ffffff' },
   { key: 'red',    label: '레드',   hex: '#dc2626', text: '#ffffff' },

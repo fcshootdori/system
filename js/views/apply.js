@@ -4,7 +4,7 @@
 import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js';
 import { pickMe } from './pickme.js';
 import { db, newId } from '../store.js';
-import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams } from '../domain.js';
+import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent } from '../domain.js';
 import { TEAM_COLORS } from '../config.js';
 import { parseCafeComments, norm } from '../cafe-parser.js';
 import { esc, fmtDate, fmtTime, toast, byName } from '../util.js';
@@ -167,7 +167,7 @@ function bind(root, md, v) {
       const pickSmaller = (arr) => arr.reduce((a, x) => (x.n < a.n ? x : a));
       if (cur.teams?.length && !cur.teams.some((t) => t.members.includes(id))) {
         const t = cur.teams.reduce((a, x) => (x.members.length < a.members.length ? x : a)); t.members.push(id); into = TEAM_COLORS.find((c) => c.key === t.color)?.label;
-      } else if (eventTeams(cur) && cur.apps?.[id] && cur.apps[id].team == null) {
+      } else if (teamEvent(cur) && cur.apps?.[id] && cur.apps[id].team == null) {
         const sv = signupView(cur); const s = pickSmaller(sv.sides.map((x) => ({ i: x.i, n: x.ins.length, name: x.name })));
         cur.apps[id].team = s.i; into = s.name;
       }
@@ -209,7 +209,7 @@ function bind(root, md, v) {
 
 // 인원 추가 (운영진): 참석 · 불참 · 협의 · (이벤트 경기) 팀 지정만
 function addPeople(md, teamIdx) {
-  const ev = eventTeams(md), teamsSet = md.teams?.length > 0;
+  const ev = teamEvent(md), teamsSet = md.teams?.length > 0;
   const teamList = teamsSet ? md.teams.map((t, i) => ({ i, name: teamLabel(md, i) })) : ev ? ev.map((t, i) => ({ i, name: t.name })) : [];
   const inMd = new Set([...Object.keys(md.apps || {}), ...Object.keys(md.declines || {}), ...rosters(md).flat()]);
   const list = S.members.filter((m) => m.active !== false && !inMd.has(m.id)).sort(byName);
@@ -280,7 +280,7 @@ function cafeImport(md) {
     const early = !!closeTime(md) && !closePassed(md);   // 신청 마감 시각 전
     const teamSecs = sections.filter((x) => x.kind === 'in').map((x) => x.title);
     const secColors = defaultSectionColors(teamSecs, md);
-    const evNow = eventTeams(md);
+    const evNow = teamEvent(md);
     // 댓글 구역 이름 → 이벤트 팀 번호 (이름이 같거나 포함되면 그 팀, 아니면 순서대로)
     const secTeam = (t, i) => { const k = evNow.findIndex((x) => norm(x.name) === norm(t) || norm(t).includes(norm(x.name)) || norm(x.name).includes(norm(t))); return k >= 0 ? k : i < evNow.length ? i : -1; };
     if (!rows.length) { out.innerHTML = `<p class="err">댓글을 찾지 못했어요. 닉네임과 작성 시간(예: 26.10.18 10:36)이 함께 복사됐는지 확인해 주세요.</p>`; return; }

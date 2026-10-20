@@ -4,7 +4,7 @@ import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state
 import { db } from '../store.js';
 import { STATUS } from '../config.js';
 import { esc, fmtDate, toast } from '../util.js';
-import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel } from '../domain.js';
+import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel, teamEvent, capEvent } from '../domain.js';
 import { colorChip } from '../ui.js';
 import { empty } from '../ui.js';
 import { fmtSummary, editMatchday, cancelMatchday } from './home.js';
@@ -38,8 +38,11 @@ export function render(root) {
     return;
   }
   const i = list.indexOf(md), prev = list[i - 1], next = list[i + 1];
-  const auto = stageOf(md);
-  const step = S.step || auto;
+  // 이벤트 경기: 팀원까지 미리 정함 → 주장·드래프트 생략 / 주장만 미리 정함 → 주장 생략
+  const skip = teamEvent(md) ? ['captain', 'draft'] : capEvent(md) ? ['captain'] : [];
+  const jump = (k) => (skip.includes(k) ? (teamEvent(md) ? 'teams' : 'draft') : k);
+  const auto = jump(stageOf(md));
+  const step = jump(S.step || auto);
 
   root.innerHTML = `
     <div class="runbar card">
@@ -49,7 +52,9 @@ export function render(root) {
           <small>${esc([md.venue, fmtSummary(md)].filter(Boolean).join(' · '))} · <span class="st ${md.cancelled ? 'st-cancel' : ''}">${statusLabel(md, STATUS)}</span></small></div>
         <button class="navb" data-to="${next?.id || ''}" ${next ? '' : 'disabled'} aria-label="이후 경기">›</button>
       </div>
-      <ol class="stages">${STAGES.map(([k, l], n) => `<li><button data-step="${k}" class="${n < idx(auto) ? 'done' : ''} ${k === auto ? 'now' : ''} ${k === step ? 'sel' : ''}">${l}</button></li>`).join('')}</ol>
+      <ol class="stages">${STAGES.map(([k, l], n) => skip.includes(k)
+        ? `<li><button class="off" disabled title="이벤트 경기 — 미리 정해져 있어 생략">${l}<small>생략</small></button></li>`
+        : `<li><button data-step="${k}" class="${n < idx(auto) ? 'done' : ''} ${k === auto ? 'now' : ''} ${k === step ? 'sel' : ''}">${l}</button></li>`).join('')}</ol>
       <div class="rb-tools"><button class="link" data-edit>경기일·경기 방식 수정</button><button class="link" data-notice>공지 이미지</button>${md.status === 'played' ? '' : `<button class="link danger" data-cancelmd>${md.cancelled ? '취소 철회' : '경기 취소'}</button>`}</div>
     </div>
     <div data-body></div>`;
@@ -66,10 +71,10 @@ export function render(root) {
       <button class="btn ghost" data-uncancel>취소 철회</button></section>`;
     body.querySelector('[data-uncancel]').addEventListener('click', () => cancelMatchday(md));
   } else if (step === 'apply') apply.render(body, ctx);
-  else if ((step === 'captain' || step === 'draft' || step === 'teams') && eventTeams(md) && !md.teams?.length) {
+  else if (step === 'teams' && teamEvent(md) && !md.teams?.length) {
     // 이벤트 경기: 주장·드래프트 없이 미리 정한 팀 그대로
     const v = signupView(md);
-    body.innerHTML = `<section class="card op"><h2>이벤트 경기 — 팀이 미리 정해져 있어요</h2>
+    body.innerHTML = `<section class="card op"><h2>이벤트 경기 — 팀원까지 미리 정해져 있어요</h2>
       <p class="small">${v.sides.map((s) => `${colorChip(s.color, s.name)} 참석 <b>${s.ins.length}</b>명`).join(' · ')}${v.noTeam.length ? ` · 팀 미정 ${v.noTeam.length}명(인원 적은 팀으로)` : ''}${v.pend.length ? ` · 협의 ${v.pend.length}명(승인 전)` : ''}</p>
       <p class="muted small">주장 선정·드래프트 없이 참석자 그대로 팀을 확정해요. 확정 뒤에도 팀 확정 단계에서 선수를 옮길 수 있어요.</p>
       ${early ? `<p class="small deadline">⏰ 신청 ${esc(closeLabel(md))} — 마감 뒤에 팀을 확정하세요.</p>` : ''}
@@ -97,14 +102,14 @@ export function render(root) {
   }
 
   // 마감 전인데 신청 다음 단계에 와 있으면 → 신청 단계로 되돌리기
-  if (!md.cancelled && early && noGames && ['captains', 'drafting', 'teams'].includes(md.status)) {
+  if (!md.cancelled && early && noGames && !md.earlyTeams && ['captains', 'drafting', 'teams'].includes(md.status)) {
     body.insertAdjacentHTML('afterbegin', `<section class="card warnbar"><b>⏰ 아직 신청 기간이에요 (${esc(closeLabel(md))})</b>
-      <p class="small">지금은 '${esc(STATUS[md.status]?.label || '')}' 단계라 회원이 신청할 수 없어요. 마감 전이면 신청 단계로 되돌려 주세요. ${eventTeams(md) ? '팀 배정은 그대로 남아요.' : '주장·드래프트 내용은 그대로 남아요.'}</p>
+      <p class="small">지금은 '${esc(STATUS[md.status]?.label || '')}' 단계라 회원이 신청할 수 없어요. 마감 전이면 신청 단계로 되돌려 주세요. ${teamEvent(md) ? '팀 배정은 그대로 남아요.' : '주장·드래프트 내용은 그대로 남아요.'}</p>
       <button class="btn" data-reopen>신청 단계로 되돌리기</button></section>`);
     body.querySelector('[data-reopen]').addEventListener('click', async () => {
       await db.tx(mdPath(md.id), (cur) => {
         cur.status = 'open'; cur.reopened = false; cur.earlyTeams = false;
-        if (eventTeams(cur)) cur.teams = [];   // 이벤트 경기: 팀은 마감 뒤 참석자로 다시 확정
+        if (teamEvent(cur)) cur.teams = [];   // 이벤트 경기: 팀은 마감 뒤 참석자로 다시 확정
         return cur;
       });
       S.step = null; toast('신청 단계로 되돌렸어요 — 마감 때까지 신청을 받아요');

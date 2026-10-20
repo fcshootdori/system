@@ -295,13 +295,19 @@ export function eventTeams(md) {
   return null;
 }
 export const isEvent = (md) => !!eventTeams(md);
+// 이벤트 방식: 'teams' = 팀원까지 미리 정함(주장·드래프트 없음) / 'captains' = 주장만 미리 정함(신청은 일반, 주장 단계 없이 드래프트)
+export const eventMode = (md) => (eventTeams(md) ? (md.eventMode === 'captains' ? 'captains' : 'teams') : null);
+export const teamEvent = (md) => (eventMode(md) === 'teams' ? eventTeams(md) : null);
+export const capEvent = (md) => (eventMode(md) === 'captains' ? eventTeams(md) : null);
+// 팀 i의 주장: 드래프트 주장 → 이벤트 경기에 미리 정한 주장
+export const captainOf = (md, i) => md?.captains?.[i]?.id || eventTeams(md)?.[i]?.captain || null;
 export const teamName = (md, i) => md?.teamNames?.[i] || eventTeams(md)?.[i]?.name || null;
 
 // 참석·불참·협의 정리 (+ 이벤트 경기면 팀별로)
 export function signupView(md) {
   const ins = confirmed(md), wait = applicants(md).filter((a) => a.wait), pend = pendingApps(md);
   const outs = Object.entries(md?.declines || {}).map(([id, d]) => ({ id, ...d }));
-  const ev = eventTeams(md);
+  const ev = teamEvent(md);   // 팀원까지 미리 정하는 이벤트 경기만 팀별로
   if (!ev) return { ev: null, ins, wait, pend, outs };
   const answered = new Set([...ins, ...wait, ...pend, ...outs].map((x) => x.id));
   const sides = ev.map((t, i) => ({
@@ -321,5 +327,7 @@ export function eventTeamsToTeams(md) {
   const v = signupView(md);
   const teams = v.sides.map((s) => ({ color: s.color, members: s.ins.map((a) => a.id) }));
   v.noTeam.forEach((a) => teams.reduce((x, y) => (y.members.length < x.members.length ? y : x)).members.push(a.id));
+  // 미리 정한 주장은 팀 맨 앞에
+  teams.forEach((t, i) => { const c = eventTeams(md)?.[i]?.captain; if (c && t.members.includes(c)) t.members = [c, ...t.members.filter((x) => x !== c)]; });
   return teams;
 }

@@ -5,6 +5,7 @@ import { STATUS } from '../config.js';
 import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel } from '../domain.js';
 import { TEAM_COLORS } from '../config.js';
 import { esc, fmtDate, todayISO, toast } from '../util.js';
+import { norm } from '../cafe-parser.js';
 import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js';
 import { formatFields, bindFormatFields, readFormat } from './format-form.js';
 
@@ -116,10 +117,16 @@ export function editMatchday(md, presetDate) {
       <label class="inline"><input type="checkbox" name="noExclude" ${md?.noExclude ? 'checked' : ''}> 회차에서 제외 <small class="muted">(친선 경기 등)</small></label>
       <div class="fld"><span class="fl">경기 종류</span>
         <div class="seg kind-seg"><button type="button" data-kind="normal">일반 경기</button><button type="button" data-kind="event">이벤트 경기</button></div>
+        <div class="ev-teams" data-evteams>
+          <div class="seg kind-seg ev-mode"><button type="button" data-emode="captains">주장만 미리 정함</button><button type="button" data-emode="teams">팀원까지 미리 정함</button></div>
+          ${[0, 1].map((i) => `<div class="ev-team">
+          <div class="row ev-row">
+            <label>${i ? '오른쪽' : '왼쪽'} 팀 이름<input name="evn${i}" placeholder="예: ${i ? '준찬팀' : '지진희팀'}" value="${esc(ev0?.[i]?.name || '')}"></label>
+            <label>색<select name="evc${i}">${TEAM_COLORS.filter((c) => ['pink', 'blue'].includes(c.key)).map((c) => `<option value="${c.key}" ${(ev0?.[i]?.color || ['pink', 'blue'][i]) === c.key ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label></div>
+          <label>주장 <span class="muted small" data-caphint></span><input name="evk${i}" list="ev-members" autocomplete="off" placeholder="카페 닉네임" value="${esc(ev0?.[i]?.captain ? nameOf(ev0[i].captain) : '')}"></label></div>`).join('')}
+          <datalist id="ev-members">${S.members.filter((m) => m.active !== false).map((m) => `<option value="${esc(m.name)}">`).join('')}</datalist>
+        </div>
         <p class="tiny muted" data-kindhint></p>
-        <div class="ev-teams" data-evteams>${[0, 1].map((i) => `<div class="row ev-row">
-          <label>${i + 1}팀 이름<input name="evn${i}" placeholder="예: ${i ? '준찬팀' : '지진희팀'}" value="${esc(ev0?.[i]?.name || '')}"></label>
-          <label>색<select name="evc${i}">${TEAM_COLORS.map((c) => `<option value="${c.key}" ${(ev0?.[i]?.color || ['pink', 'blue'][i]) === c.key ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label></div>`).join('')}</div>
       </div>
       <div class="row time-row">
         <label>시작<select name="t1">${timeOpts(t0[0])}</select></label>
@@ -142,14 +149,20 @@ export function editMatchday(md, presetDate) {
   bindFormatFields(form);
   // 경기 종류: 일반 / 이벤트(팀 미리 지정)
   let kind = ev0 ? 'event' : 'normal';
+  let emode = ev0 && md?.eventMode === 'captains' ? 'captains' : ev0 ? 'teams' : 'captains';
   const paintKind = () => {
     form.querySelectorAll('[data-kind]').forEach((b) => b.classList.toggle('on', b.dataset.kind === kind));
+    form.querySelectorAll('[data-emode]').forEach((b) => b.classList.toggle('on', b.dataset.emode === emode));
     form.querySelector('[data-evteams]').classList.toggle('hide', kind !== 'event');
-    form.querySelector('[data-kindhint]').textContent = kind === 'event'
-      ? '팀을 미리 정해 두는 경기예요. 회원은 팀을 골라(또는 운영진이 넣어 둔 팀에서) 참석·불참을 정해요.'
-      : '신청(참석·불참·협의) → 마감 후 주장을 정하고 팀 이름을 넣은 뒤 드래프트에서 팀 색을 정해요.';
+    form.querySelectorAll('[data-caphint]').forEach((x) => { x.textContent = emode === 'captains' ? '(필수)' : '(선택)'; });
+    form.querySelector('[data-kindhint]').textContent = kind !== 'event'
+      ? '신청(참석·불참·협의) → 마감 후 주장 선정 → 드래프트(팀 색 배정 · 우선순위 추첨 · 선수 선택) → 팀 확정'
+      : emode === 'captains'
+        ? '주장만 미리 정하는 이벤트 경기: 신청은 일반 경기처럼 받고, 마감 뒤 주장 선정 단계 없이 이 주장들로 드래프트를 해요. (주장 단계 생략)'
+        : '팀원까지 미리 정하는 이벤트 경기: 회원이 팀을 골라(또는 운영진이 넣어 둔 팀에서) 참석·불참을 정하고, 참석자 그대로 팀을 확정해요. (주장·드래프트 단계 생략)';
   };
   form.querySelectorAll('[data-kind]').forEach((b) => b.addEventListener('click', () => { kind = b.dataset.kind; paintKind(); }));
+  form.querySelectorAll('[data-emode]').forEach((b) => b.addEventListener('click', () => { emode = b.dataset.emode; paintKind(); }));
   paintKind();
   // 진행 상태: 가로 단계에서 골라 저장
   const paintStage = () => {
@@ -192,11 +205,19 @@ export function editMatchday(md, presetDate) {
     const time = form.t1.value ? (form.t2.value ? `${form.t1.value}~${form.t2.value}` : form.t1.value) : '';
     let evData = { event: false };
     if (kind === 'event') {
-      const teams = [0, 1].map((i) => ({ name: form['evn' + i].value.trim(), color: form['evc' + i].value, members: ev0?.[i]?.members || [] }));
+      // 주장: 카페 닉네임·별칭으로 회원 찾기
+      const findM = (v) => { const k = norm(v); return k ? S.members.find((m) => norm(m.name) === k) || S.members.find((m) => (m.aliases || []).some((a) => norm(a) === k)) : null; };
+      const caps = [0, 1].map((i) => form['evk' + i].value.trim());
+      const capIds = caps.map((v) => (v ? findM(v)?.id || '' : ''));
+      const bad = caps.findIndex((v, i) => v && !capIds[i]);
+      if (bad >= 0) return toast(`"${caps[bad]}" — 회원 목록에 없는 닉네임이에요`);
+      if (emode === 'captains' && capIds.some((x) => !x)) return toast('주장만 미리 정하는 경기는 두 팀 주장을 모두 넣어 주세요');
+      if (capIds[0] && capIds[0] === capIds[1]) return toast('두 팀 주장이 같아요');
+      const teams = [0, 1].map((i) => ({ name: form['evn' + i].value.trim(), color: form['evc' + i].value, captain: capIds[i] || null, members: ev0?.[i]?.members || [] }));
       if (teams.some((t) => !t.name)) return toast('이벤트 경기는 두 팀 이름을 넣어 주세요');
       if (teams[0].color === teams[1].color) return toast('두 팀 색을 다르게 골라 주세요');
-      evData = { event: true, eventTeams: teams, teamNames: teams.map((t) => t.name) };
-    } else if (ev0) evData = { event: false, eventTeams: null, teamNames: null };   // 이벤트 → 일반으로 바꿈
+      evData = { event: true, eventMode: emode, eventTeams: teams, teamNames: teams.map((t) => t.name) };
+    } else if (ev0) evData = { event: false, eventMode: null, eventTeams: null, teamNames: null };   // 이벤트 → 일반으로 바꿈
     else evData = md?.event === undefined ? {} : { event: false };
     const base = { ...evData, date: form.date.value, time, venue: form.venue.value.trim(), note: form.note.value, status: form.status.value,
       no: form.no.value === '' ? null : +form.no.value, noExclude: form.noExclude.checked };

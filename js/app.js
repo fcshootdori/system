@@ -25,7 +25,7 @@ import * as membersView from './views/members.js';
 import * as loginView from './views/login.js';
 import { loadSession, saveSession, verify } from './auth.js';
 import { startAutoSync } from './member-sync.js';
-import { closePassed, closeTime, eventTeams } from './domain.js';
+import { closePassed, closeTime, teamEvent } from './domain.js';
 
 const MEMBER_TABS = [['home', '홈', '⌂'], ['sched', '일정', '▦'], ['mm', '경기모드', '⚽'], ['results', '경기결과', '▤'], ['me', '내 정보', '☺']];
 const OP_TABS = [['plan', '일정', '▦'], ['run', '경기', '⚑'], ['notice', '공지', '✉'], ['members', '회원', '☺'], ['settings', '설정', '⚙']];
@@ -134,7 +134,7 @@ function autoClose() {
   //  — 운영진이 확인 후 일부러 확정한 경우(earlyTeams)와 경기 기록이 있는 경우는 그대로
   S.matchdays.forEach((md) => {
     if (md.status !== 'teams' || md.cancelled || md.earlyTeams || md.source === 'sheet' || closing.has('r' + md.id)) return;
-    if (!closeTime(md) || closePassed(md) || !eventTeams(md) || S.games.some((g) => g.matchdayId === md.id)) return;
+    if (!closeTime(md) || closePassed(md) || !teamEvent(md) || S.games.some((g) => g.matchdayId === md.id)) return;
     closing.add('r' + md.id);
     db.tx('matchdays/' + md.id, (cur) => (cur && cur.status === 'teams' ? { ...cur, status: 'open', reopened: false, teams: [], reopenedAt: Date.now() } : null))
       .catch(() => closing.delete('r' + md.id));
