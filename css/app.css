@@ -561,3 +561,22 @@ table.grid tr.left-div small { font-weight: 500; color: var(--sub); margin-left:
 .lead .lw { font-size: 13px; font-weight: 700; line-height: 1.35; word-break: keep-all; }
 .lead .lw small { font-weight: 500; color: var(--sub); }
 .lead-note { margin: 0 0 8px; }
+
+/* ── 0.1.21 회원 표: 화면 아래까지 채운 상자, 위쪽 영역 줄임 ── */
+.mshcard.compact { padding: 10px 14px; gap: 4px; }
+.msh-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.msh-more summary { cursor: pointer; list-style: none; }
+.msh-more summary::-webkit-details-marker { display: none; }
+.msh-more p { margin: 6px 0 0; }
+details.tnote { margin: 0; padding: 0 2px; }
+details.tnote summary { cursor: pointer; font-weight: 600; }
+details.tnote[open] { padding-bottom: 4px; }
+.msh-row { flex-wrap: nowrap; }
+.msh-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msh-btns { display: flex; gap: 6px; flex-shrink: 0; }
+.btn.sm.icon { padding-left: 10px; padding-right: 10px; }
+.mg-top h2 .link { font-weight: 600; margin-left: 4px; }
+.gseg { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.gseg::-webkit-scrollbar { display: none; }
+.gseg button { flex: 0 0 auto; }
+@media (max-width: 480px) { .msh-t small { display: none; } .mshcard.compact { padding: 8px 10px; } }

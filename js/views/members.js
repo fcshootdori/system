@@ -57,16 +57,24 @@ export function render(root) {
 //  다시 그려도 표 안 스크롤 위치는 그대로 유지
 const tpos = {};
 function fitTables(root) {
+  // 표 화면에서는 아래 버전 표시를 숨겨 표 자리를 넓힘 (다른 화면으로 가면 다시 보임)
+  const ver = document.getElementById('ver');
+  if (ver) ver.style.display = root.querySelector('.vfit') ? 'none' : '';
   const top = document.getElementById('topbar')?.getBoundingClientRect().height || 0;
-  // 페이지 맨 아래까지 내렸을 때 표 상자가 위 막대 바로 아래에 딱 맞게: 화면 높이 - 위 막대 - 표 아래에 남는 페이지 길이(버전 표시·아래 메뉴 자리)
+  // 표 상자를 화면 아래 끝까지 채움 → 페이지는 스크롤되지 않고 표 안에서만 위아래 스크롤, 가로 스크롤 막대는 늘 화면 아래에 보임
+  //  (화면이 너무 낮아 상자가 작아지면, 페이지를 조금 내렸을 때 상자가 화면에 딱 맞는 높이로)
   root.querySelectorAll('.vfit').forEach((w, i) => {
     const key = tab + i;
-    const below = document.documentElement.scrollHeight - (w.getBoundingClientRect().bottom + window.scrollY);
-    w.style.maxHeight = Math.max(260, Math.floor(window.innerHeight - top - Math.max(0, below) - 6)) + 'px';
+    const r = w.getBoundingClientRect();
+    const below = Math.max(0, document.documentElement.scrollHeight - (r.bottom + window.scrollY));
+    const fill = Math.floor(window.innerHeight - (r.top + window.scrollY) - below - 2);
+    const fit = Math.floor(window.innerHeight - top - below - 6);
+    w.style.height = w.style.maxHeight = Math.max(200, fill >= 200 ? fill : fit) + 'px';
     if (tpos[key]) { w.scrollTop = tpos[key][0]; w.scrollLeft = tpos[key][1]; }
-    w.addEventListener('scroll', () => { tpos[key] = [w.scrollTop, w.scrollLeft]; document.querySelectorAll('.abs-pop').forEach((x) => { if (Date.now() - (+x.dataset.t || 0) > 400) x.remove(); }); }, { passive: true });
+    w.onscroll = () => { tpos[key] = [w.scrollTop, w.scrollLeft]; document.querySelectorAll('.abs-pop').forEach((x) => { if (Date.now() - (+x.dataset.t || 0) > 400) x.remove(); }); };
   });
 }
+window.addEventListener('hashchange', () => { const v = document.getElementById('ver'); if (v) v.style.display = ''; });
 window.addEventListener('resize', () => { const v = document.getElementById('view'); if (v?.querySelector('.vfit')) fitTables(v); });
 
 // ───────────── 회원 시트 (구글 시트 연결 · 새로 불러오기) ─────────────
@@ -84,13 +92,11 @@ function sheetCard() {
     <p class="small">회원현황 구글 시트 주소를 넣으면 시트 내용·항목이 회원 정보에 그대로 들어오고, 이후 시트가 바뀌면 자동으로 반영돼요.</p>
     <form class="row nowrap" data-link><input name="url" placeholder="https://docs.google.com/spreadsheets/d/..." autocomplete="off"><button class="btn sm">연결하고 불러오기</button></form>
     <p class="tiny muted">🔒 이름·생년월일·연락처·장불 사유·회비는 서버에 저장하지 않고, 시트 주소를 저장한 이 기기에서만 시트에서 바로 읽어 보여 줘요. 시트 주소도 이 기기에만 저장돼요.</p></section>`;
-  return `<section class="card mshcard">
-    <div class="msh-hd"><b>📄 회원 시트</b><span class="small muted">${last}</span></div>
-    <div class="row nowrap msh-btns"><button class="btn sm" data-reload ${busy ? 'disabled' : ''}>${busy ? '불러오는 중…' : '↻ 새로 불러오기'}</button>
+  return `<section class="card mshcard compact"><div class="msh-row">
+    <span class="msh-t"><b>📄 회원 시트</b> <small class="muted">${ms?.checkedAt ? ago(ms.checkedAt) : ''}${S.msheet ? '' : ' · 🔒'}</small></span>
+    <span class="msh-btns"><button class="btn sm" data-reload ${busy ? 'disabled' : ''}>${busy ? '불러오는 중…' : '↻ 새로 불러오기'}</button>
       <a class="btn ghost sm" href="${esc(sheetUrl(l))}" target="_blank" rel="noopener">시트 열기</a>
-      <button class="btn ghost sm" data-unlink>연결 해제</button></div>
-    <p class="tiny muted">이 기기에서 앱을 열 때와 열어 둔 동안 30분마다 자동으로 반영돼요. 시트 항목(연번·가입일자·등급·닉네임·이름·생년월일·연락처·운영진 이력·장불·회비)은 시트에서 고쳐 주세요.
-      ${S.msheet ? '' : ' · 🔒 개인정보 칸은 시트를 읽으면 보여요.'}</p></section>`;
+      <button class="btn ghost sm icon" data-shinfo aria-label="회원 시트 안내">ⓘ</button></span></div></section>`;
 }
 function bindSheetCard(body, root) {
   const rer = () => render(root);
@@ -101,6 +107,17 @@ function bindSheetCard(body, root) {
     setSheetLink(l); await reload(root, true, true);
   });
   body.querySelector('[data-reload]')?.addEventListener('click', () => reload(root, true));
+  body.querySelector('[data-shinfo]')?.addEventListener('click', () => {
+    const ms = S.msync;
+    const { el, close } = modal('회원 시트', `<p class="small">${ms?.checkedAt ? `마지막 확인 ${ago(ms.checkedAt)} (${BY[ms.by] || ms.by})${ms.changedAt ? `<br>마지막 변경 ${ago(ms.changedAt)}${ms.last ? ` — 새 회원 ${ms.last.created} · 바뀐 회원 ${ms.last.updated}` : ''}` : ''}${ms.sheetUpdated ? `<br>시트 최종업데이트 ${esc(ms.sheetUpdated)}` : ''}` : '아직 반영한 적이 없어요'}</p>
+      <p class="small muted">이 기기에서 앱을 열 때와 열어 둔 동안 30분마다 자동으로 반영돼요. 시트 항목(가입일자·등급·닉네임·이름·생년월일·연락처·운영진 이력·장불·회비)은 시트에서 고쳐 주세요.</p>
+      <p class="small muted">🔒 이름·생년월일·연락처·장불 사유·회비는 서버에 저장하지 않고 이 기기에서만 시트에서 읽어 보여 줘요.${S.msheet ? '' : ' (지금은 아직 읽지 않았어요)'}</p>
+      <button class="btn ghost danger full" data-unlink>이 기기에서 연결 해제</button>`);
+    el.querySelector('[data-unlink]').addEventListener('click', () => {
+      if (!confirm('이 기기에서 회원 시트 연결을 해제할까요? (이미 반영된 회원 정보는 그대로 남아요)')) return;
+      setSheetLink(null); S.msheet = null; startAutoSync(); close(); render(root);
+    });
+  });
   body.querySelector('[data-unlink]')?.addEventListener('click', () => {
     if (!confirm('이 기기에서 회원 시트 연결을 해제할까요? (이미 반영된 회원 정보는 그대로 남아요)')) return;
     setSheetLink(null); S.msheet = null; startAutoSync(); rer();
@@ -227,8 +244,8 @@ function listView(body, root) {
 
   body.innerHTML = `
     ${sheetCard()}
-    <div class="mg-top"><h2>회원 ${all.length}명</h2>
-      <div class="row nowrap"><button class="btn ghost sm" data-bulk>명단 붙여넣기</button><button class="btn ghost sm" data-csv>CSV 저장</button><button class="btn sm" data-add>＋ 회원 추가</button></div></div>
+    <div class="mg-top"><h2>회원 ${all.length}명 <button class="link tiny" data-tnote>ⓘ 안내</button></h2>
+      <div class="row nowrap"><button class="btn ghost sm" data-bulk>붙여넣기</button><button class="btn ghost sm" data-csv>CSV</button><button class="btn sm" data-add>＋ 추가</button></div></div>
     <div class="mtools">
       <input class="search" type="search" placeholder="닉네임·이름·별칭·연락처 검색" value="${esc(q)}" data-q>
       <div class="seg mseg gseg">${FILTERS.filter(([k]) => k === 'all' || k === 'staff' || cnt(k)).map(([k, l]) =>
@@ -239,13 +256,14 @@ function listView(body, root) {
     ${sel.size ? `<div class="bulkbar"><b>${sel.size}명 선택</b>
       <button class="btn ghost sm" data-bulkstaff="1">운영진 지정</button><button class="btn ghost sm" data-bulkstaff="0">운영진 해제</button>
       <button class="btn ghost sm" data-selclear>선택 해제</button><button class="btn ghost danger sm" data-seldel>선택 삭제</button></div>` : ''}
-    <p class="note small muted">등급·가입일자~장불여부는 회원 시트 내용 그대로예요(시트에서 고치면 반영돼요). 회원 구분은 시트 등급(VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원)을 따르고, 운영진은 체크로 따로 지정해요.
-      장불여부를 누르거나 마우스를 올리면 장불 사유·시작일자·해제일자가 보여요. 표가 길면 표 안에서 위아래·옆으로 넘겨 보세요. 별칭에는 오타·다른 표기를 쉼표로 넣으세요(카페 댓글·로그인에서 알아봐요). 출석률은 기록이 있는 전체 경기 기준이에요.</p>
+
     ${rows.length ? `<div class="card sheetwrap vfit">${table([...main, ...left], 'all')}</div>` : `<section class="card">${empty(q || filt !== 'all' ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
 `;
 
   const rer = () => render(root);
   bindSheetCard(body, root);
+  body.querySelector('[data-tnote]').addEventListener('click', () => modal('회원 표 안내', `<p class="small">등급·가입일자~장불여부는 회원 시트 내용 그대로예요(시트에서 고치면 반영돼요). 회원 구분은 시트 등급(VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원)을 따르고, 운영진은 체크로 따로 지정해요.
+      장불여부를 누르거나 마우스를 올리면 장불 사유·시작일자·해제일자가 보여요. 표가 길면 표 안에서 위아래·옆으로 넘겨 보세요. 별칭에는 오타·다른 표기를 쉼표로 넣으세요(카페 댓글·로그인에서 알아봐요). 출석률은 기록이 있는 전체 경기 기준이에요.</p>`));
   body.querySelector('[data-q]').addEventListener('input', (e) => { q = e.target.value; const pos = e.target.selectionStart; rer(); const i = root.querySelector('[data-q]'); i.focus(); i.setSelectionRange(pos, pos); });
   body.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => { filt = b.dataset.f; rer(); }));
   body.querySelectorAll('[data-sort]').forEach((t) => t.addEventListener('click', () => {
@@ -311,11 +329,11 @@ function feeView(body, root) {
   const pill = (v) => { const kk = feeKind(v); return kk ? `<span class="fee f-${kk}" title="${esc(v)}">${FEE_KINDS[kk]?.mark || ''} ${esc(FEE_KINDS[kk]?.label || v)}</span>` : '<span class="fee f-none">-</span>'; };
   body.innerHTML = `${sheetCard()}
     ${!P ? `<section class="card">${empty(sheetLink() ? '회원 시트를 읽는 중이에요…' : '회비 현황은 회원 시트를 연결하면 보여요.')}</section>` : `
-    <section class="card"><div class="att-hd"><div><b>${mon + 1}월 회비</b><small class="muted"> 회원 ${list.length}명</small></div>
+    <section class="card"><div class="att-hd"><div><b>${mon + 1}월 회비</b><small class="muted"> 회원 ${list.length}명 · ◎ 연납 ♥ 선납 O 월납 ▲ 장불 ■ 면제 — 고칠 때는 시트에서</small></div>
       <label class="inline small"><input type="checkbox" data-hl ${hideLeft ? 'checked' : ''}> 탈퇴 회원 숨기기</label></div>
       <div class="feesum">${[...Object.keys(FEE_KINDS), 'etc', 'none'].filter((x) => cnt[x]).map((x) => `<div><b>${cnt[x]}</b>${x === 'none' ? '<span class="fee f-none">-</span> 없음' : x === 'etc' ? '기타' : pill(FEE_KINDS[x].label)}</div>`).join('')}</div></section>
     <div class="mtools"><input class="search" type="search" placeholder="닉네임·이름 검색" value="${esc(q)}" data-q></div>
-    <p class="note small muted">◎ 연납 · ♥ 선납 · O 월납 · ▲ 장불 · ■ 면제 · - 없음 — 회원 시트의 1~12월 회비 칸 그대로예요. 고칠 때는 시트에서 고쳐 주세요.</p>
+
     <div class="card sheetwrap vfit"><table class="grid fgrid"><thead><tr><th class="stick">닉네임</th><th>등급</th>${Array.from({ length: 12 }, (_, i) => `<th class="${i === mon ? 'on' : ''}">${i + 1}월</th>`).join('')}</tr></thead><tbody>
       ${list.map(({ m, f }) => `<tr class="${isLeft(m) ? 'st-row-left' : ''}"><td class="stick"><b>${esc(m.name)}</b></td><td>${m.grade ? `<span class="grade g-${GRADES.indexOf(m.grade)}">${esc(m.grade)}</span>` : ''}</td>
         ${Array.from({ length: 12 }, (_, i) => `<td class="${i === mon ? 'cur' : ''}">${pill(f[i])}</td>`).join('')}</tr>`).join('')}
