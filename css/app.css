@@ -538,3 +538,9 @@ button.abs i { font-style: normal; opacity: .6; }
 .abs-pop { position: absolute; z-index: 50; max-width: 260px; background: #111827; color: #fff; font-size: 13px; line-height: 1.45; padding: 8px 11px; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.18); }
 .staffck { width: 18px; height: 18px; accent-color: #b45309; }
 .gseg { flex-wrap: wrap; }
+
+/* ── 0.1.19 회원 표: 화면 높이 상자 안에서 위아래·옆 스크롤 ── */
+.sheetwrap.vfit { overflow: auto; max-height: calc(100dvh - 150px); }
+.sheetwrap.vfit table.grid th { z-index: 3; }
+.sheetwrap.vfit table.grid th.stick { z-index: 4; }
+.abs-pop { white-space: pre-line; }

@@ -50,7 +50,25 @@ export function render(root) {
   root.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; render(root); }));
   const body = root.querySelector('[data-body]');
   if (tab === 'att') attView(body, root); else if (tab === 'fee') feeView(body, root); else listView(body, root);
+  fitTables(root);
 }
+
+// 표는 화면 높이에 맞춘 상자 안에서 위아래·옆으로 넘김 (페이지와 표가 따로 세로로 스크롤되지 않게)
+//  다시 그려도 표 안 스크롤 위치는 그대로 유지
+const tpos = {};
+function fitTables(root) {
+  const top = document.getElementById('topbar')?.getBoundingClientRect().height || 0;
+  const tb = document.getElementById('tabbar');
+  const bottom = tb && getComputedStyle(tb).flexDirection === 'row' ? tb.getBoundingClientRect().height : 0;
+  const h = Math.max(260, window.innerHeight - top - bottom - 16);
+  root.querySelectorAll('.vfit').forEach((w, i) => {
+    const key = tab + i;
+    w.style.maxHeight = h + 'px';
+    if (tpos[key]) { w.scrollTop = tpos[key][0]; w.scrollLeft = tpos[key][1]; }
+    w.addEventListener('scroll', () => { tpos[key] = [w.scrollTop, w.scrollLeft]; document.querySelectorAll('.abs-pop').forEach((x) => x.remove()); }, { passive: true });
+  });
+}
+window.addEventListener('resize', () => { const v = document.getElementById('view'); if (v?.querySelector('.vfit')) fitTables(v); });
 
 // ───────────── 회원 시트 (구글 시트 연결 · 새로 불러오기) ─────────────
 const ago = (ts) => {
@@ -66,13 +84,13 @@ function sheetCard() {
     <div class="msh-hd"><b>📄 회원 시트 연결</b><span class="small muted">${last}</span></div>
     <p class="small">회원현황 구글 시트 주소를 넣으면 시트 내용·항목이 회원 정보에 그대로 들어오고, 이후 시트가 바뀌면 자동으로 반영돼요.</p>
     <form class="row nowrap" data-link><input name="url" placeholder="https://docs.google.com/spreadsheets/d/..." autocomplete="off"><button class="btn sm">연결하고 불러오기</button></form>
-    <p class="tiny muted">🔒 이름·생년월일·연락처·장불 사유·생일·회비는 서버에 저장하지 않고, 시트 주소를 저장한 이 기기에서만 시트에서 바로 읽어 보여 줘요. 시트 주소도 이 기기에만 저장돼요.</p></section>`;
+    <p class="tiny muted">🔒 이름·생년월일·연락처·장불 사유·회비는 서버에 저장하지 않고, 시트 주소를 저장한 이 기기에서만 시트에서 바로 읽어 보여 줘요. 시트 주소도 이 기기에만 저장돼요.</p></section>`;
   return `<section class="card mshcard">
     <div class="msh-hd"><b>📄 회원 시트</b><span class="small muted">${last}</span></div>
     <div class="row nowrap msh-btns"><button class="btn sm" data-reload ${busy ? 'disabled' : ''}>${busy ? '불러오는 중…' : '↻ 새로 불러오기'}</button>
       <a class="btn ghost sm" href="${esc(sheetUrl(l))}" target="_blank" rel="noopener">시트 열기</a>
       <button class="btn ghost sm" data-unlink>연결 해제</button></div>
-    <p class="tiny muted">이 기기에서 앱을 열 때와 열어 둔 동안 30분마다 자동으로 반영돼요. 시트 항목(연번·가입일자·등급·닉네임·이름·생년월일·연락처·운영진 이력·장불·생일·회비)은 시트에서 고쳐 주세요.
+    <p class="tiny muted">이 기기에서 앱을 열 때와 열어 둔 동안 30분마다 자동으로 반영돼요. 시트 항목(연번·가입일자·등급·닉네임·이름·생년월일·연락처·운영진 이력·장불·회비)은 시트에서 고쳐 주세요.
       ${S.msheet ? '' : ' · 🔒 개인정보 칸은 시트를 읽으면 보여요.'}</p></section>`;
 }
 function bindSheetCard(body, root) {
@@ -178,11 +196,14 @@ function listView(body, root) {
   const dups = dupGroups();
   const th = (key, label, cls = '') => `<th data-sort="${key}" class="${cls} ${sort.k === key ? 'on' : ''}">${label}${sort.k === key ? (sort.d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
   const lock = '<span class="muted" title="시트를 읽으면 보여요">🔒</span>';
+  // 장불 정보 말풍선: 사유 · 시작일자 · 해제일자
+  const absInfo = (r, pv) => [`장불 사유: ${pv ? r.p?.absReason || '적힌 사유 없음' : '🔒 회원 시트를 읽으면 보여요'}`,
+    `장불 시작일자: ${dot(r.absFrom) || '-'}`, `장불 해제일자: ${dot(r.absTo) || '-'}`].join('\n');
   // 탈퇴 회원은 아래쪽에 따로
   const main = rows.filter((r) => !r.left), left = rows.filter((r) => r.left);
   const table = (list, key) => `<table class="grid mgrid"><thead><tr>
       <th class="ck"><input type="checkbox" data-selall="${key}" ${list.length && list.every((r) => sel.has(r.id)) ? 'checked' : ''} aria-label="모두 선택"></th>
-      ${th('name', '닉네임', 'stick')}${th('grank', '등급')}${th('staff', '운영진')}${th('joined', '가입일자')}${th('realName', '이름')}${th('birth', '생년월일')}${th('phone', '연락처')}${th('staffHist', '운영진 이력')}${th('absent', '장불여부')}${th('absFrom', '장불시작일자')}${th('absTo', '장불해제일자')}${th('bday', '생일')}
+      ${th('name', '닉네임', 'stick')}${th('grank', '등급')}${th('staff', '운영진')}${th('joined', '가입일자')}${th('realName', '이름')}${th('birth', '생년월일')}${th('phone', '연락처')}${th('staffHist', '운영진 이력')}${th('absent', '장불여부')}
       <th class="gap"></th>${th('login', '로그인')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
       ${list.map((r) => `<tr class="${sel.has(r.id) ? 'msel' : ''} ${r.left ? 'st-row-left' : r.rest || !r.inSheet ? 'st-row-rest' : ''}">
         <td class="ck"><input type="checkbox" data-sel="${r.id}" ${sel.has(r.id) ? 'checked' : ''} aria-label="${esc(r.name)} 선택"></td>
@@ -194,9 +215,7 @@ function listView(body, root) {
         <td>${r.inSheet ? (priv ? dot(r.birth) || '-' : lock) : '-'}</td>
         <td>${r.inSheet ? (priv ? (r.phone ? `<a href="tel:${esc(r.phone.replace(/[^\d+]/g, ''))}">${esc(r.phone)}</a>` : '-') : lock) : '-'}</td>
         <td>${r.staffV || r.staffHist ? `<span class="small">${r.staffV ? '<b class="v">V</b> ' : ''}${esc(r.staffHist)}</span>` : '-'}</td>
-        <td>${r.absent ? `<button type="button" class="abs" data-absr="${r.id}" title="${esc(priv ? `장불 사유: ${r.p?.absReason || '적힌 사유 없음'}` : '장불 사유는 회원 시트를 읽으면 보여요')}">${esc(r.absent)} <i>ⓘ</i></button>` : '-'}</td>
-        <td>${dot(r.absFrom) || '-'}</td><td>${dot(r.absTo) || '-'}</td>
-        <td>${r.inSheet ? (priv ? r.bday || '-' : lock) : '-'}</td>
+        <td>${r.absent ? `<button type="button" class="abs" data-absr="${r.id}" title="${esc(absInfo(r, priv))}">${esc(r.absent)} <i>ⓘ</i></button>` : '-'}</td>
         <td class="gap"></td>
         <td>${r.login ? `<span class="small ok-t">등록됨</span> <button class="btn ghost sm" data-pinreset="${r.id}">초기화</button>` : '<span class="small muted">미등록</span>'}</td>
         <td><input class="cell w-alias" value="${esc(r.aliases)}" placeholder="-" data-cell="aliases" data-id="${r.id}"></td>
@@ -220,11 +239,11 @@ function listView(body, root) {
     ${sel.size ? `<div class="bulkbar"><b>${sel.size}명 선택</b>
       <button class="btn ghost sm" data-bulkstaff="1">운영진 지정</button><button class="btn ghost sm" data-bulkstaff="0">운영진 해제</button>
       <button class="btn ghost sm" data-selclear>선택 해제</button><button class="btn ghost danger sm" data-seldel>선택 삭제</button></div>` : ''}
-    ${main.length ? `<div class="card sheetwrap">${table(main, 'main')}</div>` : rows.length ? '' : `<section class="card">${empty(q || filt !== 'all' ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
+    ${main.length ? `<div class="card sheetwrap vfit">${table(main, 'main')}</div>` : rows.length ? '' : `<section class="card">${empty(q || filt !== 'all' ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 회원 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
     ${left.length ? `<h3 class="left-hd">탈퇴 회원 ${left.length}명 <small class="muted">회원 시트 등급 '탈퇴회원' — 지난 기록은 그대로 남아요</small></h3>
-      <div class="card sheetwrap left-wrap">${table(left, 'left')}</div>` : ''}
-    <p class="note small muted">등급·가입일자~생일은 회원 시트 내용 그대로예요(시트에서 고치면 반영돼요). 회원 구분은 시트 등급(VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원)을 따르고, 운영진은 체크로 따로 지정해요.
-      장불여부를 누르거나 마우스를 올리면 장불 사유가 보여요. 별칭에는 오타·다른 표기를 쉼표로 넣으세요(카페 댓글·로그인에서 알아봐요). 출석률은 기록이 있는 전체 경기 기준이에요.</p>`;
+      <div class="card sheetwrap vfit left-wrap">${table(left, 'left')}</div>` : ''}
+    <p class="note small muted">등급·가입일자~장불여부는 회원 시트 내용 그대로예요(시트에서 고치면 반영돼요). 회원 구분은 시트 등급(VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원)을 따르고, 운영진은 체크로 따로 지정해요.
+      장불여부를 누르거나 마우스를 올리면 장불 사유·시작일자·해제일자가 보여요. 표가 길면 표 안에서 위아래·옆으로 넘겨 보세요. 별칭에는 오타·다른 표기를 쉼표로 넣으세요(카페 댓글·로그인에서 알아봐요). 출석률은 기록이 있는 전체 경기 기준이에요.</p>`;
 
   const rer = () => render(root);
   bindSheetCard(body, root);
@@ -297,7 +316,7 @@ function feeView(body, root) {
       <label class="inline small"><input type="checkbox" data-hl ${hideLeft ? 'checked' : ''}> 탈퇴 회원 숨기기</label></div>
       <div class="feesum">${[...Object.keys(FEE_KINDS), 'etc', 'none'].filter((x) => cnt[x]).map((x) => `<div><b>${cnt[x]}</b>${x === 'none' ? '<span class="fee f-none">-</span> 없음' : x === 'etc' ? '기타' : pill(FEE_KINDS[x].label)}</div>`).join('')}</div></section>
     <div class="mtools"><input class="search" type="search" placeholder="닉네임·이름 검색" value="${esc(q)}" data-q></div>
-    <div class="card sheetwrap"><table class="grid fgrid"><thead><tr><th class="stick">닉네임</th><th>등급</th>${Array.from({ length: 12 }, (_, i) => `<th class="${i === mon ? 'on' : ''}">${i + 1}월</th>`).join('')}</tr></thead><tbody>
+    <div class="card sheetwrap vfit"><table class="grid fgrid"><thead><tr><th class="stick">닉네임</th><th>등급</th>${Array.from({ length: 12 }, (_, i) => `<th class="${i === mon ? 'on' : ''}">${i + 1}월</th>`).join('')}</tr></thead><tbody>
       ${list.map(({ m, f }) => `<tr class="${isLeft(m) ? 'st-row-left' : ''}"><td class="stick"><b>${esc(m.name)}</b></td><td>${m.grade ? `<span class="grade g-${GRADES.indexOf(m.grade)}">${esc(m.grade)}</span>` : ''}</td>
         ${Array.from({ length: 12 }, (_, i) => `<td class="${i === mon ? 'cur' : ''}">${pill(f[i])}</td>`).join('')}</tr>`).join('')}
     </tbody></table></div>
@@ -372,8 +391,8 @@ function bulkPaste() {
 function exportCSV(rows) {
   const qv = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const list = [...rows].sort((a, b) => koSort(a.name, b.name));
-  const csv = '﻿' + [['닉네임', '등급', '운영진', '가입일자', '이름', '생년월일', '연락처', '운영진 이력', '장불여부', '장불 사유', '장불시작일자', '장불해제일자', '생일', '별칭', '출석', '출석률(%)', '최근 출석'],
-    ...list.map((r) => [r.name, r.grade, r.staff ? 'O' : '', r.joined, r.realName, r.birth, r.phone, (r.staffV ? 'V ' : '') + r.staffHist, r.absent, r.p?.absReason || '', r.absFrom, r.absTo, r.bday, r.aliases, r.att, r.rate, r.last])]
+  const csv = '﻿' + [['닉네임', '등급', '운영진', '가입일자', '이름', '생년월일', '연락처', '운영진 이력', '장불여부', '장불 사유', '장불시작일자', '장불해제일자', '별칭', '출석', '출석률(%)', '최근 출석'],
+    ...list.map((r) => [r.name, r.grade, r.staff ? 'O' : '', r.joined, r.realName, r.birth, r.phone, (r.staffV ? 'V ' : '') + r.staffHist, r.absent, r.p?.absReason || '', r.absFrom, r.absTo, r.aliases, r.att, r.rate, r.last])]
     .map((r) => r.map(qv).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
