@@ -1,11 +1,11 @@
-import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.39';
-import { S, memberById, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.39';
-import { db, newId } from '../store.js?v=0.1.39';
-import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js?v=0.1.39';
-import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js?v=0.1.39';
-import { esc, toast, fileToDataUrl, todayISO, byName, fmtDate } from '../util.js?v=0.1.39';
-import { modal, empty } from '../ui.js?v=0.1.39';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.39';
+import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.40';
+import { S, memberById, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.40';
+import { db, newId } from '../store.js?v=0.1.40';
+import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js?v=0.1.40';
+import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js?v=0.1.40';
+import { esc, toast, fileToDataUrl, todayISO, byName, fmtDate } from '../util.js?v=0.1.40';
+import { modal, empty } from '../ui.js?v=0.1.40';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.40';
 
 export function render(root) { return settings(root); }
 

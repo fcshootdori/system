@@ -1213,8 +1213,6 @@ label.chk small { display: block; font-weight: 500; font-size: 12px; margin-top:
 .rec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
 .rec-side { border-radius: 14px; border: 2px solid color-mix(in srgb, var(--tc) 35%, #fff); padding: 10px; min-width: 0; }
 .rec-side header { display: grid; justify-items: center; gap: 6px; margin-bottom: 8px; }
-.rec-score { display: flex; align-items: center; gap: 8px; }
-.rec-score b { font-family: var(--num); font-size: 44px; line-height: 1; min-width: 40px; text-align: center; color: var(--tc); }
 .rec-names { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 5px; }
 .rec-p { position: relative; border: 1.5px solid var(--line); background: #fff; border-radius: 10px; min-height: 40px; padding: 6px 4px; font: 700 13px var(--font); color: var(--ink); cursor: pointer; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.2; transition: transform .12s; }
 .rec-p.has { border-color: var(--tc); background: color-mix(in srgb, var(--tc) 10%, #fff); }
@@ -1264,7 +1262,7 @@ label.chk small { display: block; font-weight: 500; font-size: 12px; margin-top:
   .rec-names { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rec-side { padding: 8px 6px; }
   .rec-p { font-size: 12.5px; }
-  .rec-score b { font-size: 36px; min-width: 30px; }
+ 
 }
 .mm-lineup .lp-pitch, .mm-lineup .lp-bench { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .r-game summary::before, .r-un summary::before { content: none; }
@@ -1286,3 +1284,19 @@ html, body { overscroll-behavior-y: contain; }
 .lp-myteam small { font-weight: 500; font-size: 12px; }
 .upd-bar { position: fixed; left: 50%; top: calc(64px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 60; border: 0; border-radius: 99px; padding: 9px 16px; background: var(--night); color: #fff; font: 600 13px var(--font); box-shadow: 0 8px 22px rgba(11,16,51,.35); white-space: nowrap; cursor: pointer; }
 .upd-bar b { color: var(--flood); }
+/* 골 기록 (선수 누르기 → 득점자 목록에서 눌러 취소) */
+b.rec-score { display: block; font-family: var(--num); font-weight: 400; font-size: 46px; line-height: 1; color: var(--tc); }
+.rec-unk { margin-top: 8px; width: 100%; border: 1.5px dashed var(--line); background: none; border-radius: 10px; padding: 7px 4px; font: 700 12.5px var(--font); color: var(--sub); cursor: pointer; }
+.rec-mode button.on.og { background: #b45309; color: #fff; }
+.rec-grid.og .rec-side { border-style: dashed; }
+.rec-grid.og .rec-p { border-color: #f59e0b; background: #fffbeb; }
+.rec-log { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 14px; }
+.rec-log > b { width: 100%; font-size: 14px; } .rec-log > b small { font-weight: 500; }
+.rec-ev { display: inline-flex; align-items: center; gap: 5px; border: 1.5px solid var(--line); border-left: 5px solid var(--tc); background: #fff; border-radius: 10px; padding: 6px 8px 6px 7px; font: 700 13.5px var(--font); color: var(--ink); cursor: pointer; }
+.rec-ev .no { font: 400 13px var(--num); color: var(--sub); }
+.rec-ev .ico { width: 15px; height: 15px; } .rec-ev .ico:last-child { color: #b91c1c; opacity: .7; }
+.rec-ev.og b { font-size: 11px; background: #fef3c7; color: #92400e; border-radius: 5px; padding: 1px 5px; }
+.rec-ev:active { transform: scale(.96); background: #fee2e2; }
+/* 화면 확대·축소 막기: 두 번 탭 확대 없애기 + 아이폰은 글자 칸을 누를 때 16px 미만이면 자동 확대되므로 16px로 */
+html { touch-action: manipulation; }
+@supports (-webkit-touch-callout: none) { input, select, textarea { font-size: 16px !important; } }

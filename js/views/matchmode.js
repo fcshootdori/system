@@ -2,14 +2,14 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.39';
-import { db, newId } from '../store.js?v=0.1.39';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.39';
-import { TEAM_COLORS } from '../config.js?v=0.1.39';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.39';
-import { icon } from '../icons.js?v=0.1.39';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.39';
-import { figHTML } from './draft.js?v=0.1.39';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.40';
+import { db, newId } from '../store.js?v=0.1.40';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.40';
+import { TEAM_COLORS } from '../config.js?v=0.1.40';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.40';
+import { icon } from '../icons.js?v=0.1.40';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.40';
+import { figHTML } from './draft.js?v=0.1.40';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -110,24 +110,42 @@ function scorersCard(md, games) {
 }
 
 // ── 운영진 기록 ──
+//  골 하나하나를 g.log에 순서대로 남김 { id, k: 'g'(골)|'og'(자책)|'u'(득점자 모름), s: 점수가 오른 쪽 'sa'|'sb', at }
+//  예전 기록(순서 없이 골 수만 있는 경우)도 목록에 함께 보여 주고 취소할 수 있음
+function entries(md, g) {
+  const ros = rosters(md), log = Array.isArray(g.log) ? g.log : [];
+  const sideOf = (id) => (ros[g.b]?.includes(id) ? 'sb' : 'sa'), opp = (k) => (k === 'sa' ? 'sb' : 'sa');
+  const cnt = (id, k) => log.filter((e) => e.id === id && e.k === k).length;
+  const old = [];
+  Object.entries(g.goals || {}).forEach(([id, n]) => { for (let j = cnt(id, 'g'); j < n; j++) old.push({ id, k: 'g', s: sideOf(id) }); });
+  Object.entries(g.og || {}).forEach(([id, n]) => { for (let j = cnt(id, 'og'); j < n; j++) old.push({ id, k: 'og', s: opp(sideOf(id)) }); });
+  const all = [...old, ...log];
+  ['sa', 'sb'].forEach((k) => { for (let j = all.filter((e) => e.s === k).length; j < (g[k] || 0); j++) all.splice(old.length, 0, { id: null, k: 'u', s: k }); });
+  return all;
+}
 function recorder(md, games, g) {
   const ros = rosters(md), f = fmtOf(md);
   if (!games.length) return `<section class="card op"><h2>경기 기록</h2><p class="small">라운드를 만들면 라운드별 점수와 득점자를 기록할 수 있어요.</p>
     <button class="btn" data-mkrounds>${f.rounds}라운드 만들기</button></section>`;
   if (!g) return `<section class="card op"><p class="small">${ui.round}라운드가 아직 없어요.</p><button class="btn ghost" data-addround>라운드 추가</button></section>`;
-  const gl = goalsOf(md, g);
   const side = (i) => { const key = i ? 'sb' : 'sa', hx = hexOf(md, i);
     return `<div class="rec-side" style="--tc:${hx.hex};--ti:${hx.text}">
-      <header>${teamChip(md, i)}<div class="rec-score"><button class="icon-btn" data-sc="${key}:-1" aria-label="점수 빼기">−</button><b class="n">${g[key] || 0}</b><button class="icon-btn" data-sc="${key}:1" aria-label="점수 더하기">＋</button></div></header>
-      <div class="rec-names">${(ros[i] || []).map((id) => `<button type="button" class="rec-p ${g.goals?.[id] ? 'has' : ''} ${g.og?.[id] ? 'og' : ''}" data-goal="${id}:${key}">${esc(nameOf(id, md))}${g.goals?.[id] ? `<em>${g.goals[id]}</em>` : ''}${g.og?.[id] ? '<em class="o">OG</em>' : ''}</button>`).join('')}</div>
+      <header>${teamChip(md, i)}<b class="rec-score n">${g[key] || 0}</b></header>
+      <div class="rec-names">${(ros[i] || []).map((id) => `<button type="button" class="rec-p ${g.goals?.[id] ? 'has' : ''}" data-goal="${id}:${key}">${esc(nameOf(id, md))}${g.goals?.[id] ? `<em>${g.goals[id]}</em>` : ''}${g.og?.[id] ? '<em class="o">자책</em>' : ''}</button>`).join('')}</div>
+      <button type="button" class="rec-unk" data-unk="${key}">＋ 득점자 모름</button>
     </div>`; };
-  const log = [...gl[0].map((x) => ({ ...x, t: 0 })), ...gl[1].map((x) => ({ ...x, t: 1 }))];
+  const list = entries(md, g);
   return `<section class="card op mm-rec">
     <h2>${ui.round}라운드 기록 ${g.done ? '<small class="ok-t">종료</small>' : ''}</h2>
-    <div class="seg rec-mode"><button type="button" data-ogm="0" class="${ui.ogMode ? '' : 'on'}">${icon('ball', 'sm')} 득점</button><button type="button" data-ogm="1" class="${ui.ogMode ? 'on' : ''}">자책골</button></div>
-    <p class="tiny muted">${ui.ogMode ? '자책골: 선수를 누르면 상대 팀 점수가 1점 올라가요.' : '선수 이름을 누르면 골 +1, 팀 점수도 함께 올라가요. 득점자를 모르면 점수 ＋만 누르세요.'}</p>
-    <div class="rec-grid">${side(0)}${side(1)}</div>
-    ${log.length ? `<div class="rec-log"><b>이번 라운드 득점</b>${log.map((x) => `<span class="pchip"><i style="background:${hexOf(md, x.t).hex}"></i>${esc(nameOf(x.id, md))}${x.n > 1 ? ` ${x.n}` : ''}${x.og ? ' (자책)' : ''}<button type="button" class="x" data-ungoal="${x.id}:${x.og ? 'og' : 'g'}" aria-label="한 골 빼기">−1</button></span>`).join('')}</div>` : ''}
+    <div class="seg rec-mode"><button type="button" data-ogm="0" class="${ui.ogMode ? '' : 'on'}">${icon('ball', 'sm')} 골</button><button type="button" data-ogm="1" class="${ui.ogMode ? 'on og' : ''}">자책골</button></div>
+    <p class="tiny muted">${ui.ogMode ? '<b class="warn-t">자책골</b>: 자책골을 넣은 선수를 누르면 상대 팀 점수가 1점 올라가요. 한 번 기록하면 다시 골 기록으로 돌아와요.' : '골을 넣은 선수를 누르면 그 팀 점수가 1점 올라가요.'}</p>
+    <div class="rec-grid ${ui.ogMode ? 'og' : ''}">${side(0)}${side(1)}</div>
+    <div class="rec-log"><b>득점자 <small class="muted">${list.length ? '· 잘못 넣었으면 눌러서 취소' : ''}</small></b>
+      ${list.length ? list.map((e, n) => { const ti = e.s === 'sb' ? 1 : 0;
+        return `<button type="button" class="rec-ev ${e.k}" style="--tc:${hexOf(md, ti).hex}" data-un="${n}" title="눌러서 취소">
+          <span class="no">${n + 1}</span>${e.k === 'og' ? '<b>자책</b>' : icon('ball', 'sm')}<span>${e.id ? esc(nameOf(e.id, md)) : '득점자 모름'}</span>${icon('x', 'sm')}</button>`; }).join('')
+      : '<p class="muted small">아직 득점이 없어요.</p>'}
+    </div>
     <div class="row wrap rec-act">
       <button class="btn ${g.done ? 'ghost' : ''}" data-rdone>${g.done ? '라운드 종료 취소' : `${ui.round}라운드 종료`}</button>
       ${ui.round === games[games.length - 1].round ? '<button class="btn ghost" data-addround>라운드 추가</button>' : ''}
@@ -235,21 +253,32 @@ function bind(root, md, ctx) {
     ui.round = r; toast(`${r}라운드를 추가했어요`);
   });
   root.querySelectorAll('[data-ogm]').forEach((b) => b.addEventListener('click', () => { ui.ogMode = b.dataset.ogm === '1'; rerender(); }));
-  root.querySelectorAll('[data-sc]').forEach((b) => b.addEventListener('click', () => { const [k, d] = b.dataset.sc.split(':'); upd((c) => { c[k] = Math.max(0, (c[k] || 0) + +d); }); }));
   root.querySelectorAll('[data-goal]').forEach((b) => b.addEventListener('click', () => {
     const [id, k] = b.dataset.goal.split(':'), opp = k === 'sa' ? 'sb' : 'sa';
-    if (ui.ogMode) upd((c) => { c.og[id] = (c.og[id] || 0) + 1; c[opp] = (c[opp] || 0) + 1; });
-    else upd((c) => { c.goals[id] = (c.goals[id] || 0) + 1; c[k] = (c[k] || 0) + 1; });
+    const og = ui.ogMode;
+    upd((c) => {
+      c.log = Array.isArray(c.log) ? c.log : [];
+      if (og) { c.og[id] = (c.og[id] || 0) + 1; c[opp] = (c[opp] || 0) + 1; c.log.push({ id, k: 'og', s: opp, at: Date.now() }); }
+      else { c.goals[id] = (c.goals[id] || 0) + 1; c[k] = (c[k] || 0) + 1; c.log.push({ id, k: 'g', s: k, at: Date.now() }); }
+    });
+    if (og) { ui.ogMode = false; toast(`${nameOf(id, md)} 자책골 — 상대 팀 +1`); }
     b.classList.add('pop'); setTimeout(() => b.classList.remove('pop'), 300);
   }));
-  root.querySelectorAll('[data-ungoal]').forEach((b) => b.addEventListener('click', () => {
-    const [id, kind] = b.dataset.ungoal.split(':');
-    const ti = rosters(md).findIndex((x) => x.includes(id)), k = ti === 1 ? 'sb' : 'sa', opp = k === 'sa' ? 'sb' : 'sa';
+  root.querySelectorAll('[data-unk]').forEach((b) => b.addEventListener('click', () => {
+    const k = b.dataset.unk;
+    upd((c) => { c.log = Array.isArray(c.log) ? c.log : []; c[k] = (c[k] || 0) + 1; c.log.push({ id: null, k: 'u', s: k, at: Date.now() }); });
+  }));
+  // 득점자 목록의 버튼을 누르면 그 골 취소
+  root.querySelectorAll('[data-un]').forEach((b) => b.addEventListener('click', () => {
+    const e = entries(md, g)[+b.dataset.un]; if (!e) return;
     upd((c) => {
-      const m = kind === 'og' ? c.og : c.goals; if (!m[id]) return;
-      m[id]--; if (!m[id]) delete m[id];
-      const sk = kind === 'og' ? opp : k; c[sk] = Math.max(0, (c[sk] || 0) - 1);
+      c.log = Array.isArray(c.log) ? c.log : [];
+      if (e.at) { const i = c.log.findIndex((x) => x.at === e.at && x.id === e.id && x.k === e.k); if (i >= 0) c.log.splice(i, 1); }
+      if (e.k === 'g' && c.goals[e.id]) { c.goals[e.id]--; if (!c.goals[e.id]) delete c.goals[e.id]; }
+      if (e.k === 'og' && c.og[e.id]) { c.og[e.id]--; if (!c.og[e.id]) delete c.og[e.id]; }
+      c[e.s] = Math.max(0, (c[e.s] || 0) - 1);
     });
+    toast(`${e.id ? nameOf(e.id, md) : '득점자 모름'} ${e.k === 'og' ? '자책골' : '골'}을 취소했어요`);
   }));
   q('[data-rdone]')?.addEventListener('click', async () => {
     const was = g.done; await upd((c) => { c.done = !c.done; });
