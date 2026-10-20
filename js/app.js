@@ -3,30 +3,29 @@
 //   · 일반 회원: 홈 · 일정 · ⚽경기모드 · 경기결과 · 내 정보
 //   · 운영모드: 일정 · 경기 · 공지 · 회원 · 설정
 //   · 주장: 오른쪽 위 👑 드래프트 버튼으로 입장
-import { APP_NAME, APP_VERSION } from './config.js?v=0.1.33';
-import { initStore, db } from './store.js?v=0.1.33';
-import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go } from './state.js?v=0.1.33';
-import { esc, toast } from './util.js?v=0.1.33';
-import { modal, fitBoxes } from './ui.js?v=0.1.33';
-import { icon } from './icons.js?v=0.1.33';
+import { APP_NAME, APP_VERSION } from './config.js?v=0.1.34';
+import { initStore, db } from './store.js?v=0.1.34';
+import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go } from './state.js?v=0.1.34';
+import { esc, toast } from './util.js?v=0.1.34';
+import { modal, fitBoxes } from './ui.js?v=0.1.34';
+import { icon } from './icons.js?v=0.1.34';
 
-import * as home from './views/home.js?v=0.1.33';
-import * as schedule from './views/schedule.js?v=0.1.33';
-import * as matchmode from './views/matchmode.js?v=0.1.33';
-import * as results from './views/results.js?v=0.1.33';
-import * as myinfo from './views/me.js?v=0.1.33';
-import * as apply from './views/apply.js?v=0.1.33';
-import * as draft from './views/draft.js?v=0.1.33';
-import * as games from './views/games.js?v=0.1.33';
-import * as records from './views/records.js?v=0.1.33';
-import * as run from './views/run.js?v=0.1.33';
-import * as notice from './views/notice.js?v=0.1.33';
-import * as admin from './views/admin.js?v=0.1.33';
-import * as membersView from './views/members.js?v=0.1.33';
-import * as loginView from './views/login.js?v=0.1.33';
-import { loadSession, saveSession, verify } from './auth.js?v=0.1.33';
-import { startAutoSync } from './member-sync.js?v=0.1.33';
-import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.33';
+import * as home from './views/home.js?v=0.1.34';
+import * as schedule from './views/schedule.js?v=0.1.34';
+import * as matchmode from './views/matchmode.js?v=0.1.34';
+import * as results from './views/results.js?v=0.1.34';
+import * as myinfo from './views/me.js?v=0.1.34';
+import * as apply from './views/apply.js?v=0.1.34';
+import * as draft from './views/draft.js?v=0.1.34';
+import * as games from './views/games.js?v=0.1.34';
+import * as run from './views/run.js?v=0.1.34';
+import * as notice from './views/notice.js?v=0.1.34';
+import * as admin from './views/admin.js?v=0.1.34';
+import * as membersView from './views/members.js?v=0.1.34';
+import * as loginView from './views/login.js?v=0.1.34';
+import { loadSession, saveSession, verify } from './auth.js?v=0.1.34';
+import { startAutoSync } from './member-sync.js?v=0.1.34';
+import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.34';
 
 const MEMBER_TABS = [['home', '홈', 'home'], ['sched', '일정', 'calendar'], ['mm', '경기모드', 'ball'], ['results', '경기결과', 'board'], ['me', '내 정보', 'user']];
 const OP_TABS = [['plan', '일정', 'calendar'], ['run', '경기 운영', 'whistle'], ['notice', '공지', 'megaphone'], ['members', '회원', 'users'], ['settings', '설정', 'gear']];
@@ -36,7 +35,7 @@ const ROUTES = {
   home: { view: home }, sched: { view: schedule }, mm: { view: matchmode }, results: { view: results }, me: { view: myinfo },
   // 회원 메뉴 안쪽 화면 (하단 메뉴는 그대로)
   apply: { view: apply, parent: 'home' }, draft: { view: draft, parent: 'home' },
-  games: { view: games, parent: 'results' }, records: { view: records, parent: 'results' },
+  games: { view: games, parent: 'results' }, records: { view: { render: (root, { params }) => { results.open(params[0] ? { player: params[0] } : { tab: 'rank' }); location.replace('#/results'); } }, parent: 'results' },
   login: { view: loginView },
   // 운영 메뉴
   plan: { view: schedule, op: true, sub: 'op' }, run: { view: run, op: true }, notice: { view: notice, op: true },

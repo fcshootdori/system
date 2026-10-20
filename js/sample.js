@@ -2,10 +2,10 @@
 //  · md.sample = true: 운영모드(또는 '이 기기에서 샘플 보기')에서만 보이고, 개인 기록·출석·회차에는 들어가지 않음
 //  · 참가자는 실제 활동 회원 중에서 무작위로 (회원 목록을 늘리지 않음, 모자라면 게스트로)
 //  · 한 번에 지우기: 샘플 경기와 그 경기 기록만 삭제
-import { S, mdPath } from './state.js?v=0.1.33';
-import { db, newId } from './store.js?v=0.1.33';
-import { draftState, rosters, teamColor, eventTeamsToTeams, closeTime } from './domain.js?v=0.1.33';
-import { shuffle, randomToken, todayISO } from './util.js?v=0.1.33';
+import { S, mdPath } from './state.js?v=0.1.34';
+import { db, newId } from './store.js?v=0.1.34';
+import { draftState, rosters, teamColor, eventTeamsToTeams, closeTime } from './domain.js?v=0.1.34';
+import { shuffle, randomToken, todayISO } from './util.js?v=0.1.34';
 
 export const SAMPLE_STAGES = [
   ['open', '신청 중', '회원이 참석·불참을 고르는 단계 (신청 마감 전 날짜)'],
@@ -55,7 +55,10 @@ export async function createSample({ stage = 'open', kind = 'normal', players = 
     md.event = true; md.eventMode = kind;
     md.eventTeams = [{ name: '샘플A팀', color: 'pink', captain: goIn[0], members: [] }, { name: '샘플B팀', color: 'blue', captain: goIn[1], members: [] }];
     md.teamNames = md.eventTeams.map((t) => t.name);
-    if (kind === 'teams') goIn.forEach((x, i) => { md.apps[x].team = i % 2; });   // 팀을 골라 참석
+    if (kind === 'teams') {   // 팀원까지 미리 정한 경기: 두 팀 명단을 넣어 두고 회원은 참석·불참만
+      md.eventTeams.forEach((t, k) => { t.members = ids.filter((_, i) => i % 2 === k); });
+      goIn.forEach((x, i) => { md.apps[x].team = i % 2; });
+    }
   }
   if (stage !== 'open') md.status = 'closed';
   if (stage !== 'open' && stage !== 'closed') md.earlyTeams = true;

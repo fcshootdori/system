@@ -1,7 +1,7 @@
 // 카페 공지용 이미지 생성 (canvas → PNG)
-import { TEAM_COLORS } from './config.js?v=0.1.33';
-import { fmtDate } from './util.js?v=0.1.33';
-import { noLabel } from './domain.js?v=0.1.33';
+import { TEAM_COLORS } from './config.js?v=0.1.34';
+import { fmtDate } from './util.js?v=0.1.34';
+import { noLabel } from './domain.js?v=0.1.34';
 
 const FONT = '"Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 const W = 1080, PAD = 64;

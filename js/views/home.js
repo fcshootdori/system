@@ -1,15 +1,15 @@
 // 회원 홈 — 경기장 사진 위 다음 경기 티켓(바로 참석·불참) + 지난 경기 전광판
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.33';
-import { db, newId } from '../store.js?v=0.1.33';
-import { STATUS } from '../config.js?v=0.1.33';
-import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView } from '../domain.js?v=0.1.33';
-import { icon } from '../icons.js?v=0.1.33';
-import { myBox, bindMy } from './apply.js?v=0.1.33';
-import { TEAM_COLORS } from '../config.js?v=0.1.33';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.33';
-import { norm } from '../cafe-parser.js?v=0.1.33';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.33';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.33';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.34';
+import { db, newId } from '../store.js?v=0.1.34';
+import { STATUS } from '../config.js?v=0.1.34';
+import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds } from '../domain.js?v=0.1.34';
+import { icon } from '../icons.js?v=0.1.34';
+import { myBox, bindMy } from './apply.js?v=0.1.34';
+import { TEAM_COLORS } from '../config.js?v=0.1.34';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.34';
+import { norm } from '../cafe-parser.js?v=0.1.34';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.34';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.34';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);
@@ -87,7 +87,7 @@ function ticket(md) {
       <div class="tk-links">
         <button class="btn ghost sm" data-go="apply/${md.id}">${icon('users')}신청 명단</button>
         ${md.teams?.length || md.status === 'drafting' ? `<button class="btn ghost sm" data-go="draft/${md.id}">${icon('shirt')}${md.teams?.length ? '팀 구성' : '드래프트 보기'}</button>` : ''}
-        ${md.status === 'teams' && S.games.some((g) => g.matchdayId === md.id) ? `<button class="btn ghost sm" data-go="mm">${icon('ball')}경기모드</button>` : ''}
+        ${md.teams?.length && md.status !== 'played' ? `<button class="btn ${[0, 1].some((i) => captainIds(md, i).includes(me.id)) ? '' : 'ghost'} sm" data-go="mm">${icon('field')}${[0, 1].some((i) => captainIds(md, i).includes(me.id)) ? '포지션 정하기' : '경기모드'}</button>` : ''}
       </div>
     </div>
   </section>`;
@@ -112,8 +112,7 @@ export function render(root) {
       <div class="sect-hd"><h2>지난 경기</h2>${last ? `<small>${[noLabel(last), fmtDate(last.date)].filter(Boolean).join(' ')}</small>` : ''}</div>
       ${last ? `<a class="card review" href="#/games/${last.id}">${reviewCard(last)}<span class="more">결과 자세히 ${icon('chevron')}</span></a>`
         : `<section class="card">${empty('아직 끝난 경기가 없어요.')}</section>`}
-    </section>
-    ${S.team.cafeUrl ? `<a class="card link-card" href="${esc(S.team.cafeUrl)}" target="_blank" rel="noopener"><span>다음 카페 바로가기</span>${icon('external')}</a>` : ''}`;
+    </section>`;
   root.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
   if (md) bindMy(root, md);
 }
@@ -141,7 +140,8 @@ export function editMatchday(md, presetDate) {
           <div class="row ev-row">
             <label>${i ? '오른쪽' : '왼쪽'} 팀 이름<input name="evn${i}" placeholder="예: ${i ? '준찬팀' : '지진희팀'}" value="${esc(ev0?.[i]?.name || '')}"></label>
             <label>색<select name="evc${i}">${TEAM_COLORS.filter((c) => ['pink', 'blue'].includes(c.key)).map((c) => `<option value="${c.key}" ${(ev0?.[i]?.color || ['pink', 'blue'][i]) === c.key ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label></div>
-          <label>주장 <span class="muted small" data-caphint></span><input name="evk${i}" list="ev-members" autocomplete="off" placeholder="카페 닉네임" value="${esc(ev0?.[i]?.captain ? nameOf(ev0[i].captain) : '')}"></label></div>`).join('')}
+          <label>주장 <span class="muted small" data-caphint></span><input name="evk${i}" list="ev-members" autocomplete="off" placeholder="카페 닉네임" value="${esc(ev0?.[i]?.captain ? nameOf(ev0[i].captain) : '')}"></label>
+          <div class="ev-mem" data-evmem="${i}"></div></div>`).join('')}
           <datalist id="ev-members">${S.members.filter((m) => m.active !== false).map((m) => `<option value="${esc(m.name)}">`).join('')}</datalist>
         </div>
         <p class="tiny muted" data-kindhint></p>
@@ -177,8 +177,18 @@ export function editMatchday(md, presetDate) {
       ? '신청(참석·불참·협의) → 마감 후 주장 선정 → 드래프트(팀 색 배정 · 우선순위 추첨 · 선수 선택) → 팀 확정'
       : emode === 'captains'
         ? '주장만 미리 정하는 이벤트 경기: 신청은 일반 경기처럼 받고, 마감 뒤 주장 선정 단계 없이 이 주장들로 드래프트를 해요. (주장 단계 생략)'
-        : '팀원까지 미리 정하는 이벤트 경기: 회원이 팀을 골라(또는 운영진이 넣어 둔 팀에서) 참석·불참을 정하고, 참석자 그대로 팀을 확정해요. (주장·드래프트 단계 생략)';
+        : '팀원까지 미리 정하는 이벤트 경기: 두 팀 명단을 모두 넣어 경기를 만들어요. 회원은 홈에서 참석·불참만 누르고, 참석자 그대로 팀이 확정돼요. (주장·드래프트 단계 생략)';
+    form.querySelectorAll('[data-evmem]').forEach((x) => x.classList.toggle('hide', emode !== 'teams'));
+    paintMembers();
   };
+  // 팀원까지 미리 정하는 경기: 팀별 명단
+  const evMembers = [0, 1].map((i) => [...(ev0?.[i]?.members || [])]);
+  const paintMembers = () => form.querySelectorAll('[data-evmem]').forEach((box) => {
+    const i = +box.dataset.evmem, ids = evMembers[i];
+    box.innerHTML = `<div class="ev-mem-hd"><b>팀원 ${ids.length}명</b><button type="button" class="btn ghost sm" data-pick="${i}">${ids.length ? '팀원 고치기' : '팀원 넣기'}</button></div>
+      ${ids.length ? `<p class="ev-mem-list">${ids.map((id) => esc(nameOf(id))).join(', ')}</p>` : '<p class="tiny muted">회원 목록에서 고르거나 카페 닉네임을 붙여넣어요.</p>'}`;
+    box.querySelector('[data-pick]').addEventListener('click', () => pickMembers(i, evMembers, () => form['evn' + i].value.trim() || `${i ? '오른쪽' : '왼쪽'} 팀`, paintMembers));
+  });
   form.querySelectorAll('[data-kind]').forEach((b) => b.addEventListener('click', () => { kind = b.dataset.kind; paintKind(); }));
   form.querySelectorAll('[data-emode]').forEach((b) => b.addEventListener('click', () => { emode = b.dataset.emode; paintKind(); }));
   paintKind();
@@ -231,7 +241,9 @@ export function editMatchday(md, presetDate) {
       if (bad >= 0) return toast(`"${caps[bad]}" — 회원 목록에 없는 닉네임이에요`);
       if (emode === 'captains' && capIds.some((x) => !x)) return toast('주장만 미리 정하는 경기는 두 팀 주장을 모두 넣어 주세요');
       if (capIds[0] && capIds[0] === capIds[1]) return toast('두 팀 주장이 같아요');
-      const teams = [0, 1].map((i) => ({ name: form['evn' + i].value.trim(), color: form['evc' + i].value, captain: capIds[i] || null, members: ev0?.[i]?.members || [] }));
+      const teams = [0, 1].map((i) => ({ name: form['evn' + i].value.trim(), color: form['evc' + i].value, captain: capIds[i] || null,
+        members: emode === 'teams' ? [...new Set([capIds[i], ...evMembers[i]].filter(Boolean))] : [] }));
+      if (emode === 'teams' && teams.some((t) => !t.members.length)) return toast('팀원까지 미리 정하는 경기는 두 팀 팀원을 모두 넣어 주세요');
       if (teams.some((t) => !t.name)) return toast('이벤트 경기는 두 팀 이름을 넣어 주세요');
       if (teams[0].color === teams[1].color) return toast('두 팀 색을 다르게 골라 주세요');
       evData = { event: true, eventMode: emode, eventTeams: teams, teamNames: teams.map((t) => t.name) };
@@ -252,6 +264,42 @@ export function editMatchday(md, presetDate) {
     }
     close();
   });
+}
+
+// 이벤트 경기 팀원 고르기: 회원 목록에서 누르거나 카페 닉네임을 붙여넣기 (다른 팀에 있던 사람은 이 팀으로 옮김)
+function pickMembers(i, evMembers, nameFn, done) {
+  const sel = new Set(evMembers[i]), other = new Set(evMembers[1 - i]);
+  const findM = (v) => { const k = norm(v); return k ? S.members.find((m) => norm(m.name) === k) || S.members.find((m) => (m.aliases || []).some((a) => norm(a) === k)) : null; };
+  const list = S.members.filter((m) => m.active !== false || sel.has(m.id)).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  const { el, close } = modal(`${nameFn()} 팀원`, `<div class="stack pick-mem">
+    <input data-q placeholder="닉네임 검색" autocomplete="off">
+    <details><summary>카페 닉네임 붙여넣기</summary><textarea data-paste rows="3" placeholder="쉼표·줄바꿈으로 여러 명 (예: 진이, 타로, 자나)"></textarea>
+      <button type="button" class="btn ghost sm" data-addpaste>명단에 넣기</button><p class="tiny" data-pastemsg></p></details>
+    <p class="small"><b data-n></b> · <span class="muted">다른 팀 표시가 있는 사람을 누르면 이 팀으로 옮겨요</span></p>
+    <div class="name-grid pick-grid" data-grid></div>
+    <button type="button" class="btn full" data-ok>완료</button></div>`);
+  const grid = el.querySelector('[data-grid]');
+  const paint = () => {
+    const q = norm(el.querySelector('[data-q]').value);
+    grid.innerHTML = list.filter((m) => !q || norm(m.name).includes(q) || sel.has(m.id)).map((m) => `<button type="button" class="name-btn ${sel.has(m.id) ? 'on' : ''} ${other.has(m.id) ? 'other' : ''}" data-id="${m.id}">${esc(m.name)}${other.has(m.id) ? '<small>다른 팀</small>' : ''}</button>`).join('');
+    el.querySelector('[data-n]').textContent = `${sel.size}명 선택`;
+  };
+  grid.addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (!b) return; const id = b.dataset.id;
+    if (sel.has(id)) sel.delete(id); else { sel.add(id); other.delete(id); } paint(); });
+  el.querySelector('[data-q]').addEventListener('input', paint);
+  el.querySelector('[data-addpaste]').addEventListener('click', () => {
+    const names = el.querySelector('[data-paste]').value.split(/[,\n·/]+/).map((x) => x.trim()).filter(Boolean);
+    const miss = [];
+    names.forEach((n) => { const m = findM(n); if (m) { sel.add(m.id); other.delete(m.id); } else miss.push(n); });
+    el.querySelector('[data-pastemsg]').innerHTML = miss.length ? `<span class="warn-t">회원 목록에 없는 닉네임: ${esc(miss.join(', '))}</span>` : `<span class="ok-t">${names.length}명을 넣었어요</span>`;
+    paint();
+  });
+  el.querySelector('[data-ok]').addEventListener('click', () => {
+    evMembers[i] = list.filter((m) => sel.has(m.id)).map((m) => m.id).concat([...sel].filter((id) => !list.some((m) => m.id === id)));
+    evMembers[1 - i] = evMembers[1 - i].filter((id) => other.has(id));
+    close(); done();
+  });
+  paint();
 }
 
 // 경기 취소 / 취소 철회 (운영진) — 취소해도 일정에는 남고 "경기 취소"로 표시

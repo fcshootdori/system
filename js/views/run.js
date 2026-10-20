@@ -1,16 +1,17 @@
 // 운영 > 경기 — 위쪽에 선택한 경기(날짜·장소·상태, 이전/이후)와 단계 막대를 고정하고
 //  신청 → 주장 → 드래프트 → 팀 확정 → 경기 → 결과 단계 화면을 보여 줌 (WD_FUTSAL 경기 메뉴와 같은 구성)
-import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state.js?v=0.1.33';
-import { db } from '../store.js?v=0.1.33';
-import { STATUS } from '../config.js?v=0.1.33';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.33';
-import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel, teamEvent, capEvent } from '../domain.js?v=0.1.33';
-import { colorChip } from '../ui.js?v=0.1.33';
-import { empty } from '../ui.js?v=0.1.33';
-import { fmtSummary, editMatchday, cancelMatchday } from './home.js?v=0.1.33';
-import * as apply from './apply.js?v=0.1.33';
-import * as draft from './draft.js?v=0.1.33';
-import * as games from './games.js?v=0.1.33';
+import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state.js?v=0.1.34';
+import { db } from '../store.js?v=0.1.34';
+import { STATUS } from '../config.js?v=0.1.34';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.34';
+import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel, teamEvent, capEvent } from '../domain.js?v=0.1.34';
+import { colorChip } from '../ui.js?v=0.1.34';
+import { empty } from '../ui.js?v=0.1.34';
+import { fmtSummary, editMatchday, cancelMatchday } from './home.js?v=0.1.34';
+import * as apply from './apply.js?v=0.1.34';
+import * as draft from './draft.js?v=0.1.34';
+import * as games from './games.js?v=0.1.34';
+import * as matchmode from './matchmode.js?v=0.1.34';
 
 const STAGES = [['apply', '신청'], ['captain', '주장'], ['draft', '드래프트'], ['teams', '팀 확정'], ['games', '경기'], ['result', '결과']];
 const idx = (k) => STAGES.findIndex(([s]) => s === k);
@@ -96,6 +97,8 @@ export function render(root) {
       <div class="row wrap"><button class="btn ghost" data-notice2>팀 공지 이미지</button><button class="btn" data-gogames>경기 단계로 →</button></div></section>`);
     if (step === 'captain' && ['open', 'closed'].includes(md.status)) body.insertAdjacentHTML('afterbegin', `<section class="card op"><p class="small">아직 신청 단계예요. 주장을 정하려면 신청을 마감하세요.</p>
       <button class="btn" data-tocap>신청 마감 · 주장 정하기</button></section>`);
+  } else if (step === 'games') {
+    matchmode.render(body, ctx);   // 라운드별 점수·득점자 기록 + 포지션
   } else {
     games.render(body, ctx);
     if (step === 'result' && md.status === 'played') body.insertAdjacentHTML('afterbegin', `<section class="card op"><div class="row wrap">

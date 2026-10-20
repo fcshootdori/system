@@ -1,13 +1,13 @@
 // 경기 신청 — 참석 · 불참 · 운영진 협의
 //  · 일반 경기: 신청 마감 전에는 참석·협의·불참 명단, 팀이 정해지면(주장·드래프트) 팀별로 좌우 칸
 //  · 이벤트 경기: 처음부터 미리 정한 두 팀 칸 — 회원은 팀을 골라(또는 운영진이 넣어 둔 팀에서) 참석·불참
-import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js?v=0.1.33';
-import { db, newId } from '../store.js?v=0.1.33';
-import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent } from '../domain.js?v=0.1.33';
-import { TEAM_COLORS } from '../config.js?v=0.1.33';
-import { parseCafeComments, norm } from '../cafe-parser.js?v=0.1.33';
-import { esc, fmtDate, fmtTime, toast, byName } from '../util.js?v=0.1.33';
-import { modal, empty, colorChip, teamLabel } from '../ui.js?v=0.1.33';
+import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js?v=0.1.34';
+import { db, newId } from '../store.js?v=0.1.34';
+import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent } from '../domain.js?v=0.1.34';
+import { TEAM_COLORS } from '../config.js?v=0.1.34';
+import { parseCafeComments, norm } from '../cafe-parser.js?v=0.1.34';
+import { esc, fmtDate, fmtTime, toast, byName } from '../util.js?v=0.1.34';
+import { modal, empty, colorChip, teamLabel } from '../ui.js?v=0.1.34';
 
 const SRC = { app: '앱', cafe: '카페', manual: '운영진', sheet: '시트' };
 const colorHex = (k) => TEAM_COLORS.find((c) => c.key === k)?.hex || '#94a3b8';
@@ -59,6 +59,12 @@ export function myBox(md, v, open) {
   const state = inA ? (inA.pending ? '협의 중' : '참석') : outA ? '불참' : '미응답';
   if (v.ev) {
     const assigned = v.ev.findIndex((t) => (t.members || []).includes(me.id));
+    // 팀원까지 미리 정한 경기: 팀은 운영진이 정해 두었으니 회원은 참석·불참만
+    if (v.ev.some((t) => t.members?.length)) {
+      const t = assigned >= 0 ? assigned : null, tAttr = t != null ? `data-team="${t}"` : '';
+      return `<p class="mine">${nm} · <b>${state}</b>${t != null ? ` · ${colorChip(v.ev[t].color, v.ev[t].name)}` : ''}</p>
+        <div class="row my-btns"><button class="btn ${inA ? '' : 'ghost'}" data-my="in" ${tAttr}>참석하기</button><button class="btn ${outA ? 'danger-fill' : 'ghost'}" data-my="out" ${tAttr}>불참하기</button></div>`;
+    }
     const myTeam = inA?.team ?? outA?.team ?? (assigned >= 0 ? assigned : null);
     const teamBtns = assigned >= 0
       ? `<button class="btn ${inA ? '' : 'ghost'}" data-my="in" data-team="${assigned}">${esc(v.ev[assigned].name)} 참석</button>`

@@ -1,11 +1,11 @@
-import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.33';
-import { db } from '../store.js?v=0.1.33';
-import { TEAM_COLORS } from '../config.js?v=0.1.33';
-import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.33';
-import { TEAM_COLORS as TC } from '../config.js?v=0.1.33';
-import { modal } from '../ui.js?v=0.1.33';
-import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.33';
-import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.33';
+import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.34';
+import { db } from '../store.js?v=0.1.34';
+import { TEAM_COLORS } from '../config.js?v=0.1.34';
+import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.34';
+import { TEAM_COLORS as TC } from '../config.js?v=0.1.34';
+import { modal } from '../ui.js?v=0.1.34';
+import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.34';
+import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.34';
 
 let lastCtx = {};
 export function render(root, ctx = {}) {
@@ -127,7 +127,7 @@ export function nameLines(name, min = 5) {   // min 글자부터 두 줄 (팀 �
   const cs = [...n], cut = Math.ceil(cs.length / 2);
   return [cs.slice(0, cut).join(''), cs.slice(cut).join('')];
 }
-const figHTML = (n, tail = '', min = 5) => {
+export const figHTML = (n, tail = '', min = 5) => {
   const ls = nameLines(n, min);
   if (tail) ls[ls.length - 1] += tail;
   const nl = Math.max(2, ...ls.map((l) => [...l].length));
