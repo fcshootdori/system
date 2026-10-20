@@ -70,6 +70,7 @@ function bindCaptainPicker(root, md) {
   root.querySelector('[data-start]')?.addEventListener('click', async () => {
     await db.tx(mdPath(md.id), (cur) => {
       cur.captains = capSel.map((id) => ({ id, token: randomToken(), color: null }));
+      cur.teamNames = capSel.map((id) => `${nameOf(id, cur)}팀`);   // 기본 팀 이름: 주장 닉네임 + 팀 (운영진이 바꿀 수 있음)
       cur.picks = []; cur.teams = []; cur.status = 'drafting'; cur.draftStarted = true;
       return cur;
     });
@@ -95,9 +96,9 @@ function board(md, myCap) {
 
     <section class="teams-grid n${caps.length}">${ros.map((ids, i) => `
       <div class="team-card ${myCap === i ? 'mine' : ''} ${ds.turn === i ? 'turn' : ''}">
-        <header>${teamColor(md, i) ? teamChip(md, i) : `<span class="chip">${i + 1}번 주장</span>`}<small>${ids.length}명</small></header>
+        <header>${teamColor(md, i) ? teamChip(md, i) : `<span class="chip">${esc(teamLabel(md, i))}</span>`}<small>${ids.length}명</small></header>
         <ol>${ids.map((id, k) => `<li>${k === 0 && (md.captains || []).length ? '<b class="cap">C</b>' : ''}${esc(nameOf(id, md))}</li>`).join('')}</ol>
-        ${!fixed && ds.done && (S.operator || myCap === i) ? `<div class="color-pick">${TEAM_COLORS.map((c) =>
+        ${!fixed && (S.operator || myCap === i) ? `<div class="color-pick" title="팀 색 고르기">${TEAM_COLORS.filter((c) => (fmtOf(md).fixedColors || []).includes(c.key)).map((c) =>
           `<button class="swatch ${caps[i].color === c.key ? 'on' : ''}" style="--c:${c.hex}" data-color="${i}:${c.key}" ${usedColors.has(c.key) && caps[i].color !== c.key ? 'disabled' : ''} title="${c.label}"></button>`).join('')}</div>` : ''}
       </div>`).join('')}</section>
 
@@ -107,7 +108,9 @@ function board(md, myCap) {
 
     ${S.operator ? `<section class="card op"><h2>운영</h2>
       <div class="cap-links">${caps.map((c, i) => `<div><span>${i + 1}. ${esc(nameOf(c.id, md))}</span>
-        <button class="btn ghost sm" data-link="${c.token}">주장 링크 복사</button></div>`).join('')}</div>
+        <input class="tname" data-tname="${i}" value="${esc(md.teamNames?.[i] || '')}" placeholder="팀 이름">
+        <button class="btn ghost sm" data-link="${c.token}">주장 링크</button></div>`).join('')}</div>
+      <p class="tiny muted">팀 이름은 기본으로 "주장 닉네임 + 팀"이에요. 바꾸면 바로 저장돼요.${fixed ? '' : ' 팀 색은 각 팀 카드에서 주장이나 운영진이 골라요.'}</p>
       <div class="row wrap">
         <button class="btn ghost" data-undo ${ds.picks.length ? '' : 'disabled'}>마지막 지명 취소</button>
         <button class="btn ghost danger" data-reset>주장 다시 정하기</button>
@@ -116,7 +119,15 @@ function board(md, myCap) {
       ${ds.done && !colorsReady ? '<p class="muted small">모든 팀 색이 정해지면 확정할 수 있어요.</p>' : ''}
     </section>` : ''}`;
 }
+function bindTeamNames(root, md) {
+  root.querySelectorAll('[data-tname]').forEach((x) => x.addEventListener('change', async () => {
+    const i = +x.dataset.tname;
+    await db.tx(mdPath(md.id), (cur) => { const n = [...(cur.teamNames || [])]; while (n.length <= i) n.push(''); n[i] = x.value.trim(); cur.teamNames = n; return cur; });
+    toast('팀 이름을 저장했어요');
+  }));
+}
 function bindBoard(root, md, myCap) {
+  bindTeamNames(root, md);
   root.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', async () => {
     const id = b.dataset.pick;
     const res = await db.tx(mdPath(md.id), (cur) => {
@@ -141,7 +152,7 @@ function bindBoard(root, md, myCap) {
     db.tx(mdPath(md.id), (cur) => { cur.picks = (cur.picks || []).slice(0, -1); return cur; }));
   root.querySelector('[data-reset]')?.addEventListener('click', async () => {
     if (!confirm('주장과 지명 내역을 모두 지우고 다시 시작할까요?')) return;
-    await db.tx(mdPath(md.id), (cur) => { cur.captains = []; cur.picks = []; cur.teams = []; cur.status = 'captains'; cur.draftStarted = false; return cur; });
+    await db.tx(mdPath(md.id), (cur) => { cur.captains = []; cur.picks = []; cur.teams = []; cur.teamNames = null; cur.status = 'captains'; cur.draftStarted = false; return cur; });
   });
   root.querySelector('[data-final]')?.addEventListener('click', async () => {
     await db.tx(mdPath(md.id), (cur) => {
@@ -158,6 +169,7 @@ function teamsView(md) {
   return `<section class="teams-grid n${ros.length}">${ros.map((ids, i) => `
     <div class="team-card ${ids.includes(me.id) ? 'mine' : ''}">
       <header>${teamChip(md, i)}<small>${ids.length}명</small></header>
+      ${S.operator && md.status !== 'played' ? `<input class="tname full" data-tname="${i}" value="${esc(md.teamNames?.[i] || '')}" placeholder="팀 이름 (예: ${esc(nameOf(ids[0], md))}팀)">` : ''}
       <ol>${ids.map((id, k) => `<li>${k === 0 && (md.captains || []).length ? '<b class="cap">C</b>' : ''}${esc(nameOf(id, md))}
         ${S.operator && k > 0 && md.status !== 'played' ? `<select class="move" data-move="${i}:${id}"><option value="">이동</option>${ros.map((_, j) => j !== i ? `<option value="${j}">${teamLabel(md, j)}</option>` : '').join('')}</select>` : ''}</li>`).join('')}</ol>
     </div>`).join('')}</section>
@@ -166,6 +178,7 @@ function teamsView(md) {
       <button class="btn ghost danger" data-reopen>드래프트로 되돌리기</button></div></section>` : ''}`;
 }
 function bindTeams(root, md) {
+  bindTeamNames(root, md);
   root.querySelectorAll('[data-move]').forEach((s) => s.addEventListener('change', async () => {
     if (s.value === '') return;
     const [from, id] = s.dataset.move.split(':'); const to = +s.value;

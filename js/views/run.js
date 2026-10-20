@@ -4,7 +4,8 @@ import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state
 import { db } from '../store.js';
 import { STATUS } from '../config.js';
 import { esc, fmtDate, toast } from '../util.js';
-import { noLabel } from '../domain.js';
+import { noLabel, eventTeams, signupView, eventTeamsToTeams } from '../domain.js';
+import { colorChip } from '../ui.js';
 import { empty } from '../ui.js';
 import { fmtSummary, editMatchday, cancelMatchday } from './home.js';
 import * as apply from './apply.js';
@@ -62,7 +63,21 @@ export function render(root) {
       <button class="btn ghost" data-uncancel>취소 철회</button></section>`;
     body.querySelector('[data-uncancel]').addEventListener('click', () => cancelMatchday(md));
   } else if (step === 'apply') apply.render(body, ctx);
-  else if (step === 'captain' || step === 'draft' || step === 'teams') {
+  else if ((step === 'captain' || step === 'draft' || step === 'teams') && eventTeams(md) && !md.teams?.length) {
+    // 이벤트 경기: 주장·드래프트 없이 미리 정한 팀 그대로
+    const v = signupView(md);
+    body.innerHTML = `<section class="card op"><h2>이벤트 경기 — 팀이 미리 정해져 있어요</h2>
+      <p class="small">${v.sides.map((s) => `${colorChip(s.color, s.name)} 참석 <b>${s.ins.length}</b>명`).join(' · ')}${v.noTeam.length ? ` · 팀 미정 ${v.noTeam.length}명(인원 적은 팀으로)` : ''}${v.pend.length ? ` · 협의 ${v.pend.length}명(승인 전)` : ''}</p>
+      <p class="muted small">주장 선정·드래프트 없이 참석자 그대로 팀을 확정해요. 확정 뒤에도 팀 확정 단계에서 선수를 옮길 수 있어요.</p>
+      <button class="btn" data-evfinal>참석자로 팀 확정</button></section>`;
+    body.querySelector('[data-evfinal]').addEventListener('click', async () => {
+      await db.tx(mdPath(md.id), (cur) => {
+        cur.teams = eventTeamsToTeams(cur); cur.teamNames = eventTeams(cur).map((t) => t.name);
+        cur.captains = []; cur.picks = []; cur.draftStarted = false; cur.status = 'teams'; return cur;
+      });
+      S.step = 'teams'; toast('이벤트 팀을 확정했어요');
+    });
+  } else if (step === 'captain' || step === 'draft' || step === 'teams') {
     draft.render(body, ctx);
     if (step === 'teams' && md.status === 'teams') body.insertAdjacentHTML('beforeend', `<section class="card op"><h2>다음 단계</h2>
       <p class="muted small">밸런스 조정이 끝났으면 팀 공지를 올리고 경기 단계로 넘어가세요.</p>

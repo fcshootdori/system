@@ -50,7 +50,7 @@ function rowsOf() {
   const { total, rec } = attendance();
   return S.members.map((m) => {
     const a = rec.get(m.id) || { att: 0, last: '' };
-    return { id: m.id, name: m.name, status: statusOf(m), aliases: (m.aliases || []).join(', '), att: a.att,
+    return { id: m.id, name: m.name, realName: m.realName || '', status: statusOf(m), aliases: (m.aliases || []).join(', '), att: a.att,
       rate: total ? Math.round((a.att / total) * 100) : 0, last: a.last, createdAt: m.createdAt || 0, source: m.source };
   });
 }
@@ -60,7 +60,7 @@ function listView(body, root) {
   const cnt = (k) => all.filter((r) => r.status === k).length;
   let rows = filt === 'all' ? all : all.filter((r) => r.status === filt);
   const k = q.trim().toLowerCase();
-  if (k) rows = rows.filter((r) => r.name.toLowerCase().includes(k) || r.aliases.toLowerCase().includes(k) || norm(r.name).includes(norm(k)));
+  if (k) rows = rows.filter((r) => r.name.toLowerCase().includes(k) || r.realName.toLowerCase().includes(k) || r.aliases.toLowerCase().includes(k) || norm(r.name).includes(norm(k)));
   rows.sort((a, b) => {
     const x = a[sort.k], y = b[sort.k];
     const c = typeof x === 'number' ? x - y : koSort(x || '', y || '');
@@ -74,7 +74,7 @@ function listView(body, root) {
     <div class="mg-top"><h2>회원 ${all.length}명</h2>
       <div class="row nowrap"><button class="btn ghost sm" data-bulk>명단 붙여넣기</button><button class="btn ghost sm" data-csv>CSV 저장</button><button class="btn sm" data-add>＋ 회원 추가</button></div></div>
     <div class="mtools">
-      <input class="search" type="search" placeholder="닉네임·별칭 검색" value="${esc(q)}" data-q>
+      <input class="search" type="search" placeholder="닉네임·이름·별칭 검색" value="${esc(q)}" data-q>
       <div class="seg mseg">${[['all', `전체 ${all.length}`], ...Object.entries(MSTAT).map(([s, l]) => [s, `${l} ${cnt(s)}`])].map(([s, l]) =>
         `<button data-f="${s}" class="${filt === s ? 'on' : ''}">${l}</button>`).join('')}</div>
     </div>
@@ -85,10 +85,11 @@ function listView(body, root) {
       <button class="btn ghost sm" data-selclear>선택 해제</button><button class="btn ghost danger sm" data-seldel>선택 삭제</button></div>` : ''}
     ${rows.length ? `<div class="card sheetwrap"><table class="grid"><thead><tr>
       <th class="ck"><input type="checkbox" data-selall ${rows.length && rows.every((r) => sel.has(r.id)) ? 'checked' : ''} aria-label="모두 선택"></th>
-      ${th('name', '닉네임', 'stick')}${th('status', '유형')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
+      ${th('name', '닉네임', 'stick')}${th('realName', '이름')}${th('status', '유형')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
       ${rows.map((r) => `<tr class="${sel.has(r.id) ? 'msel' : ''} st-row-${r.status}">
         <td class="ck"><input type="checkbox" data-sel="${r.id}" ${sel.has(r.id) ? 'checked' : ''} aria-label="${esc(r.name)} 선택"></td>
         <td class="stick"><input class="cell w-name" value="${esc(r.name)}" data-cell="name" data-id="${r.id}"></td>
+        <td><input class="cell w-real" value="${esc(r.realName)}" placeholder="-" data-cell="realName" data-id="${r.id}"></td>
         <td><select class="cell st st-${r.status}" data-cell="status" data-id="${r.id}">${Object.entries(MSTAT).map(([s, l]) => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
         <td><input class="cell w-alias" value="${esc(r.aliases)}" placeholder="-" data-cell="aliases" data-id="${r.id}"></td>
         <td class="num"><button class="attcell" data-att="${r.id}"><b>${r.att}</b>회</button></td>
@@ -142,6 +143,8 @@ async function saveCell(el) {
     await db.set('members/' + id, { name: v, aliases }, { merge: true }); toast('닉네임을 바꿨어요 (예전 닉네임은 별칭으로 남겨요)');
   } else if (f === 'status') {
     await db.set('members/' + id, { status: el.value, active: el.value !== 'rest' }, { merge: true }); toast(`${m.name} · ${MSTAT[el.value]}`);
+  } else if (f === 'realName') {
+    await db.set('members/' + id, { realName: el.value.trim() }, { merge: true }); toast('이름을 저장했어요');
   } else if (f === 'aliases') {
     const aliases = [...new Set(el.value.split(',').map((s) => s.trim()).filter(Boolean))];
     await db.set('members/' + id, { aliases }, { merge: true }); toast('별칭을 저장했어요');
@@ -151,13 +154,14 @@ async function saveCell(el) {
 function addMember() {
   const { el, close } = modal('회원 추가', `<form class="stack">
     <label>닉네임 (카페 닉네임)<input name="name" required autofocus></label>
+    <label>이름 <span class="muted small">(실명 · 선택)</span><input name="realName"></label>
     <label>별칭 <span class="muted small">(쉼표로 구분 · 선택)</span><input name="aliases"></label>
     <label>유형<select name="status">${Object.entries(MSTAT).map(([s, l]) => `<option value="${s}" ${s === 'regular' ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
     <button class="btn">추가</button></form>`);
   el.querySelector('form').addEventListener('submit', async (e) => {
     e.preventDefault(); const f = e.target; const name = f.name.value.trim();
     if (taken(name)) return toast('같은 닉네임(또는 별칭)의 회원이 이미 있어요');
-    await db.set('members/' + newId(), { name, aliases: f.aliases.value.split(',').map((s) => s.trim()).filter(Boolean),
+    await db.set('members/' + newId(), { name, realName: f.realName.value.trim(), aliases: f.aliases.value.split(',').map((s) => s.trim()).filter(Boolean),
       status: f.status.value, active: f.status.value !== 'rest', createdAt: Date.now() });
     toast(`${name} 님을 추가했어요`); close();
   });
@@ -191,7 +195,7 @@ function bulkPaste() {
 function exportCSV(rows) {
   const qv = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const list = [...rows].sort((a, b) => koSort(a.name, b.name));
-  const csv = '﻿' + [['닉네임', '유형', '별칭', '출석', '출석률(%)', '최근 출석'], ...list.map((r) => [r.name, MSTAT[r.status], r.aliases, r.att, r.rate, r.last])]
+  const csv = '﻿' + [['닉네임', '이름', '유형', '별칭', '출석', '출석률(%)', '최근 출석'], ...list.map((r) => [r.name, r.realName, MSTAT[r.status], r.aliases, r.att, r.rate, r.last])]
     .map((r) => r.map(qv).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));

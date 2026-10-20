@@ -1,6 +1,7 @@
 import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js';
 import { db, newId } from '../store.js';
-import { rosters, schedule, dayStandings, fmtOf, totals, noLabel } from '../domain.js';
+import { rosters, schedule, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js';
+import { TEAM_COLORS } from '../config.js';
 import { esc, fmtDate, toast } from '../util.js';
 import { modal, empty, teamChip, teamLabel } from '../ui.js';
 import { fmtSummary } from './home.js';
@@ -97,20 +98,22 @@ function scorersHtml(md, games) {
     ${ogl.length ? `<span class="muted">자책 ${ogl.map(([id, n]) => `${esc(nameOf(id, md))}${n > 1 ? ` ${n}` : ''}`).join(', ')}</span>` : ''}</div>`;
 }
 
-// MOM · 지각
+// MOM · 지각 — 결과 화면에서 따로 나눠 보여 줌
 function extrasCard(md, ros, canEdit) {
   const mom = new Set(md.mom || []), late = md.late || {};
   const lateIds = Object.keys(late).filter((k) => late[k]);
+  const teamOf = (id) => ros.findIndex((ids) => ids.includes(id));
+  const people = (ids) => ids.map((id) => { const t = teamOf(id); return `<span class="pchip">${t >= 0 ? `<i style="background:${TEAM_COLORS.find((c) => c.key === teamColor(md, t))?.hex || '#94a3b8'}"></i>` : ''}${esc(nameOf(id, md))}</span>`; }).join('');
   if (!canEdit) {
-    if (!mom.size && !lateIds.length) return '';
-    return `<section class="card"><p class="extras-view">${mom.size ? `<b>MOM</b> ${esc([...mom].map((id) => nameOf(id, md)).join(', '))}` : ''}${lateIds.length ? `<span class="muted"> · 지각 ${esc(lateIds.map((id) => nameOf(id, md)).join(', '))}</span>` : ''}</p></section>`;
+    return `${mom.size ? `<section class="card mom-card"><h2>🏆 MOM</h2><div class="pchips">${people([...mom])}</div></section>` : ''}
+      ${lateIds.length ? `<section class="card late-card"><h2>⏰ 지각 <small>${lateIds.length}명</small></h2><div class="pchips">${people(lateIds)}</div></section>` : ''}`;
   }
   const chips = (cls, on) => ros.map((ids, ti) => `<div class="ex-team">${teamChip(md, ti)}<div class="ex-names">${ids.map((id) =>
-    `<button class="xchip ${on(id) ? 'on' : ''}" data-${cls}="${id}">${esc(nameOf(id, md))}</button>`).join('')}</div></div>`).join('');
-  return `<section class="card op"><h2>MOM · 지각</h2>
-    <details><summary>MOM <span class="muted small">${mom.size ? [...mom].map((id) => esc(nameOf(id, md))).join(', ') : '선택 안 함'}</span></summary>${chips('mom', (id) => mom.has(id))}</details>
-    <details><summary>지각 <span class="muted small">${lateIds.length ? lateIds.map((id) => esc(nameOf(id, md))).join(', ') : '없음'}</span></summary>${chips('late', (id) => late[id])}</details>
-  </section>`;
+    `<button class="xchip ${cls} ${on(id) ? 'on' : ''}" data-${cls}="${id}">${esc(nameOf(id, md))}</button>`).join('')}</div></div>`).join('');
+  return `<section class="card op mom-card"><h2>🏆 MOM <small>${mom.size ? [...mom].map((id) => esc(nameOf(id, md))).join(', ') : '선택 안 함'}</small></h2>
+      <details><summary>MOM 고르기</summary>${chips('mom', (id) => mom.has(id))}</details></section>
+    <section class="card op late-card"><h2>⏰ 지각 <small>${lateIds.length ? lateIds.map((id) => esc(nameOf(id, md))).join(', ') : '없음'}</small></h2>
+      <details><summary>지각 고르기</summary>${chips('late', (id) => late[id])}</details></section>`;
 }
 function bindExtras(root, md) {
   root.querySelectorAll('[data-mom]').forEach((b) => b.addEventListener('click', () => db.tx(mdPath(md.id), (cur) => {

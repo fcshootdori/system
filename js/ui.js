@@ -1,6 +1,6 @@
 import { esc } from './util.js';
 import { TEAM_COLORS, STATUS } from './config.js';
-import { teamColor } from './domain.js';
+import { teamColor, teamName } from './domain.js';
 
 export function modal(title, bodyHtml, { wide = false } = {}) {
   const wrap = document.createElement('div');
@@ -21,7 +21,10 @@ export function colorChip(key, label) {
   if (!c) return `<span class="chip">${esc(label || '')}</span>`;
   return `<span class="chip color" style="--c:${c.hex};--t:${c.text}">${esc(label ?? c.label)}</span>`;
 }
+// 팀 이름: 운영진이 정한 이름(주장명 등)·이벤트 팀 이름 → 없으면 팀 색 이름
 export const teamLabel = (md, i) => {
+  const nm = teamName(md, i);
+  if (nm) return nm;
   const c = TEAM_COLORS.find((x) => x.key === teamColor(md, i));
   return c ? c.label : `${i + 1}팀`;
 };

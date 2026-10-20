@@ -437,3 +437,38 @@ select.cell.st-staff { color: #b45309; } select.cell.st-rest { color: var(--sub)
 /* ── 0.1.11: 댓글 구역 → 팀 확정 ── */
 .teamopt { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 12px; padding: 12px; margin: 14px 0 6px; }
 .teamopt .row { margin-top: 8px; }
+.w-real { width: 90px; }
+.tcols { display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr); }
+.tcols.n3 { grid-template-columns: repeat(3, 1fr); } .tcols.n4 { grid-template-columns: repeat(2, 1fr); }
+.tcol { background: var(--soft); border-radius: 12px; padding: 10px 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.tcol header { display: flex; justify-content: space-between; align-items: center; }
+.apps.tight li { gap: 6px; padding: 6px 2px; font-size: 14px; }
+.apps.tight .no { width: 18px; font-size: 12px; }
+.apps.tight .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apps.tight select.move { margin-left: auto; padding: 2px; font-size: 11px; width: 52px; }
+.apps.tight .swap { margin-left: auto; }
+.apps.tight .swap + .icon-btn { margin-left: 0; }
+.apps.tight .icon-btn.sm { width: 24px; height: 24px; font-size: 11px; }
+.pchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pchip { display: inline-flex; align-items: center; gap: 6px; background: var(--soft); border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: 14px; }
+.pchip i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.mom-card h2 { color: #b45309; } .late-card h2 { color: #475569; }
+.xchip.late.on { background: #64748b; border-color: #64748b; }
+
+/* ── 0.1.13: 참석·불참·협의 / 이벤트 경기 / 팀 이름 ── */
+.my-btns { margin-top: 8px; }
+.my-btns .btn { flex: 1; }
+.btn.tbtn.ghost { box-shadow: inset 0 0 0 2px var(--tc); }
+.btn.tbtn:not(.ghost) { background: var(--tc); }
+.tcol { border-top: 4px solid var(--tc, var(--line)); }
+.col-sub { margin: 2px 0 0; font-size: 12px; line-height: 1.5; }
+.col-sub.out b { color: #b91c1c; } .col-sub.muted b { color: var(--sub); }
+.tname { padding: 5px 8px; font-size: 13px; width: 120px; }
+.tname.full { width: 100%; margin: 4px 0 6px; }
+.cap-links > div { gap: 6px; }
+.cap-links > div > span { flex: 1; }
+.seg.kind-seg, .seg.cat-seg { margin: 0; }
+.seg.cat-seg button { font-size: 12px; padding: 7px 4px; }
+.ev-teams { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.ev-row { margin-top: 0; }
+.ev-row label:last-child { flex: 0 0 110px; }
