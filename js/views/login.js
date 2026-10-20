@@ -1,9 +1,8 @@
 // 로그인 — 카페 닉네임 → (처음) 비밀번호 정하기 / (다음부터) 비밀번호 입력, 자동 로그인
-import { S, refresh } from '../state.js?v=0.1.41';
-import { register, login, status, saveSession, validPin } from '../auth.js?v=0.1.41';
-import { norm } from '../cafe-parser.js?v=0.1.41';
-import { esc } from '../util.js?v=0.1.41';
-import { betaOn, inSandbox, enterSandbox } from '../sandbox.js?v=0.1.41';
+import { S, refresh } from '../state.js?v=0.1.42';
+import { register, login, status, saveSession, validPin } from '../auth.js?v=0.1.42';
+import { norm } from '../cafe-parser.js?v=0.1.42';
+import { esc } from '../util.js?v=0.1.42';
 
 let step = { pid: null, registered: false }, nick = '', err = '', denied = false;
 
@@ -44,12 +43,10 @@ export function render(root) {
     </div>
     ${denied ? `<button class="btn ghost full" data-temp>비밀번호 없이 닉네임으로만 들어가기 (임시)</button>` : ''}
     <button class="link lg-op" data-op>운영진이신가요? 운영모드로 들어가기 ›</button>
-    ${betaOn() && !inSandbox() ? '<button class="btn ghost full lg-demo" data-sbx>🧪 로그인 없이 데모 체험하기</button>' : ''}
   </section>`;
 
   const q = (s) => root.querySelector(s);
   const rer = () => render(root);
-  q('[data-sbx]')?.addEventListener('click', () => enterSandbox());
   const done = (sess) => {
     saveSession(sess, q('[name=auto]')?.checked !== false);
     S.auth = sess; step = { pid: null, registered: false }; err = ''; nick = '';

@@ -1,12 +1,12 @@
-import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.41';
-import { S, me, memberById, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.41';
-import { betaOn, inSandbox, enterSandbox } from '../sandbox.js?v=0.1.41';
-import { db, newId } from '../store.js?v=0.1.41';
-import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js?v=0.1.41';
-import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js?v=0.1.41';
-import { esc, toast, fileToDataUrl, todayISO, byName, fmtDate } from '../util.js?v=0.1.41';
-import { modal, empty } from '../ui.js?v=0.1.41';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.41';
+import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.42';
+import { S, me, memberById, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.42';
+import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.42';
+import { db, newId } from '../store.js?v=0.1.42';
+import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js?v=0.1.42';
+import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js?v=0.1.42';
+import { esc, toast, fileToDataUrl, todayISO, byName, fmtDate } from '../util.js?v=0.1.42';
+import { modal, empty } from '../ui.js?v=0.1.42';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.42';
 
 export function render(root) { return settings(root); }
 
@@ -200,9 +200,10 @@ function betaCard() {
   const kLabel = (m) => (m.event ? (m.eventMode === 'captains' ? '이벤트(주장만)' : '이벤트(팀원까지)') : '일반');
   const on = betaOn();
   return `<section class="card beta"><h2>🧪 베타 테스트</h2>
-    <label class="switch-row"><span><b>베타 데모 기능</b><small class="muted">회원이 '데모 체험'으로 모든 기능(신청·주장 드래프트·포지션·경기 기록·결과)을 실제 기록과 상관없이 직접 해 볼 수 있어요. 끄면 회원 화면에서 데모 입구와 샘플 경기가 사라져요.</small></span>
+    <label class="switch-row"><span><b>베타 데모 기능</b><small class="muted">켜져 있으면 회원이 앱을 열 때 <b>일반 회원 · 주장 · 운영진</b> 중 체험할 화면을 고르고, 이 기기에만 만든 체험판에서 모든 기능을 써 봐요 (실제 기록에는 반영 안 됨). 회원은 데모에서 나갈 수 없고, <b>운영진 비밀번호로 접속해야만</b> 나가거나 이 기능을 끌 수 있어요. 끄면 모든 회원이 다음에 열 때 실제 앱으로 돌아와요.</small></span>
       <input type="checkbox" class="switch" data-betaon ${on ? 'checked' : ''} ${inSandbox() ? 'disabled' : ''}></label>
-    ${on ? `<div class="row wrap beta-demo">${inSandbox() ? '<span class="small">지금 이 기기는 <b>데모 체험판</b>이에요. 위쪽 띠의 [체험 끝내기]로 돌아가요.</span>' : '<button class="btn ghost" data-sbx>이 기기에서 데모 체험 시작</button>'}</div>
+    ${inSandbox() ? '<p class="small warn-t">지금은 데모 체험판의 운영진 화면이에요. 이 기능은 실제 운영모드에서만 끌 수 있어요 — 위쪽 띠의 [나가기]에서 실제 운영진 비밀번호를 넣으세요.</p>' : ''}
+    ${on && !inSandbox() ? '<div class="row wrap beta-demo"><button class="btn ghost" data-sbx>이 기기에서 역할 골라 데모 체험</button></div>' : ''}
     <h3 class="bh">샘플 경기 <small class="muted">실제 앱에 만드는 시험 경기</small></h3>
     <p class="muted small">원하는 단계까지 진행된 샘플 경기를 만들어 신청 → 주장 → 드래프트 → 팀 확정 → 경기 → 결과를 직접 시험해 보세요.
       샘플 경기는 <b>운영모드에서만</b> 보이고(회원 화면은 '이 기기에서 샘플 보기'를 켠 기기만), <b>개인 기록·출석·회차에는 들어가지 않아요.</b> 참가자는 실제 회원 중에서 무작위로 골라요.</p>
@@ -213,7 +214,7 @@ function betaCard() {
     ${list.length ? `<h3 class="bh">만든 샘플 ${list.length}개</h3><ul class="list blist">${list.map((m) => `<li><span><b>${esc(stLabel(m))}</b> <small class="muted">${esc(kLabel(m))} · ${fmtDate(m.date, false)}</small></span>
       <button class="btn ghost sm" data-bgo="${m.id}">경기 메뉴에서 보기</button></li>`).join('')}</ul>
       <div class="row wrap"><button class="btn ghost danger" data-bclear>샘플 모두 지우기</button></div>` : ''}
-    <label class="chk"><input type="checkbox" data-bdevice ${samplesOnDevice() ? 'checked' : ''}><span>이 기기에서는 운영모드를 꺼도 샘플 경기 보기<small class="muted">회원·주장 화면 시험용</small></span></label>` : ''}
+    <label class="chk"><input type="checkbox" data-bdevice ${samplesOnDevice() ? 'checked' : ''}><span>이 기기에서는 운영모드를 꺼도 샘플 경기 보기<small class="muted">회원·주장 화면 시험용</small></span></label>
   </section>`;
 }
 function bindBeta(root) {
@@ -222,7 +223,7 @@ function bindBeta(root) {
     await db.set('meta/team', { betaDemo: v }, { merge: true });
     toast(v ? '베타 데모 기능을 켰어요' : '베타 데모 기능을 껐어요 — 회원 화면에서 데모 입구가 사라져요');
   });
-  root.querySelector('[data-sbx]')?.addEventListener('click', () => { if (confirm('이 기기에서 데모 체험판으로 들어갈까요? 체험판에서 한 일은 실제 기록에 반영되지 않아요.')) enterSandbox(); });
+  root.querySelector('[data-sbx]')?.addEventListener('click', () => pickRole(false));
   root.querySelectorAll('[data-bstage]').forEach((b) => b.addEventListener('click', () => { bStage = b.dataset.bstage; settings(root); }));
   root.querySelectorAll('[data-bkind]').forEach((b) => b.addEventListener('click', () => { bKind = b.dataset.bkind; if (bKind === 'teams' && bStage === 'drafting') bStage = 'teams'; settings(root); }));
   root.querySelector('[data-bmake]')?.addEventListener('click', async (e) => {

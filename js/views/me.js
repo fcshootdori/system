@@ -1,12 +1,11 @@
 // 내 정보 — 내 이름, 내 기록 요약, 앱 정보, 운영모드 입구 (WD_FUTSAL 내 정보와 같은 위치)
-import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.41';
-import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.41';
-import { modal } from '../ui.js?v=0.1.41';
-import { toast } from '../util.js?v=0.1.41';
-import { allStats, pct } from '../domain.js?v=0.1.41';
-import { esc } from '../util.js?v=0.1.41';
-import { betaOn, inSandbox, enterSandbox, exitSandbox } from '../sandbox.js?v=0.1.41';
-import { createSample } from '../sample.js?v=0.1.41';
+import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.42';
+import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.42';
+import { modal } from '../ui.js?v=0.1.42';
+import { toast } from '../util.js?v=0.1.42';
+import { allStats, pct } from '../domain.js?v=0.1.42';
+import { esc } from '../util.js?v=0.1.42';
+import { inSandbox, sandboxRole, ROLES, pickRole, switchRole, askExit } from '../sandbox.js?v=0.1.42';
 
 export function render(root) {
   const m = memberById(me.id);
@@ -30,27 +29,21 @@ export function render(root) {
       <p class="muted small">안드로이드 크롬: 메뉴 ⋮ → <b>홈 화면에 추가</b> · 아이폰 사파리: 공유 → <b>홈 화면에 추가</b> 하면 앱처럼 아이콘이 생겨요.</p>
       ${S.team.cafeUrl ? `<a class="btn ghost full" href="${esc(S.team.cafeUrl)}" target="_blank" rel="noopener">다음 카페 열기 ↗</a>` : ''}
     </section>
-    ${betaOn() || inSandbox() ? `<section class="card beta">
-      <h2>🧪 베타 테스트</h2>
-      ${inSandbox() ? `<p class="small">지금 <b>데모 체험판</b>이에요. 여기서 한 일은 이 기기에만 남고 실제 기록에는 반영되지 않아요. 운영모드 PIN은 <b>0000</b>.</p>
-        <div class="row wrap"><button class="btn ghost" data-sbxnew>체험 경기 새로 만들기</button><button class="btn danger-fill" data-sbxexit>체험 끝내기</button></div>`
-      : `<p class="small muted">모든 기능(신청·주장 드래프트·포지션·경기 기록·결과)을 실제 기록과 상관없이 직접 해 볼 수 있어요.</p>
-        <button class="btn full" data-sbx>데모 체험 시작</button>
-        ${(S.allMatchdays || []).some((x) => x.sample) ? `<label class="chk"><input type="checkbox" data-samples ${samplesOnDevice() ? 'checked' : ''}><span>이 기기에서 샘플 경기 보기<small class="muted">운영진이 만든 시험 경기 · 기록에는 안 들어가요</small></span></label>` : ''}`}
-    </section>` : ''}
-    <section class="card op-entry">
+    ${inSandbox() ? `<section class="card beta">
+      <h2>🧪 데모 체험 중 <small>${ROLES[sandboxRole()]?.icon} ${ROLES[sandboxRole()]?.label}</small></h2>
+      <p class="small">여기서 한 일은 이 기기에만 남고 실제 기록에는 반영되지 않아요. 데모에서 나가려면 운영진 비밀번호가 필요해요.</p>
+      <div class="row wrap"><button class="btn" data-sbxrole>역할 바꾸기</button><button class="btn ghost" data-sbxnew>체험 경기 새로 만들기</button><button class="btn ghost" data-sbxexit>나가기 (운영진)</button></div>
+    </section>` : (S.allMatchdays || []).some((x) => x.sample) ? `<section class="card beta"><h2>🧪 베타 테스트</h2>
+      <label class="chk"><input type="checkbox" data-samples ${samplesOnDevice() ? 'checked' : ''}><span>이 기기에서 샘플 경기 보기<small class="muted">운영진이 만든 시험 경기 · 기록에는 안 들어가요</small></span></label></section>` : ''}
+    ${inSandbox() && sandboxRole() !== 'op' ? '' : `<section class="card op-entry">
       <h2>운영진</h2>
       <p class="muted small">운영진은 비밀번호로 운영모드에 들어가요.${opDevice() ? ' 이 기기는 오른쪽 위 버튼으로도 들어갈 수 있어요.' : ''}</p>
       <button class="btn ghost full" data-op>운영모드</button>
-    </section>`;
+    </section>`}`;
   root.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => { location.hash = '#/login'; }));
-  root.querySelector('[data-sbx]')?.addEventListener('click', () => { if (confirm('데모 체험판으로 들어갈까요? 지금 기록을 이 기기에 복사해서 시험하고, 실제 기록에는 반영되지 않아요.')) enterSandbox(); });
-  root.querySelector('[data-sbxexit]')?.addEventListener('click', () => { if (confirm('데모 체험을 끝내고 실제 앱으로 돌아갈까요? 체험판에서 한 일은 지워져요.')) exitSandbox(); });
-  root.querySelector('[data-sbxnew]')?.addEventListener('click', async (e) => {
-    e.target.disabled = true;
-    for (const [stage, kind] of [['open', 'normal'], ['drafting', 'normal'], ['teams', 'normal'], ['played', 'normal'], ['open', 'teams']]) await createSample({ stage, kind, me: me.id || null });
-    toast('체험 경기 5개를 새로 만들었어요'); e.target.disabled = false;
-  });
+  root.querySelector('[data-sbxrole]')?.addEventListener('click', () => pickRole(true));
+  root.querySelector('[data-sbxexit]')?.addEventListener('click', askExit);
+  root.querySelector('[data-sbxnew]')?.addEventListener('click', () => switchRole(sandboxRole()));
   root.querySelector('[data-samples]')?.addEventListener('change', (e) => { setSamplesOnDevice(e.target.checked); toast(e.target.checked ? '샘플 경기를 보여요' : '샘플 경기를 숨겨요'); });
   root.querySelector('[data-logout]')?.addEventListener('click', () => {
     if (!confirm('로그아웃할까요? 다음에는 닉네임과 비밀번호를 다시 입력해야 해요.')) return;

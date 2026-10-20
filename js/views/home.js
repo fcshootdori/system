@@ -1,16 +1,16 @@
 // 회원 홈 — 경기장 사진 위 다음 경기 티켓(바로 참석·불참) + 지난 경기 전광판
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.41';
-import { db, newId } from '../store.js?v=0.1.41';
-import { STATUS } from '../config.js?v=0.1.41';
-import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.41';
-import { icon } from '../icons.js?v=0.1.41';
-import { betaOn, inSandbox, enterSandbox } from '../sandbox.js?v=0.1.41';
-import { myBox, bindMy } from './apply.js?v=0.1.41';
-import { TEAM_COLORS } from '../config.js?v=0.1.41';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.41';
-import { norm } from '../cafe-parser.js?v=0.1.41';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.41';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.41';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.42';
+import { db, newId } from '../store.js?v=0.1.42';
+import { STATUS } from '../config.js?v=0.1.42';
+import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.42';
+import { icon } from '../icons.js?v=0.1.42';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.42';
+import { myBox, bindMy } from './apply.js?v=0.1.42';
+import { TEAM_COLORS } from '../config.js?v=0.1.42';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.42';
+import { norm } from '../cafe-parser.js?v=0.1.42';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.42';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.42';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);
@@ -107,9 +107,9 @@ export function render(root) {
       </div>
       ${md ? ticket(md) : `<div class="ticket empty-t"><p>운영진이 다음 경기를 올리면 여기에서 바로 참석을 정할 수 있어요.</p></div>`}
     </section>
-    ${betaOn() && !inSandbox() ? `<section class="card beta-entry"><div><b>🧪 베타 데모 체험</b><p class="small muted">신청 → 주장 드래프트 → 포지션 → 경기 기록 → 결과까지 모든 기능을 직접 해 볼 수 있어요. 실제 기록에는 반영되지 않아요.</p></div>
-      <button class="btn sm" data-sbx>체험하기</button></section>` : ''}
-    ${inSandbox() ? `<section class="card beta-entry sbx"><div><b>🧪 데모 체험 중</b><p class="small muted">체험 경기는 <b>운영모드(PIN 0000) › 경기 운영</b>에서 진행하고, 내가 주장인 경기는 <b>드래프트·경기모드</b>에서 주장으로 해 볼 수 있어요.</p></div>
+    ${inSandbox() ? `<section class="card beta-entry sbx"><div><b>🧪 ${sandboxRole() === 'captain' ? '주장' : '일반 회원'} 화면 체험 중</b><p class="small muted">${sandboxRole() === 'captain'
+      ? '내가 주장인 체험 경기가 있어요. 위쪽 <b>👑 드래프트</b> 버튼으로 팀 색 고르기·우선순위 추첨·선수 뽑기를 하고, <b>경기모드</b>에서 라운드별 포지션을 정해 보세요.'
+      : '다음 경기에서 <b>참석·불참</b>을 눌러 보고, <b>경기모드</b>에서 우리 팀 포지션·실시간 점수를, <b>경기결과</b>에서 기록을 확인해 보세요.'}</p></div>
       <a class="btn ghost sm" href="#/sched">체험 경기 보기</a></section>` : ''}
     ${cancels.map((c) => `<a class="card cancel-strip" href="#/sched"><b>${fmtDate(c.date)} 경기 취소</b>${c.cancelReason ? ` · ${esc(c.cancelReason)}` : ''}</a>`).join('')}
     ${capMd ? `<a class="card cap-strip" href="#/draft">${icon('crown')}<span><b>${fmtDate(capMd.date)} 드래프트</b>에 주장으로 참여 중이에요</span>${icon('chevron')}</a>` : ''}
@@ -119,7 +119,6 @@ export function render(root) {
         : `<section class="card">${empty('아직 끝난 경기가 없어요.')}</section>`}
     </section>`;
   root.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
-  root.querySelector('[data-sbx]')?.addEventListener('click', () => { if (confirm('데모 체험판으로 들어갈까요? 지금 기록을 이 기기에 복사해서 시험하고, 실제 기록에는 반영되지 않아요.')) enterSandbox(); });
   if (md) bindMy(root, md);
 }
 

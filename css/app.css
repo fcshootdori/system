@@ -1316,3 +1316,16 @@ input.switch:checked { background: #16a34a; } input.switch:checked::after { tran
 input.switch:disabled { opacity: .5; }
 .beta-demo { margin-bottom: 6px; }
 .lg-demo { margin-top: 10px; background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.35); }
+/* 데모 역할 고르기 */
+.role-list { display: grid; gap: 8px; }
+.role-card { display: flex; align-items: flex-start; gap: 12px; text-align: left; border: 1.5px solid var(--line); background: #fff; border-radius: 14px; padding: 12px 14px; cursor: pointer; font-family: var(--font); color: var(--ink); }
+.role-card:hover, .role-card:focus-visible { border-color: var(--navy); }
+.role-card.on { border-color: #7c3aed; background: #faf7ff; }
+.role-card .ri { font-size: 26px; line-height: 1.1; flex: none; }
+.role-card b { display: block; font-size: 16px; font-weight: 800; }
+.role-card small { display: block; font-size: 12.5px; color: var(--sub); line-height: 1.45; margin-top: 2px; }
+.demo-pick .lg-card { padding: 12px; }
+.demo-pick > p b { color: #fff; }
+.sbx-bar small { opacity: .85; margin-left: 4px; }
+.sbx-btns { display: flex; gap: 5px; flex: none; }
+.sbx-bar .sbx-btns button + button { background: rgba(255,255,255,.2); color: #fff; }

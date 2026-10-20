@@ -1,10 +1,10 @@
-import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.41';
-import { db } from '../store.js?v=0.1.41';
-import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.41';
-import { TEAM_COLORS } from '../config.js?v=0.1.41';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.41';
-import { empty, teamChip } from '../ui.js?v=0.1.41';
-import { fmtSummary } from './home.js?v=0.1.41';
+import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.42';
+import { db } from '../store.js?v=0.1.42';
+import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.42';
+import { TEAM_COLORS } from '../config.js?v=0.1.42';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.42';
+import { empty, teamChip } from '../ui.js?v=0.1.42';
+import { fmtSummary } from './home.js?v=0.1.42';
 
 export function render(root, ctx = {}) {
   const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || currentMatchday();
