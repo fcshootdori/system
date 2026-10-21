@@ -3,11 +3,11 @@
 //  - [새로 불러오기]: 바로 읽어 반영. 새 회원·비슷한 이름 짝이 있으면 먼저 확인
 //  - 자동 반영: 연결 키가 있는 기기에서 앱을 열 때 + 열어 둔 동안 30분마다
 //    (앱을 아무도 안 열어도 반영되게 하려면 GitHub Actions 자동 반영 — README 참고)
-import { db, newId } from './store.js?v=0.1.53';
-import { S, refresh, onChange } from './state.js?v=0.1.53';
-import { KNOWN_ALIASES } from './config.js?v=0.1.53';
-import { parseMemberTable, planSync, privateOf, syncSummary, norm } from './member-sheet.js?v=0.1.53';
-import { sheetApi, sheetKey, setSheetKey, fetchMemberRows } from './record-sheet.js?v=0.1.53';
+import { db, newId } from './store.js?v=0.1.54';
+import { S, refresh, onChange } from './state.js?v=0.1.54';
+import { KNOWN_ALIASES } from './config.js?v=0.1.54';
+import { parseMemberTable, planSync, privateOf, syncSummary, norm } from './member-sheet.js?v=0.1.54';
+import { sheetApi, sheetKey, setSheetKey, fetchMemberRows } from './record-sheet.js?v=0.1.54';
 
 // 연결 = 팀 설정의 통합 시트 웹 앱 주소 + 이 기기의 연결 키
 export function sheetLink() { const url = sheetApi(), key = sheetKey(); return url && key ? { url, key } : null; }
@@ -26,9 +26,9 @@ async function fetchRows() {
 S.msheet = null;
 
 // 시트를 읽어 계획만 세움 (아직 저장 안 함)
-export async function preview() {
+export async function preview(given) {
   if (!sheetLink()) throw new Error('이 기기에 통합 시트 연결 키가 없어요');
-  const rows = await fetchRows();
+  const rows = given ? given.map((r) => r.map((c) => String(c ?? ''))) : await fetchRows();
   const parsed = parseMemberTable(rows);
   const plan = planSync(parsed.records, S.members, { knownAliases: KNOWN_ALIASES });
   return { ...parsed, plan };

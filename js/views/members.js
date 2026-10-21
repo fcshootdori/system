@@ -1,17 +1,17 @@
 // 운영 > 회원 — [회원 관리 | 출석 관리]  (WD_FUTSAL 운영 회원 메뉴와 같은 구성)
 //  회원 관리: 검색 · 유형 필터 · 표에서 바로 고치기 · 명단 붙여넣기 · CSV 저장 · 여러 명 선택 처리
 //  출석 관리: 기간별 출석 횟수 · 출석률 · 최근 출석 · 연속 출석
-import { S, playedDays } from '../state.js?v=0.1.53';
-import { db, newId } from '../store.js?v=0.1.53';
-import { APP_NAME } from '../config.js?v=0.1.53';
-import { rosters } from '../domain.js?v=0.1.53';
-import { esc, toast, fmtDate, todayISO, koSort } from '../util.js?v=0.1.53';
-import { modal, empty, fitBoxes } from '../ui.js?v=0.1.53';
-import { norm } from '../cafe-parser.js?v=0.1.53';
-import { resetPin } from '../auth.js?v=0.1.53';
-import { sheetLink, setSheetLink, sheetUrl, preview, apply, needsReview, startAutoSync, autoSync, holdAuto } from '../member-sync.js?v=0.1.53';
-import { sheetApi } from '../record-sheet.js?v=0.1.53';
-import { FEE_KINDS, feeKind, isLeftGrade, nickParts, publicOf } from '../member-sheet.js?v=0.1.53';
+import { S, playedDays } from '../state.js?v=0.1.54';
+import { db, newId } from '../store.js?v=0.1.54';
+import { APP_NAME } from '../config.js?v=0.1.54';
+import { rosters } from '../domain.js?v=0.1.54';
+import { esc, toast, fmtDate, todayISO, koSort } from '../util.js?v=0.1.54';
+import { modal, empty, fitBoxes } from '../ui.js?v=0.1.54';
+import { norm } from '../cafe-parser.js?v=0.1.54';
+import { resetPin } from '../auth.js?v=0.1.54';
+import { sheetLink, setSheetLink, sheetUrl, preview, apply, needsReview, startAutoSync, autoSync, holdAuto } from '../member-sync.js?v=0.1.54';
+import { sheetApi, saveMemberRow } from '../record-sheet.js?v=0.1.54';
+import { FEE_KINDS, feeKind, isLeftGrade, nickParts, publicOf } from '../member-sheet.js?v=0.1.54';
 
 // 회원 구분 = 회원 시트 등급 (VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원), 운영진은 따로 체크
 export const isLeft = (m) => isLeftGrade(m.grade) || m.status === 'left';
@@ -204,7 +204,7 @@ function listView(body, root) {
       <th class="gap"></th>${th('login', '로그인')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
       ${list.map((r, i) => `${r.left && (i === 0 || !list[i - 1].left) ? leftDiv : ''}<tr class="${sel.has(r.id) ? 'msel' : ''} ${r.left ? 'st-row-left' : r.rest || !r.inSheet ? 'st-row-rest' : ''}">
         <td class="ck"><input type="checkbox" data-sel="${r.id}" ${sel.has(r.id) ? 'checked' : ''} aria-label="${esc(r.name)} 선택"></td>
-        <td class="stick">${r.inSheet ? `<span class="cell ro" title="닉네임은 통합 시트 회원 탭에서 고쳐 주세요">${esc(r.name)}</span>` : `<input class="cell w-name" value="${esc(r.name)}" data-cell="name" data-id="${r.id}"><small class="nosheet">시트에 없음</small>`}</td>
+        <td class="stick">${r.inSheet ? `<button type="button" class="cell ro nm-edit" data-edit="${r.id}" title="눌러서 회원 정보 고치기">${esc(r.name)}</button>` : `<input class="cell w-name" value="${esc(r.name)}" data-cell="name" data-id="${r.id}"><small class="nosheet">시트에 없음</small>`}</td>
         <td>${r.grade ? `<span class="grade g-${GRADES.indexOf(r.grade)}">${esc(r.grade)}</span>` : '-'}</td>
         <td class="ck"><input type="checkbox" class="staffck" data-staff="${r.id}" ${r.staff ? 'checked' : ''} aria-label="${esc(r.name)} 운영진"></td>
         <td>${dot(r.joined) || '-'}</td>
@@ -219,7 +219,7 @@ function listView(body, root) {
         <td class="num"><button class="attcell" data-att="${r.id}"><b>${r.att}</b>회</button></td>
         <td class="num"><div class="att-rate"><div class="att-bar"><i style="width:${r.rate}%"></i></div><span>${r.rate}%</span></div></td>
         <td class="num">${r.last ? r.last.slice(2).replace(/-/g, '.') : '-'}</td>
-        <td><button class="btn ghost danger sm" data-del="${r.id}">삭제</button></td></tr>`).join('')}
+        <td class="m-act"><button class="btn ghost sm" data-edit="${r.id}">수정</button><button class="btn ghost danger sm" data-del="${r.id}">삭제</button></td></tr>`).join('')}
       </tbody></table>`;
 
   body.innerHTML = `
@@ -284,6 +284,7 @@ function listView(body, root) {
     await db.del('members/' + m.id); toast('삭제했어요');
   }));
   body.querySelectorAll('[data-att]').forEach((b) => b.addEventListener('click', () => showDates(b.dataset.att)));
+  body.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => editMember(b.dataset.edit, root)));
   body.querySelectorAll('[data-pinreset]').forEach((b) => b.addEventListener('click', async () => {
     const m = S.members.find((x) => x.id === b.dataset.pinreset);
     if (!confirm(`${m.name} 님의 비밀번호를 초기화할까요? 다음 접속 때 새 비밀번호를 정하게 돼요. (자동 로그인된 기기도 다시 로그인해야 해요)`)) return;
@@ -342,6 +343,89 @@ async function saveCell(el) {
     const aliases = [...new Set(el.value.split(',').map((s) => s.trim()).filter(Boolean))];
     await db.set('members/' + id, { aliases }, { merge: true }); toast('별칭을 저장했어요');
   }
+}
+
+// ───────────── 회원 정보 고치기 ─────────────
+//  통합 시트 회원 탭에 있는 회원: 시트 칸(닉네임·등급·가입일자·이름·생년월일·연락처·운영진 이력·장불)은 회원 탭 그 줄을 바로 고치고
+//   → 고친 회원 탭을 다시 읽어 앱에 반영 (개인정보는 지금처럼 서버에 저장하지 않음)
+//  시트에 없는 회원: 앱에만 저장. 별칭·운영진 표시는 언제나 앱에 저장
+const SHEET_F = ['nick', 'grade', 'joined', 'name', 'birth', 'phone', 'staffV', 'staffHist', 'absent', 'reason', 'absFrom', 'absTo'];
+async function editMember(id, root) {
+  const m = S.members.find((x) => x.id === id);
+  if (!m) return;
+  const inSheet = !!m.inSheet, canSheet = inSheet && !!sheetLink();
+  if (canSheet && !S.msheet) {   // 개인정보 칸을 아직 안 읽었으면 먼저 읽기 (빈 칸으로 덮어쓰지 않게)
+    toast('통합 시트에서 회원 정보를 읽는 중…');
+    await autoSync();
+    if (!S.msheet) return toast('통합 시트를 읽지 못했어요. 잠시 뒤 다시 해 주세요.');
+  }
+  const p = S.msheet?.byId?.[id] || {};
+  const init = { nick: m.name, grade: m.grade || '', joined: m.joined || '', name: inSheet ? p.realName || '' : m.realName || '', birth: p.birth || '', phone: p.phone || '',
+    staffV: !!m.staffV, staffHist: m.staffHist || '', absent: m.absent || '', reason: p.absReason || '', absFrom: m.absFrom || '', absTo: m.absTo || '' };
+  const absOpts = [...new Set(['장불 1차', '장불 2차', ...S.members.map((x) => x.absent).filter(Boolean)])];
+  const dis = inSheet && !canSheet ? 'disabled' : '';
+  const grades = [...new Set([...GRADES, init.grade].filter(Boolean))];
+  const { el, close } = modal(`${m.name} 회원 정보`, `<form class="stack medit">
+    ${inSheet ? `<p class="medit-src">📗 통합 시트 › 회원 탭${m.sheetNo ? ` · 연번 ${esc(m.sheetNo)}` : ''}${canSheet ? ' — 저장하면 시트에도 바로 바뀌어요' : ''}</p>
+      ${canSheet ? '' : '<p class="small err">이 기기에 통합 시트 연결 키가 없어서 시트 칸은 고칠 수 없어요. 회원 관리 위쪽에서 연결 키를 넣어 주세요.</p>'}` : '<p class="medit-src">시트에 없는 회원 — 앱에만 저장돼요</p>'}
+    <div class="row"><label>닉네임<input name="nick" required value="${esc(init.nick)}" ${dis}></label>
+      ${inSheet ? `<label>등급<select name="grade" ${dis}><option value="">-</option>${grades.map((g) => `<option ${g === init.grade ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select></label>` : ''}</div>
+    <div class="row">${inSheet ? `<label>가입일자<input type="date" name="joined" value="${esc(init.joined)}" ${dis}></label>` : ''}
+      <label>이름<input name="name" value="${esc(init.name)}" ${dis} autocomplete="off"></label></div>
+    ${inSheet ? `<div class="row"><label>생년월일<input type="date" name="birth" value="${esc(init.birth)}" ${dis}></label>
+      <label>연락처<input type="tel" name="phone" value="${esc(init.phone)}" placeholder="010-0000-0000" ${dis} autocomplete="off"></label></div>
+    <fieldset class="medit-box"><legend>운영진 이력</legend>
+      <label class="inline"><input type="checkbox" name="staffV" ${init.staffV ? 'checked' : ''} ${dis}> 운영진 경력(V)</label>
+      <input name="staffHist" value="${esc(init.staffHist)}" placeholder="예: 2015 운영진" ${dis}></fieldset>
+    <fieldset class="medit-box"><legend>장기 불참</legend>
+      <div class="row"><label>장불여부<input name="absent" list="abs-opts" value="${esc(init.absent)}" placeholder="-" ${dis}></label>
+        <label>장불 사유<input name="reason" value="${esc(init.reason)}" ${dis}></label></div>
+      <datalist id="abs-opts">${absOpts.map((a) => `<option value="${esc(a)}">`).join('')}</datalist>
+      <div class="row"><label>시작일자<input type="date" name="absFrom" value="${esc(init.absFrom)}" ${dis}></label>
+        <label>해제일자<input type="date" name="absTo" value="${esc(init.absTo)}" ${dis}></label></div></fieldset>` : ''}
+    <fieldset class="medit-box app"><legend>앱 설정</legend>
+      <label>별칭 <span class="muted small">(카페 댓글에 쓰는 다른 이름 · 쉼표로 구분)</span><input name="aliases" value="${esc((m.aliases || []).join(', '))}"></label>
+      <label class="inline"><input type="checkbox" name="staff" ${isStaff(m) ? 'checked' : ''}> 운영진</label></fieldset>
+    <p class="err small" data-err hidden></p>
+    <button class="btn full" data-save>저장</button></form>`);
+  const form = el.querySelector('form'), err = el.querySelector('[data-err]');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = el.querySelector('[data-save]');
+    const v = (n) => (form[n] ? (form[n].type === 'checkbox' ? form[n].checked : form[n].value.trim()) : init[n]);
+    const nick = v('nick');
+    if (!nick) return;
+    if (nick !== m.name && taken(nick, id)) { err.hidden = false; err.textContent = '같은 닉네임(또는 별칭)의 회원이 이미 있어요'; return; }
+    const aliasesIn = [...new Set(String(v('aliases')).split(',').map((x) => x.trim()).filter(Boolean))];
+    btn.disabled = true; btn.textContent = '저장하는 중…'; err.hidden = true;
+    try {
+      const app = { staff: v('staff') };
+      let aliases = aliasesIn;
+      if (nick !== m.name) aliases = [...new Set([...aliases, m.name])];   // 예전 닉네임은 별칭으로 남겨 카페 댓글·지난 기록에서 계속 알아보게
+      aliases = aliases.filter((a) => norm(a) !== norm(nick));
+      if (inSheet) {
+        const set = {};
+        SHEET_F.forEach((f) => { if (form[f] && v(f) !== init[f]) set[f] = v(f); });
+        if (Object.keys(set).length && canSheet) {
+          const res = await saveMemberRow({ nick: m.name, no: m.sheetNo || '' }, set);
+          // 닉네임을 바꿨으면 앱 회원도 먼저 새 닉네임으로 (다시 읽을 때 같은 사람으로 이어지게)
+          await db.set('members/' + id, { ...app, aliases, ...(nick !== m.name ? { name: nick } : {}) }, { merge: true });
+          await apply(await preview(res.rows), { by: 'manual' });
+          toast(`${nick} 님 정보를 고쳤어요 · 통합 시트 회원 탭에도 반영됐어요`);
+        } else {
+          await db.set('members/' + id, { ...app, aliases }, { merge: true });
+          toast('저장했어요');
+        }
+      } else {
+        await db.set('members/' + id, { ...app, aliases, name: nick, realName: v('name') }, { merge: true });
+        toast(`${nick} 님 정보를 고쳤어요`);
+      }
+      close(); render(root);
+    } catch (x) {
+      err.hidden = false; err.textContent = x.message || '저장하지 못했어요';
+      btn.disabled = false; btn.textContent = '저장';
+    }
+  });
 }
 
 function addMember() {

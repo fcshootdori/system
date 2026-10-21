@@ -4,11 +4,11 @@
 //  · 연결 키는 운영진 기기에만 — 회원 명부(연락처 포함)를 읽고 시트에 기록을 쓰는 열쇠라서
 //  · 기록 화면: 시트 기록 + 아직 시트에 없는(또는 시트에 보낸 뒤 앱에서 고친) 경기는 Firebase 기록
 //  · 운영진 기기(연결 키 있음): 경기를 마치거나 고치면 잠시 뒤 시트로 자동으로 보냄
-import { S, refresh, memberById, onChange, setArchiveSource, reapplyArchive, today } from './state.js?v=0.1.53';
-import { inSandbox, db } from './store.js?v=0.1.53';
-import { rosters, teamColor, teamName, fmtOf, matchNumbers, momPending } from './domain.js?v=0.1.53';
-import { toItem, fromSheet } from './record-rows.js?v=0.1.53';
-import { norm } from './member-sheet.js?v=0.1.53';
+import { S, refresh, memberById, onChange, setArchiveSource, reapplyArchive, today } from './state.js?v=0.1.54';
+import { inSandbox, db } from './store.js?v=0.1.54';
+import { rosters, teamColor, teamName, fmtOf, matchNumbers, momPending } from './domain.js?v=0.1.54';
+import { toItem, fromSheet } from './record-rows.js?v=0.1.54';
+import { norm } from './member-sheet.js?v=0.1.54';
 
 const LK = 'teamapp:sheetkey', LC = 'teamapp:rec', LP = 'teamapp:recpush';
 const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); return true; } catch { return false; } }, del: (k) => { try { localStorage.removeItem(k); } catch {} } };
@@ -41,6 +41,14 @@ async function call(params, body, url = sheetApi()) {
 }
 export const readCheck = (url) => call({ action: 'records', ver: 'x' }, null, url);
 export const ping = (url, key) => call({ action: 'ping', key }, null, url);
+// 회원 탭 한 사람 줄 고치기 — 응답에 고친 뒤의 회원 탭 전체 칸이 같이 와요
+export async function saveMemberRow(find, set) {
+  try { return await call(null, { action: 'memberSave', key: sheetKey(), find, set }); }
+  catch (e) {
+    if (/알 수 없는 요청/.test(e.message)) throw new Error('통합 시트 코드가 예전 버전이에요. 운영 › 설정 › 통합 시트 › 설정 방법에서 새 코드를 붙여 넣고 새 버전으로 배포해 주세요.');
+    throw e;
+  }
+}
 export const fetchMemberRows = async () => { const j = await call({ action: 'members', key: sheetKey() }); return { rows: j.rows || [], url: j.url || '' }; };
 
 // ── 시트 기록 (모든 기기) ──

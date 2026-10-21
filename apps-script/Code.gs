@@ -593,6 +593,7 @@ function rawSave_(items) {
 //  GET  ?action=members&key=K         회원 탭 전체 칸 (운영진 기기·자동 반영만 — 연락처가 있어 키 필요)
 //  GET  ?action=ping&key=K            연결 확인
 //  POST { action:'push', key, items:[경기], del:[경기ID] }   앱에서 끝난 경기 보내기
+//  POST { action:'memberSave', key, find:{nick,no}, set:{…} }   앱에서 회원 정보 고치기 → 회원 탭 그 줄만 바꿈
 function doGet(e) {
   var q = (e && e.parameter) || {};
   try {
@@ -609,6 +610,7 @@ function doPost(e) {
     if (!b.key || b.key !== key_()) return out_({ ok: false, error: '연결 키가 맞지 않아요' });
     if (b.action === 'push') return out_(push_(b.items || [], b.del || []));
     if (b.action === 'members') return out_(members_());
+    if (b.action === 'memberSave') return out_(memberSave_(b.find || {}, b.set || {}));
     return out_({ ok: false, error: '알 수 없는 요청' });
   } catch (err) { return out_({ ok: false, error: String(err && err.message || err) }); }
 }
@@ -642,6 +644,78 @@ function members_() {
   var ss = SpreadsheetApp.getActive(), sh = ss.getSheetByName(TABS.members);
   var rows = sh && sh.getLastRow() ? sh.getRange(1, 1, sh.getLastRow(), Math.max(1, sh.getLastColumn())).getDisplayValues() : [];
   return { ok: true, rows: rows, url: ss.getUrl() + '#gid=' + (sh ? sh.getSheetId() : 0) };
+}
+// 회원 탭에서 한 사람 줄 고치기 — 머리글 이름으로 칸을 찾아 바뀐 칸만 씀 (수식 칸은 건드리지 않음)
+//  find: { nick: 지금 닉네임, no: 연번 }   set: { nick, joined, grade, name, birth, phone, staffV, staffHist, absent, reason, absFrom, absTo }
+function memberSave_(find, set) {
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    var sh = SpreadsheetApp.getActive().getSheetByName(TABS.members);
+    if (!sh || !sh.getLastRow()) return { ok: false, error: '회원 탭이 없어요' };
+    var last = sh.getLastRow(), cols = Math.max(1, sh.getLastColumn());
+    var rng = sh.getRange(1, 1, last, cols), disp = rng.getDisplayValues(), raw = rng.getValues(), fx = rng.getFormulas();
+    var hi = -1;
+    disp.forEach(function (r, i) { if (hi < 0 && r.some(function (c) { return T_(c) === '닉네임'; })) hi = i; });
+    if (hi < 0) return { ok: false, error: "회원 탭에 '닉네임' 머리글이 없어요" };
+    var H = disp[hi].map(T_);
+    var col = function (re, from) { for (var i = from || 0; i < H.length; i++) if (re.test(H[i])) return i; return -1; };
+    var c = { no: col(/^연번|^번호/), joined: col(/가입/), grade: col(/등급/), nick: col(/^닉네임/), name: col(/^이름|성명/), birth: col(/생년월일/),
+      phone: col(/연락처|전화|휴대/), absent: col(/장불\s*여부/), reason: col(/장불\s*사유/), absFrom: col(/장불\s*시작/), absTo: col(/장불\s*해제/),
+      bm: col(/생일\s*\(?\s*월/), bd: col(/생일\s*\(?\s*일/) };
+    var st1 = col(/운영진/), st2 = st1 >= 0 ? col(/운영진/, st1 + 1) : -1;
+    var row = -1, nick = T_(find.nick), no = T_(find.no);
+    for (var i = hi + 1; i < disp.length; i++) if (nick && T_(disp[i][c.nick]) === nick) { row = i; break; }
+    if (row < 0 && no && c.no >= 0) for (var k = hi + 1; k < disp.length; k++) if (T_(disp[k][c.no]).replace(/\.0+$/, '') === no) { row = k; break; }
+    if (row < 0) return { ok: false, error: '회원 탭에서 ' + (nick || no) + ' 님 줄을 찾지 못했어요' };
+    if (set.nick != null && T_(set.nick) !== T_(disp[row][c.nick])) {
+      for (var j = hi + 1; j < disp.length; j++) if (j !== row && T_(disp[j][c.nick]) === T_(set.nick)) return { ok: false, error: '회원 탭에 같은 닉네임(' + T_(set.nick) + ')이 이미 있어요' };
+    }
+    // 날짜 칸: 같은 열의 다른 칸이 날짜 값이면 날짜로, 글자면 그 모양(2017.10.02.)대로
+    var dateOut = function (ci, iso) {
+      if (!iso) return '';
+      var m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!m) return String(iso);
+      for (var r = hi + 1; r < raw.length; r++) {
+        if (raw[r][ci] instanceof Date) return new Date(+m[1], +m[2] - 1, +m[3]);
+        var d = T_(disp[r][ci]);
+        if (/^\d{4}\s*\.\s*\d{1,2}\s*\.\s*\d{1,2}/.test(d)) return "'" + m[1] + '.' + m[2] + '.' + m[3] + (/\.\s*$/.test(d) ? '.' : '');
+      }
+      return "'" + m[1] + '.' + m[2] + '.' + m[3];
+    };
+    var txt = function (v) { v = T_(v); return /^[\d+=\-.]/.test(v) ? "'" + v : v; };
+    var put = {};
+    var want = function (ci, v) { if (ci >= 0 && !fx[row][ci]) put[ci] = v; };
+    if (set.nick != null) want(c.nick, T_(set.nick));
+    if (set.grade != null) want(c.grade, T_(set.grade));
+    if (set.name != null) want(c.name, T_(set.name));
+    if (set.phone != null) want(c.phone, txt(set.phone));
+    if (set.joined != null) want(c.joined, dateOut(c.joined, set.joined));
+    if (set.birth != null) {
+      want(c.birth, dateOut(c.birth, set.birth));
+      var bm = String(set.birth).match(/^\d{4}-(\d{2})-(\d{2})$/);
+      want(c.bm, bm ? String(+bm[1]) : ''); want(c.bd, bm ? String(+bm[2]) : '');
+    }
+    if (set.absent != null) want(c.absent, T_(set.absent) || '-');
+    if (set.reason != null) want(c.reason, T_(set.reason));
+    if (set.absFrom != null) want(c.absFrom, dateOut(c.absFrom, set.absFrom));
+    if (set.absTo != null) want(c.absTo, dateOut(c.absTo, set.absTo));
+    if (set.staffV != null || set.staffHist != null) {
+      if (st2 >= 0) { if (set.staffV != null) want(st1, set.staffV ? 'V' : ''); if (set.staffHist != null) want(st2, T_(set.staffHist)); }
+      else if (st1 >= 0 && set.staffHist != null) want(st1, T_(set.staffHist));
+    }
+    var n = 0;
+    Object.keys(put).forEach(function (ci) {
+      var cur = raw[row][ci], v = put[ci];
+      var same = (cur instanceof Date && v instanceof Date) ? cur.getTime() === v.getTime() : T_(disp[row][ci]) === T_(String(v).replace(/^'/, ''));
+      if (!same) { sh.getRange(row + 1, +ci + 1).setValue(v); n++; }
+    });
+    // 맨 위 '최종업데이트' 옆 날짜를 오늘로
+    if (n) for (var t = 0; t < hi; t++) for (var u = 0; u < disp[t].length - 1; u++) if (/최종\s*업데이트/.test(disp[t][u])) {
+      if (!fx[t][u + 1]) sh.getRange(t + 1, u + 2).setValue("'" + Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy. MM. dd'));
+    }
+    SpreadsheetApp.flush();
+    var o = members_(); o.changed = n; o.row = row + 1;
+    return o;
+  } finally { lock.releaseLock(); }
 }
 function ping_() {
   var ss = SpreadsheetApp.getActive(), M = readModel_();
