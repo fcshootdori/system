@@ -1,18 +1,18 @@
 // 회원 홈 — 경기장 사진 첫 화면(다음 경기 한 줄) + 참석 카드(바로 참석·불참) + MOM 알림 + 지난 경기 카드
-import { sheetPending } from '../record-sheet.js?v=0.1.51';
-import { momAsks, momStrip } from './mom.js?v=0.1.51';
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.51';
-import { db, newId } from '../store.js?v=0.1.51';
-import { STATUS } from '../config.js?v=0.1.51';
-import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.51';
-import { icon } from '../icons.js?v=0.1.51';
-import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.51';
-import { myBox, bindMy } from './apply.js?v=0.1.51';
-import { TEAM_COLORS } from '../config.js?v=0.1.51';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.51';
-import { norm } from '../cafe-parser.js?v=0.1.51';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.51';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.51';
+import { sheetPending } from '../record-sheet.js?v=0.1.52';
+import { momAsks, momStrip } from './mom.js?v=0.1.52';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.52';
+import { db, newId } from '../store.js?v=0.1.52';
+import { STATUS } from '../config.js?v=0.1.52';
+import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.52';
+import { icon } from '../icons.js?v=0.1.52';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.52';
+import { myBox, bindMy } from './apply.js?v=0.1.52';
+import { TEAM_COLORS } from '../config.js?v=0.1.52';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.52';
+import { norm } from '../cafe-parser.js?v=0.1.52';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.52';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.52';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);
@@ -51,6 +51,15 @@ function dday(date) {
   const n = Math.round((b - a) / 864e5);
   return n === 0 ? '오늘' : n > 0 ? `D-${n}` : '지난 경기';
 }
+// 구장 이름에서 부르기 좋은 장소 이름만: "서울 어린이대공원 잔디축구장" → "어린이대공원", "보라매공원 인조잔디 축구장" → "보라매공원"
+const REGION = /^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)(특별시|광역시|특별자치시|특별자치도|시|도)?$|^\S{1,4}(시|군|구)$/;
+const FIELD = /(인조잔디|천연잔디|잔디)?(축구장|풋살장|운동장|경기장|구장)$/;
+export function placeName(venue) {
+  const ws = String(venue || '').trim().split(/\s+/).filter(Boolean);
+  while (ws.length > 1 && REGION.test(ws[0])) ws.shift();
+  const w = ws[0] || '', cut = w.replace(FIELD, '');
+  return /공원$/.test(cut) ? cut : w;   // "어린이대공원잔디축구장"은 공원까지, "효창운동장"은 그대로
+}
 // 홈 첫 화면 문구: "토요일 아침 7시, / 보라매공원에서 만나요"
 function headline(md) {
   const d = new Date(md.date + 'T00:00:00'), dow = DOW[d.getDay()];
@@ -61,7 +70,7 @@ function headline(md) {
     const part = h < 5 ? '새벽' : h < 10 ? '아침' : h < 12 ? '오전' : h < 18 ? '오후' : '저녁';
     l1 = `${dow}요일 ${part} ${h > 12 ? h - 12 : h}시${mi ? ` ${mi}분` : ''},`;
   }
-  const place = String(md.venue || '').trim().split(/\s+/)[0];
+  const place = placeName(md.venue);
   const l2 = md.cancelled ? '이 경기는 취소됐어요' : place ? `${place}에서 만나요` : '경기장에서 만나요';
   return `${esc(l1)}<br>${esc(l2)}`;
 }
