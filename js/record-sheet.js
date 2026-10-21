@@ -4,11 +4,11 @@
 //  · 연결 키는 운영진 기기에만 — 회원 명부(연락처 포함)를 읽고 시트에 기록을 쓰는 열쇠라서
 //  · 기록 화면: 시트 기록 + 아직 시트에 없는(또는 시트에 보낸 뒤 앱에서 고친) 경기는 Firebase 기록
 //  · 운영진 기기(연결 키 있음): 경기를 마치거나 고치면 잠시 뒤 시트로 자동으로 보냄
-import { S, refresh, memberById, onChange } from './state.js?v=0.1.46';
-import { inSandbox } from './store.js?v=0.1.46';
-import { rosters, teamColor, teamName, fmtOf, matchNumbers } from './domain.js?v=0.1.46';
-import { toItem, fromSheet } from './record-rows.js?v=0.1.46';
-import { norm } from './member-sheet.js?v=0.1.46';
+import { S, refresh, memberById, onChange } from './state.js?v=0.1.47';
+import { inSandbox } from './store.js?v=0.1.47';
+import { rosters, teamColor, teamName, fmtOf, matchNumbers } from './domain.js?v=0.1.47';
+import { toItem, fromSheet } from './record-rows.js?v=0.1.47';
+import { norm } from './member-sheet.js?v=0.1.47';
 
 const LK = 'teamapp:sheetkey', LC = 'teamapp:rec', LP = 'teamapp:recpush';
 const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); return true; } catch { return false; } }, del: (k) => { try { localStorage.removeItem(k); } catch {} } };
@@ -27,13 +27,14 @@ async function call(params, body, url = sheetApi()) {
   Object.entries(params || {}).forEach(([k, v]) => v != null && u.searchParams.set(k, v));
   let res;
   try { res = await fetch(u, body ? { method: 'POST', body: JSON.stringify(body), redirect: 'follow' } : { cache: 'no-store', redirect: 'follow' }); }
-  catch { throw new Error('통합 시트에 연결하지 못했어요 (인터넷 연결 또는 웹 앱 주소 확인)'); }
+  catch { throw new Error('웹 앱이 응답하지 않았어요. 보통 setup 권한 허용이 안 됐거나 배포 액세스가 \'모든 사용자\'가 아닐 때 생겨요'); }
   const txt = await res.text();
   let j;
   try { j = JSON.parse(txt); } catch { throw new Error(/<html/i.test(txt) ? "웹 앱 주소가 맞는지, 배포 '액세스: 모든 사용자'인지 확인해 주세요" : '통합 시트 응답을 읽지 못했어요'); }
   if (!j.ok) throw new Error(j.error || '통합 시트 오류');
   return j;
 }
+export const readCheck = (url) => call({ action: 'records', ver: 'x' }, null, url);
 export const ping = (url, key) => call({ action: 'ping', key }, null, url);
 export const fetchMemberRows = async () => { const j = await call({ action: 'members', key: sheetKey() }); return { rows: j.rows || [], url: j.url || '' }; };
 

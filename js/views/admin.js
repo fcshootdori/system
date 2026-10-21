@@ -1,12 +1,12 @@
-import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.46';
-import { S, me, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.46';
-import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.46';
-import { db } from '../store.js?v=0.1.46';
-import { APP_NAME, APP_VERSION, DEFAULT_TEAM } from '../config.js?v=0.1.46';
-import { sheetApi, sheetKey, setSheetKey, okApiUrl, ping, loadRecords, sheetState, pending, push, lastPush } from '../record-sheet.js?v=0.1.46';
-import { esc, toast, fileToDataUrl, todayISO, fmtDate } from '../util.js?v=0.1.46';
-import { modal, empty } from '../ui.js?v=0.1.46';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.46';
+import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.47';
+import { S, me, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.47';
+import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.47';
+import { db } from '../store.js?v=0.1.47';
+import { APP_NAME, APP_VERSION, DEFAULT_TEAM } from '../config.js?v=0.1.47';
+import { sheetApi, sheetKey, setSheetKey, okApiUrl, ping, readCheck, loadRecords, sheetState, pending, push, lastPush } from '../record-sheet.js?v=0.1.47';
+import { esc, toast, fileToDataUrl, todayISO, fmtDate } from '../util.js?v=0.1.47';
+import { modal, empty } from '../ui.js?v=0.1.47';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.47';
 
 export function render(root) { return settings(root); }
 
@@ -77,7 +77,7 @@ function settings(root) {
 const LSU = 'teamapp:sheeturl';
 const sheetOpenUrl = () => { try { return localStorage.getItem(LSU) || ''; } catch { return ''; } };
 const agoTxt = (ts) => { if (!ts) return ''; const m = Math.round((Date.now() - ts) / 60000); return m < 1 ? '방금' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : new Date(ts).toLocaleDateString('ko-KR'); };
-let sheetBusy = '', triedAt = 0;
+let sheetBusy = '', triedAt = 0, draft = null, connErr = '';   // draft: 연결 실패해도 입력한 값 유지
 function sheetCard() {
   const api = sheetApi(), key = sheetKey(), st = sheetState(), lp = lastPush();
   const pd = api && st.ver != null ? pending() : null;
@@ -89,10 +89,14 @@ function sheetCard() {
     <div class="is-st">${status}</div>
     ${inSandbox() ? '<p class="small warn-t">데모 체험판에서는 통합 시트에 보내지 않아요.</p>' : `
     <form class="stack" data-isheet>
-      <label>웹 앱 주소 <small class="muted">모든 회원 공통 — 경기 기록 읽기용</small><input name="url" value="${esc(api)}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" inputmode="url"></label>
-      <label>연결 키 <small class="muted">이 기기에만 저장 — 회원 명부 읽기·기록 보내기용</small><input name="key" type="password" value="${esc(key)}" autocomplete="off"></label>
+      <label>웹 앱 주소 <small class="muted">모든 회원 공통 — 경기 기록 읽기용</small><input name="url" value="${esc(draft ? draft.url : api)}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" inputmode="url"></label>
+      <label>연결 키 <small class="muted">이 기기에만 저장 — 회원 명부 읽기·기록 보내기용</small><input name="key" type="password" value="${esc(draft ? draft.key : key)}" autocomplete="off"></label>
       <button class="btn" ${sheetBusy ? 'disabled' : ''}>${sheetBusy === 'ping' ? '확인 중…' : '연결 확인하고 저장'}</button>
     </form>
+    ${connErr ? `<div class="is-err small"><b>연결하지 못했어요</b> — ${esc(connErr)}
+      <ul><li>Apps Script에서 <b>setup</b>을 실행해 권한 허용까지 마쳤는지 (프로젝트 설정 › 스크립트 속성에 <b>KEY</b>가 있어야 해요)</li>
+      <li>배포 › 배포 관리 › 수정(연필): 실행 <b>나</b> · 액세스 <b>모든 사용자</b> ('Google 계정이 있는 모든 사용자'가 아니에요)</li>
+      <li>웹 앱 주소 끝에 <code>?action=records</code>를 붙여 브라우저로 열었을 때 <code>{"ok":true,…}</code>가 보이는지</li></ul></div>` : ''}
     <div class="row wrap mt-s">
       ${api && key ? `<button class="btn ghost" data-pushall ${sheetBusy || !pd?.items.length ? 'disabled' : ''}>${sheetBusy === 'push' ? '보내는 중…' : `경기 기록 보내기${pd?.items.length ? ` (${pd.items.length}개)` : ''}`}</button>` : ''}
       ${sheetOpenUrl() ? `<a class="btn ghost" href="${esc(sheetOpenUrl())}" target="_blank" rel="noopener">시트 열기</a>` : ''}
@@ -110,17 +114,18 @@ function bindSheet(root) {
     const url = e.target.url.value.trim(), key = e.target.key.value.trim();
     if (url && !okApiUrl(url)) return toast('웹 앱 주소는 https://script.google.com/macros/s/…/exec 모양이에요');
     if (!url) { await db.set('meta/team', { sheetApi: '' }, { merge: true }); setSheetKey(''); toast('통합 시트 연결을 해제했어요'); return re(); }
-    sheetBusy = 'ping'; re();
+    sheetBusy = 'ping'; draft = { url, key }; connErr = ''; re();
     try {
       if (key) {
         const j = await ping(url, key);
         try { localStorage.setItem(LSU, j.url || ''); } catch {}
         setSheetKey(key);
         toast(`연결됐어요 — ${j.name} · 기록 ${j.games}경기`);
-      } else { await (await fetch(url + (url.includes('?') ? '&' : '?') + 'action=records&ver=x')).json(); setSheetKey(''); toast('저장했어요 (연결 키가 없어 기록 읽기만 해요)'); }
+      } else { await readCheck(url); setSheetKey(''); toast('저장했어요 (연결 키가 없어 기록 읽기만 해요)'); }
       if (url !== sheetApi()) await db.set('meta/team', { sheetApi: url }, { merge: true });
+      draft = null;
       await loadRecords(true);
-    } catch (err) { toast(err.message || '연결하지 못했어요'); }
+    } catch (err) { connErr = err.message || '알 수 없는 오류'; toast('통합 시트에 연결하지 못했어요'); }
     sheetBusy = ''; re();
   });
   root.querySelector('[data-pushall]')?.addEventListener('click', async (e) => {

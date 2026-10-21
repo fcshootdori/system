@@ -1,12 +1,12 @@
 // 일정 — 회원: 달력 보기 / 운영: 달력·목록에서 경기 추가·수정  (WD_FUTSAL 일정 메뉴와 같은 구성)
-import { S, go, mdPath, today, statusLabel } from '../state.js?v=0.1.46';
-import { db } from '../store.js?v=0.1.46';
-import { STATUS } from '../config.js?v=0.1.46';
-import { applicants, fmtOf, noLabel, isOpen, closeLabel } from '../domain.js?v=0.1.46';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.46';
-import { empty } from '../ui.js?v=0.1.46';
-import { editMatchday, fmtSummary, reviewCard, cancelMatchday } from './home.js?v=0.1.46';
-import { forget } from '../record-sheet.js?v=0.1.46';
+import { S, go, mdPath, today, statusLabel } from '../state.js?v=0.1.47';
+import { db } from '../store.js?v=0.1.47';
+import { STATUS } from '../config.js?v=0.1.47';
+import { applicants, fmtOf, noLabel, isOpen, closeLabel } from '../domain.js?v=0.1.47';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.47';
+import { empty } from '../ui.js?v=0.1.47';
+import { editMatchday, fmtSummary, reviewCard, cancelMatchday } from './home.js?v=0.1.47';
+import { forget } from '../record-sheet.js?v=0.1.47';
 
 let ym = null, sel = null, view = 'cal';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
