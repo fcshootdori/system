@@ -1,7 +1,7 @@
 // 경기 운영 규칙 — 경기 방식, 신청 순서, 드래프트 순번, 대진, 결과, 개인 기록
 //  승률계산기 시트와 같은 규칙: 승률 = 승 ÷ (승+패), 승점 = 승×3 + 무
-import { S, memberById, matchdayById } from './state.js?v=0.1.48';
-import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.48';
+import { S, memberById, matchdayById } from './state.js?v=0.1.49';
+import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.49';
 
 // ── 경기 방식: 팀 기본값 + 경기일별 변경값 ──
 export function fmtOf(md) {
@@ -159,6 +159,35 @@ export function dayStandings(md, games = gamesOf(md.id)) {
     else { A.d++; B.d++; A.pts++; B.pts++; }
   });
   return rows.sort((x, y) => y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf);
+}
+
+// ── MOM: 경기가 끝나면 승리 팀 주장이 자기 팀에서 1명, 무승부면 두 팀 주장이 각자 자기 팀에서 1명 ──
+//  md.momPick = { [팀 번호]: { id, by, at } }  ·  md.mom = 뽑힌 선수들 (기록·시트가 쓰는 값)
+//  2팀은 라운드 점수 합계로 승패(기록 계산과 같음), 3팀 이상은 승점 1위(동률이면 모두)
+export function momTeams(md, games = gamesOf(md.id)) {
+  const n = rosters(md).length;
+  const done = games.filter((g) => g.done);
+  if (n < 2 || !done.length) return [];
+  if (n === 2) { const t = totals(md, done); return t[0] > t[1] ? [0] : t[0] < t[1] ? [1] : [0, 1]; }
+  const st = dayStandings(md, done), top = st[0];
+  return st.filter((r) => r.pts === top.pts && (r.gf - r.ga) === (top.gf - top.ga)).map((r) => r.team).sort();
+}
+// 그 팀 MOM이 정해졌는지 (예전처럼 운영진이 md.mom에 넣은 경우도 정해진 걸로)
+export const momPicked = (md, ti) => md.momPick?.[ti]?.id || (md.mom || []).find((id) => (rosters(md)[ti] || []).includes(id)) || null;
+export const momPending = (md, games) => md.status === 'played' && !md.cancelled && momTeams(md, games).some((ti) => !momPicked(md, ti));
+// 이 사람이 MOM을 뽑을 수 있는 팀: 그 팀 주장(공동 주장 포함), 운영진은 모든 팀
+export function momTeamsFor(md, pid, operator = false, games) {
+  if (md.status !== 'played' || md.fromSheet) return [];
+  return momTeams(md, games).filter((ti) => operator || (pid && captainIds(md, ti).includes(pid)));
+}
+// 저장할 값 (db.tx 안에서): 팀 ti의 MOM을 id로 → md.mom은 MOM 팀 순서대로 다시 만듦
+export function applyMomPick(cur, ti, id, by, teams, ros) {
+  const pick = { ...(cur.momPick || {}) };
+  if (id) pick[ti] = { id, by: by || '', at: Date.now() }; else delete pick[ti];
+  const keep = (cur.mom || []).filter((x) => !teams.some((t) => (ros[t] || []).includes(x)));   // MOM 팀이 아닌 예전 값은 그대로
+  cur.momPick = pick;
+  cur.mom = [...new Set([...teams.map((t) => pick[t]?.id).filter(Boolean), ...keep])];
+  return cur;
 }
 
 // ── 개인 기록 ──

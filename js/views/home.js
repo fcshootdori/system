@@ -1,17 +1,18 @@
 // 회원 홈 — 경기장 사진 위 다음 경기 티켓(바로 참석·불참) + 지난 경기 전광판
-import { sheetPending } from '../record-sheet.js?v=0.1.48';
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.48';
-import { db, newId } from '../store.js?v=0.1.48';
-import { STATUS } from '../config.js?v=0.1.48';
-import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.48';
-import { icon } from '../icons.js?v=0.1.48';
-import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.48';
-import { myBox, bindMy } from './apply.js?v=0.1.48';
-import { TEAM_COLORS } from '../config.js?v=0.1.48';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.48';
-import { norm } from '../cafe-parser.js?v=0.1.48';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.48';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.48';
+import { sheetPending } from '../record-sheet.js?v=0.1.49';
+import { momAsks, momStrip } from './mom.js?v=0.1.49';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.49';
+import { db, newId } from '../store.js?v=0.1.49';
+import { STATUS } from '../config.js?v=0.1.49';
+import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.49';
+import { icon } from '../icons.js?v=0.1.49';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.49';
+import { myBox, bindMy } from './apply.js?v=0.1.49';
+import { TEAM_COLORS } from '../config.js?v=0.1.49';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.49';
+import { norm } from '../cafe-parser.js?v=0.1.49';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.49';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.49';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);
@@ -113,6 +114,7 @@ export function render(root) {
       : '다음 경기에서 <b>참석·불참</b>을 눌러 보고, <b>경기모드</b>에서 우리 팀 포지션·실시간 점수를, <b>경기결과</b>에서 기록을 확인해 보세요.'}</p></div>
       <a class="btn ghost sm" href="#/sched">체험 경기 보기</a></section>` : ''}
     ${cancels.map((c) => `<a class="card cancel-strip" href="#/sched"><b>${fmtDate(c.date)} 경기 취소</b>${c.cancelReason ? ` · ${esc(c.cancelReason)}` : ''}</a>`).join('')}
+    ${momAsks().map(momStrip).join('')}
     ${capMd ? `<a class="card cap-strip" href="#/draft">${icon('crown')}<span><b>${fmtDate(capMd.date)} 드래프트</b>에 주장으로 참여 중이에요</span>${icon('chevron')}</a>` : ''}
     <section class="sect">
       <div class="sect-hd"><h2>지난 경기</h2>${last ? `<small>${[noLabel(last), fmtDate(last.date)].filter(Boolean).join(' ')}</small>` : ''}</div>

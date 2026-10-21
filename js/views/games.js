@@ -1,10 +1,11 @@
-import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.48';
-import { db } from '../store.js?v=0.1.48';
-import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.48';
-import { TEAM_COLORS } from '../config.js?v=0.1.48';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.48';
-import { empty, teamChip } from '../ui.js?v=0.1.48';
-import { fmtSummary } from './home.js?v=0.1.48';
+import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.49';
+import { db } from '../store.js?v=0.1.49';
+import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.49';
+import { TEAM_COLORS } from '../config.js?v=0.1.49';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.49';
+import { empty, teamChip } from '../ui.js?v=0.1.49';
+import { fmtSummary } from './home.js?v=0.1.49';
+import { momCard, bindMom } from './mom.js?v=0.1.49';
 
 export function render(root, ctx = {}) {
   const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || currentMatchday();
@@ -35,7 +36,8 @@ export function render(root, ctx = {}) {
       ${scorersHtml(md, games)}
     </section>
     ${rosterCard(md, ros, games)}
-    ${extrasCard(md, ros, editable)}
+    ${momCard(md)}
+    ${extrasCard(md, ros, editable, !!momCard(md))}
     ${editable ? `<section class="card op"><h2>운영</h2><p class="muted small">라운드 점수·득점자는 '경기' 단계(경기모드 기록 화면)에서 기록해요.</p>
       <div class="row wrap"><button class="btn" data-finish ${games.length && games.every((g) => g.done) ? '' : 'disabled'}>경기 종료 · 기록 반영</button></div>
       ${games.length && !games.every((g) => g.done) ? '<p class="muted small">모든 라운드를 종료하면 경기를 마칠 수 있어요.</p>' : ''}</section>` : ''}
@@ -43,10 +45,11 @@ export function render(root, ctx = {}) {
     ${S.operator && md.fromSheet ? '<section class="card op"><p class="small muted">📗 통합 시트에 보관된 경기예요. 점수·득점자는 시트 <b>라운드</b> 탭, 출전·MOM·지각은 <b>출전기록</b> 탭에서 고쳐 주세요.</p></section>' : ''}`;
 
   root.querySelector('[data-finish]')?.addEventListener('click', async () => {
-    await db.set(mdPath(md.id), { status: 'played' }, { merge: true }); toast('기록에 반영했어요');
+    await db.set(mdPath(md.id), { status: 'played' }, { merge: true }); toast('경기를 마쳤어요 — 이제 승리 팀 주장이 MOM을 뽑아요');
   });
   root.querySelector('[data-unfinish]')?.addEventListener('click', () => db.set(mdPath(md.id), { status: 'teams' }, { merge: true }));
   bindExtras(root, md);
+  bindMom(root, md);
 }
 
 function scoreboard(md, games) {
@@ -83,20 +86,19 @@ function scorersHtml(md, games) {
 }
 
 // MOM · 지각 — 결과 화면에서 따로 나눠 보여 줌
-function extrasCard(md, ros, canEdit) {
+function extrasCard(md, ros, canEdit, momShown) {
   const mom = new Set(md.mom || []), late = md.late || {};
   const lateIds = Object.keys(late).filter((k) => late[k]);
   const teamOf = (id) => ros.findIndex((ids) => ids.includes(id));
   const people = (ids) => ids.map((id) => { const t = teamOf(id); return `<span class="pchip">${t >= 0 ? `<i style="background:${TEAM_COLORS.find((c) => c.key === teamColor(md, t))?.hex || '#94a3b8'}"></i>` : ''}${esc(nameOf(id, md))}</span>`; }).join('');
   if (!canEdit) {
-    return `${mom.size ? `<section class="card mom-card"><h2>🏆 MOM</h2><div class="pchips">${people([...mom])}</div></section>` : ''}
+    return `${mom.size && !momShown ? `<section class="card mom-card"><h2>🏆 MOM</h2><div class="pchips">${people([...mom])}</div></section>` : ''}
       ${lateIds.length ? `<section class="card late-card"><h2>⏰ 지각 <small>${lateIds.length}명</small></h2><div class="pchips">${people(lateIds)}</div></section>` : ''}`;
   }
   const chips = (cls, on) => ros.map((ids, ti) => `<div class="ex-team">${teamChip(md, ti)}<div class="ex-names">${ids.map((id) =>
     `<button class="xchip ${cls} ${on(id) ? 'on' : ''}" data-${cls}="${id}">${esc(nameOf(id, md))}</button>`).join('')}</div></div>`).join('');
-  return `<section class="card op mom-card"><h2>🏆 MOM <small>${mom.size ? [...mom].map((id) => esc(nameOf(id, md))).join(', ') : '선택 안 함'}</small></h2>
-      <details><summary>MOM 고르기</summary>${chips('mom', (id) => mom.has(id))}</details></section>
-    <section class="card op late-card"><h2>⏰ 지각 <small>${lateIds.length ? lateIds.map((id) => esc(nameOf(id, md))).join(', ') : '없음'}</small></h2>
+  // MOM은 경기가 끝난 뒤 승리 팀 주장이 뽑음 (경기 종료 후 이 화면의 'MOM 선정')
+  return `<section class="card op late-card"><h2>⏰ 지각 <small>${lateIds.length ? lateIds.map((id) => esc(nameOf(id, md))).join(', ') : '없음'}</small></h2>
       <details><summary>지각 고르기</summary>${chips('late', (id) => late[id])}</details></section>`;
 }
 function bindExtras(root, md) {

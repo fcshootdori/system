@@ -1,7 +1,7 @@
 // 새 버전 확인 · 확실한 새로고침
 //  홈 화면에 추가한 앱(특히 아이폰)은 예전 화면을 오래 붙잡고 있어서, 배포 후에도 새 버전이 늦게 뜰 수 있음
 //  → version.json을 캐시 없이 읽어 버전이 바뀌었으면 앱으로 돌아올 때 자동으로 새로 불러오고, 쓰는 중이면 위에 안내를 띄움
-import { APP_VERSION } from './config.js?v=0.1.48';
+import { APP_VERSION } from './config.js?v=0.1.49';
 
 // 주소에 시각을 붙여 index.html까지 캐시 없이 다시 받음 (화면 위치 #/… 는 그대로)
 export function hardReload() {

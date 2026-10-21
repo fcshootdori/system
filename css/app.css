@@ -1416,3 +1416,21 @@ body:has(.dwrap) .ver { display: none; }
 .is-arch { margin: 12px 0 0; padding: 12px; border-radius: 12px; background: var(--soft); display: grid; gap: 8px; }
 .is-arch .switch-row { margin: 0; }
 .is-arch .btn { justify-self: start; }
+
+/* MOM 선정 (승리 팀 주장) */
+.mom-pick h2 { margin-bottom: 4px; }
+.mp-lead { margin: 0 0 12px; }
+.mp-team { border: 1px solid var(--line); border-left: 4px solid var(--tc); border-radius: 12px; padding: 10px 12px; display: grid; gap: 10px; }
+.mp-team + .mp-team { margin-top: 10px; }
+.mp-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.mp-done { display: inline-flex; align-items: baseline; gap: 6px; color: #8a6100; font-size: 14px; }
+.mp-done small { color: var(--sub); font-size: 11.5px; }
+.mp-wait { font-size: 12.5px; color: var(--sub); }
+.mp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.mp-p { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 40px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font: 600 13.5px var(--font); color: var(--ink); cursor: pointer; text-align: left; }
+.mp-p span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-p i { font-style: normal; font-size: 11px; color: var(--sub); flex: none; }
+.mp-p.on { background: #fff6d6; border-color: #e0a800; box-shadow: inset 0 0 0 1px #e0a800; }
+.mp-p.on span::before { content: '★ '; color: #c48a00; }
+.mp-p:disabled { opacity: .6; }
+.mom-strip .ms-ic { font-size: 18px; }

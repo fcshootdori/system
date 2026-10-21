@@ -2,10 +2,10 @@
 //  · md.sample = true: 운영모드(또는 '이 기기에서 샘플 보기')에서만 보이고, 개인 기록·출석·회차에는 들어가지 않음
 //  · 참가자는 실제 활동 회원 중에서 무작위로 (회원 목록을 늘리지 않음, 모자라면 게스트로)
 //  · 한 번에 지우기: 샘플 경기와 그 경기 기록만 삭제
-import { S, mdPath } from './state.js?v=0.1.48';
-import { db, newId } from './store.js?v=0.1.48';
-import { draftState, rosters, teamColor, eventTeamsToTeams, closeTime } from './domain.js?v=0.1.48';
-import { shuffle, randomToken, todayISO } from './util.js?v=0.1.48';
+import { S, mdPath } from './state.js?v=0.1.49';
+import { db, newId } from './store.js?v=0.1.49';
+import { draftState, rosters, teamColor, eventTeamsToTeams, closeTime } from './domain.js?v=0.1.49';
+import { shuffle, randomToken, todayISO } from './util.js?v=0.1.49';
 
 export const SAMPLE_STAGES = [
   ['open', '신청 중', '회원이 참석·불참을 고르는 단계 (신청 마감 전 날짜)'],
@@ -96,10 +96,18 @@ export async function createSample({ stage = 'open', kind = 'normal', players = 
       [[0, sa], [1, sb]].forEach(([t, n]) => { for (let k = 0; k < n; k++) { const who = real2(ros[t])[rnd(real2(ros[t]).length)]; if (who) goals[who] = (goals[who] || 0) + 1; } });
       games.push({ matchdayId: id, date: md.date, order: r, round: r + 1, a: 0, b: 1, sa, sb, goals, og: {}, done: true });
     }
-    const tot = games.reduce((a, g) => [a[0] + g.sa, a[1] + g.sb], [0, 0]);
+    let tot = games.reduce((a, g) => [a[0] + g.sa, a[1] + g.sb], [0, 0]);
+    // 주장 체험: 내 팀이 이기게 하고 MOM은 비워 둠 → 승리 팀 주장으로 MOM 뽑기를 해 볼 수 있음
+    const myT = meAs === 'captain' && me ? ros.findIndex((x) => x.includes(me)) : -1;
+    if (myT >= 0 && tot[myT] <= tot[1 - myT]) {
+      const g = games[games.length - 1], add = tot[1 - myT] - tot[myT] + 1, who = real2(ros[myT])[0];
+      if (myT === 0) g.sa += add; else g.sb += add;
+      if (who) g.goals[who] = (g.goals[who] || 0) + add;
+      tot = games.reduce((a, x) => [a[0] + x.sa, a[1] + x.sb], [0, 0]);
+    }
     const win = tot[0] >= tot[1] ? 0 : 1;
     const scorers = Object.entries(games.reduce((m, g) => { Object.entries(g.goals).forEach(([k, v]) => { m[k] = (m[k] || 0) + v; }); return m; }, {})).sort((a, b) => b[1] - a[1]);
-    md.mom = [scorers.find(([k]) => ros[win].includes(k))?.[0] || real2(ros[win])[0]].filter(Boolean);
+    md.mom = myT >= 0 ? [] : [scorers.find(([k]) => ros[win].includes(k))?.[0] || real2(ros[win])[0]].filter(Boolean);
     const lateOne = real2(ros[1 - win])[rnd(real2(ros[1 - win]).length)];
     if (lateOne) md.late = { [lateOne]: true };
     md.status = 'played';
