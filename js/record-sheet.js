@@ -4,11 +4,11 @@
 //  · 연결 키는 운영진 기기에만 — 회원 명부(연락처 포함)를 읽고 시트에 기록을 쓰는 열쇠라서
 //  · 기록 화면: 시트 기록 + 아직 시트에 없는(또는 시트에 보낸 뒤 앱에서 고친) 경기는 Firebase 기록
 //  · 운영진 기기(연결 키 있음): 경기를 마치거나 고치면 잠시 뒤 시트로 자동으로 보냄
-import { S, refresh, memberById, onChange } from './state.js?v=0.1.47';
-import { inSandbox } from './store.js?v=0.1.47';
-import { rosters, teamColor, teamName, fmtOf, matchNumbers } from './domain.js?v=0.1.47';
-import { toItem, fromSheet } from './record-rows.js?v=0.1.47';
-import { norm } from './member-sheet.js?v=0.1.47';
+import { S, refresh, memberById, onChange, setArchiveSource, reapplyArchive, today } from './state.js?v=0.1.48';
+import { inSandbox, db } from './store.js?v=0.1.48';
+import { rosters, teamColor, teamName, fmtOf, matchNumbers } from './domain.js?v=0.1.48';
+import { toItem, fromSheet } from './record-rows.js?v=0.1.48';
+import { norm } from './member-sheet.js?v=0.1.48';
 
 const LK = 'teamapp:sheetkey', LC = 'teamapp:rec', LP = 'teamapp:recpush';
 const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); return true; } catch { return false; } }, del: (k) => { try { localStorage.removeItem(k); } catch {} } };
@@ -18,6 +18,11 @@ export const sheetApi = () => String(S.team.sheetApi || '').trim();
 export const sheetKey = () => ls.get(LK) || '';
 export const setSheetKey = (k) => (k ? ls.set(LK, String(k).trim()) : ls.del(LK));
 export const canPush = () => !!(sheetApi() && sheetKey() && !inSandbox());
+// Firebase 정리: 끝난 지 ARCHIVE_DAYS일 지난 경기는 시트에 옮긴 걸 확인한 뒤 Firebase에서 지움 (시트 '앱원본' 탭에 원본 보관)
+export const ARCHIVE_DAYS = 3;
+export const archiveOn = () => S.team.archive !== false;
+// 아직 시트 기록을 한 번도 못 받은 기기 (지난 경기 '불러오는 중' 표시용)
+export const sheetPending = () => !!sheetApi() && !(R && R.api === sheetApi());
 export const okApiUrl = (u) => /^https:\/\/script\.google(usercontent)?\.com\/.+/.test(String(u || '').trim());
 
 // ── 요청 ──
@@ -54,10 +59,10 @@ export function loadRecords(force = false) {
     try {
       const j = await call({ action: 'records', ver: R?.ver || '' });
       if (j.same && R) { R.at = Date.now(); }
-      else { R = { api, ver: j.ver, at: Date.now(), data: { games: j.games || [], rounds: j.rounds || [], players: j.players || [] } }; built = null; refresh(); }
+      else { R = { api, ver: j.ver, at: Date.now(), data: { games: j.games || [], rounds: j.rounds || [], players: j.players || [], raw: j.raw || [] } }; built = null; reapplyArchive(); }
       ls.set(LC, JSON.stringify(R));
       lastErr = '';
-    } catch (e) { lastErr = e.message; console.warn('통합 시트 기록', e); }
+    } catch (e) { lastErr = e.message; console.warn('통합 시트 기록', e); refresh(); }
     finally { loading = null; }
     return R;
   })();
@@ -93,10 +98,10 @@ function helpers() {
     plainName: (id, md) => memberById(id)?.name || md?.guests?.[id]?.name || '',
   };
 }
-export const gamesOfMd = (id) => S.games.filter((g) => g.matchdayId === id);
+export const gamesOfMd = (id) => S.fbGames.filter((g) => g.matchdayId === id);
 // 시트에 넣을 경기: 끝난(played) 2팀 경기 (샘플·취소 제외, 끝난 라운드가 있는 것)
-export const archivable = (md) => md && !md.sample && !md.cancelled && md.status === 'played' && rosters(md).length >= 2
-  && S.games.some((g) => g.matchdayId === md.id && g.done);
+export const archivable = (md) => md && !md.fromSheet && !md.sample && !md.cancelled && md.status === 'played' && rosters(md).length >= 2
+  && S.fbGames.some((g) => g.matchdayId === md.id && g.done);
 export function appItem(md, h = helpers()) { return toItem(md, gamesOfMd(md.id), h); }
 
 // 기록 화면용: 시트 기록 + Firebase 기록 합치기
@@ -106,12 +111,12 @@ export function appItem(md, h = helpers()) { return toItem(md, gamesOfMd(md.id),
 let mergeMemo = { k: null, v: null };
 export function mergedRecords(appDays) {
   const sb = sheetBuilt();
-  const k = [S.allMatchdays, S.matchdays, S.games, sb, S.members.length];
+  const k = [S.allMatchdays, S.fbGames, sb, S.members.length];
   if (mergeMemo.k && mergeMemo.k.every((x, i) => x === k[i])) return mergeMemo.v;
   const app = appDays();
   let v;
   if (!sb) {
-    const gBy = groupGames(S.games);
+    const gBy = groupGames(S.fbGames);
     v = { days: app, gamesOf: (id) => gBy.get(id) || [], sheet: false };
   } else {
     const h = helpers(), inSheet = new Set(sb.mds.map((m) => m.id));
@@ -121,7 +126,7 @@ export function mergedRecords(appDays) {
       return !!sh && appItem(m, h).hash !== sh;
     }).map((m) => m.id));
     const days = [...sb.mds.filter((m) => !useApp.has(m.id)), ...app.filter((m) => useApp.has(m.id))];
-    const gBy = groupGames([...sb.games.filter((g) => !useApp.has(g.matchdayId)), ...S.games.filter((g) => useApp.has(g.matchdayId))]);
+    const gBy = groupGames([...sb.games.filter((g) => !useApp.has(g.matchdayId)), ...S.fbGames.filter((g) => useApp.has(g.matchdayId))]);
     v = { days, gamesOf: (id) => gBy.get(id) || [], sheet: true };
   }
   mergeMemo = { k, v };
@@ -138,10 +143,36 @@ export function pending() {
   if (!sheetApi()) return { items: [], total: 0 };
   const sb = sheetBuilt();
   const h = helpers();
-  const items = (S.allMatchdays || S.matchdays).filter(archivable).map((md) => appItem(md, h))
-    .filter((it) => !sb || sb.hash.get(it.id) !== it.hash);
+  const raw = new Set(R?.data?.raw || []);
+  const items = (S.allMatchdays || S.matchdays).filter(archivable).map((md) => withRaw(appItem(md, h), md))
+    .filter((it) => !sb || sb.hash.get(it.id) !== it.hash || (archiveOn() && !raw.has(it.id)));
   return { items, total: (S.allMatchdays || S.matchdays).filter(archivable).length };
 }
+// Firebase에서 지우기 전에 시트에 남겨 두는 원본 (경기일 문서 + 라운드 문서 그대로)
+function withRaw(it, md) {
+  const strip = ({ id, ...rest }) => rest;
+  it.raw = JSON.stringify({ v: 1, id: md.id, md: strip(md), games: gamesOfMd(md.id).map((g) => ({ id: g.id, ...strip(g) })) });
+  return it;
+}
+const cutoff = () => { const d = new Date(today() + 'T00:00:00'); d.setDate(d.getDate() - ARCHIVE_DAYS); return d.toISOString().slice(0, 10); };
+// Firebase에서 지워도 되는 경기: 시트 기록이 앱과 같고(지문) 원본도 시트에 있고, 경기일이 ARCHIVE_DAYS일 지난 것
+export function archiveReady() {
+  const sb = sheetBuilt();
+  if (!sb || !R?.data?.raw) return [];
+  const raw = new Set(R.data.raw), cut = cutoff(), h = helpers();
+  return (S.allMatchdays || []).filter((md) => archivable(md) && (md.date || '') <= cut && raw.has(md.id) && sb.hash.get(md.id) === appItem(md, h).hash);
+}
+export async function cleanup(list = archiveReady()) {
+  if (!canPush() || !archiveOn()) return 0;
+  let n = 0;
+  for (const md of list.slice(0, 120)) {
+    await Promise.all(gamesOfMd(md.id).map((g) => db.del('games/' + g.id)));
+    await db.del('matchdays/' + md.id); n++;
+  }
+  if (n) ls.set(LP + ':clean', JSON.stringify({ at: Date.now(), n }));
+  return n;
+}
+export const lastClean = () => { try { return JSON.parse(ls.get(LP + ':clean') || 'null'); } catch { return null; } };
 export const lastPush = () => { try { return JSON.parse(ls.get(LP) || 'null'); } catch { return null; } };
 export async function push(items, del = [], onProgress) {
   if (!canPush()) throw new Error('이 기기에 통합 시트 연결 키가 없어요');
@@ -174,9 +205,13 @@ async function autoPush() {
     if (!R) return;
     const { items } = pending();
     if (items.length && items.length <= AUTO_MAX) await push(items);
+    if (!items.length || items.length <= AUTO_MAX) { const n = await cleanup(); if (n) console.info(`Firebase 정리: 지난 경기 ${n}개를 시트로 옮겼어요`); }
   } catch (e) { console.warn('통합 시트 자동 보내기', e); }
   finally { busy = false; }
 }
+// 시트에 보관된 지난 경기를 앱 화면(일정·지난 경기·출석·회차)에 읽기 전용으로 보여 줌
+setArchiveSource(() => { const sb = sheetBuilt(); return sb ? { mds: sb.mds, games: sb.games } : null; });
+
 export function startRecordSync() {
   if (inSandbox()) return;
   let started = false;

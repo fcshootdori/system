@@ -1,12 +1,12 @@
 // 일정 — 회원: 달력 보기 / 운영: 달력·목록에서 경기 추가·수정  (WD_FUTSAL 일정 메뉴와 같은 구성)
-import { S, go, mdPath, today, statusLabel } from '../state.js?v=0.1.47';
-import { db } from '../store.js?v=0.1.47';
-import { STATUS } from '../config.js?v=0.1.47';
-import { applicants, fmtOf, noLabel, isOpen, closeLabel } from '../domain.js?v=0.1.47';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.47';
-import { empty } from '../ui.js?v=0.1.47';
-import { editMatchday, fmtSummary, reviewCard, cancelMatchday } from './home.js?v=0.1.47';
-import { forget } from '../record-sheet.js?v=0.1.47';
+import { S, go, mdPath, today, statusLabel } from '../state.js?v=0.1.48';
+import { db } from '../store.js?v=0.1.48';
+import { STATUS } from '../config.js?v=0.1.48';
+import { applicants, fmtOf, noLabel, isOpen, closeLabel } from '../domain.js?v=0.1.48';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.48';
+import { empty } from '../ui.js?v=0.1.48';
+import { editMatchday, fmtSummary, reviewCard, cancelMatchday } from './home.js?v=0.1.48';
+import { forget } from '../record-sheet.js?v=0.1.48';
 
 let ym = null, sel = null, view = 'cal';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
@@ -40,11 +40,12 @@ export function render(root, { sub }) {
   if (op && view === 'list') {
     const all = [...S.matchdays].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     root.innerHTML = head + `<section class="card"><p class="muted small">줄을 누르면 수정할 수 있어요.</p><div class="tbl-wrap vfit" data-key="plan"><table class="tbl plan"><thead><tr><th>회차</th><th>날짜</th><th>시간</th><th>장소</th><th>상태</th><th>참가</th></tr></thead><tbody>
-      ${all.map((m) => `<tr data-edit="${m.id}"><td>${noLabel(m) || '-'}</td><td class="nm">${fmtDate(m.date)}</td><td>${esc(m.time || '')}</td><td>${esc(m.venue || '')}</td>
-        <td><span class="st st-${kindOf(m)}">${statusLabel(m, STATUS)}</span></td><td>${m.source === 'sheet' ? '-' : applicants(m).filter((a) => !a.wait).length}</td></tr>`).join('')}
+      ${all.map((m) => `<tr ${m.fromSheet ? `data-view-md="${m.id}" title="통합 시트에 보관된 경기"` : `data-edit="${m.id}"`}><td>${noLabel(m) || '-'}</td><td class="nm">${fmtDate(m.date)}</td><td>${esc(m.time || '')}</td><td>${esc(m.venue || '')}</td>
+        <td><span class="st st-${kindOf(m)}">${statusLabel(m, STATUS)}</span></td><td>${m.source === 'sheet' || m.fromSheet ? (m.fromSheet ? '📗' : '-') : applicants(m).filter((a) => !a.wait).length}</td></tr>`).join('')}
       </tbody></table></div></section>`;
     bindCommon(root);
     root.querySelectorAll('[data-edit]').forEach((tr) => tr.addEventListener('click', () => editMatchday(S.matchdays.find((m) => m.id === tr.dataset.edit))));
+    root.querySelectorAll('[data-view-md]').forEach((tr) => tr.addEventListener('click', () => go('games/' + tr.dataset.viewMd)));
     return;
   }
 
@@ -95,7 +96,8 @@ function detail(md, op) {
     ${md.note ? `<p class="note">${esc(md.note)}</p>` : ''}
     ${played ? reviewCard(md) : `<p class="small">참가 ${n}명${f.minPlayers ? ` / 최소 ${f.minPlayers}명` : ''}${f.capacity ? ` · 정원 ${f.capacity}명` : ''}${isOpen(md) && closeLabel(md) && !md.reopened ? ` · ⏰ ${closeLabel(md)}` : ''}</p>`}
     <div class="row wrap">
-      ${op ? `<button class="btn" data-run>경기 메뉴로</button><button class="btn ghost" data-editmd>수정</button>${played ? '' : '<button class="btn ghost danger" data-cancel>경기 취소</button>'}<button class="btn ghost danger" data-delmd>삭제</button>`
+      ${op && md.fromSheet ? `<a class="btn" href="#/games/${md.id}">결과 보기</a><span class="small muted">📗 통합 시트에 보관된 경기 — 고칠 내용은 시트에서</span>`
+        : op ? `<button class="btn" data-run>경기 메뉴로</button><button class="btn ghost" data-editmd>수정</button>${played ? '' : '<button class="btn ghost danger" data-cancel>경기 취소</button>'}<button class="btn ghost danger" data-delmd>삭제</button>`
         : played ? `<a class="btn" href="#/games/${md.id}">결과 보기</a>`
         : isOpen(md) ? `<button class="btn" data-go="apply/${md.id}">참가 신청</button>` : `<button class="btn ghost" data-go="apply/${md.id}">신청 명단</button>`}
     </div>`;

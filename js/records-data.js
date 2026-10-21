@@ -2,9 +2,9 @@
 //  · 경기 = 경기일 하나 (5라운드 합산 1경기). 핑크(A) vs 블루(B)
 //  · 승점 = 승×3 + 무, 승률 = 승 ÷ (승+패) (무승부 제외)
 //  · 승률·득점·MOM 순위는 RANK_MIN 경기 이상 출전한 회원끼리, 승점·출전 순위는 출전한 회원 전체
-import { S, memberById, nameOf } from './state.js?v=0.1.47';
-import { rosters, resultUnits, totals, teamColor, teamName, fmtOf } from './domain.js?v=0.1.47';
-import { mergedRecords } from './record-sheet.js?v=0.1.47';
+import { S, memberById, nameOf } from './state.js?v=0.1.48';
+import { rosters, resultUnits, totals, teamColor, teamName, fmtOf } from './domain.js?v=0.1.48';
+import { mergedRecords } from './record-sheet.js?v=0.1.48';
 
 export const RANK_MIN = 15;
 export const TEAM = { A: '핑크', B: '블루' };
@@ -32,7 +32,7 @@ function sides(md) {
 //  끝난 경기 기록은 통합 시트에서, 아직 시트에 없는 경기(진행 중·방금 끝남)는 Firebase에서 (record-sheet.js)
 function appDays() {
   const sbx = localStorage.getItem('teamapp:sandbox') === '1';   // 데모 체험판에서는 체험 경기 결과도 기록에 넣어 확인
-  const done = new Set(S.games.filter((g) => g.done).map((g) => g.matchdayId));
+  const done = new Set(S.fbGames.filter((g) => g.done).map((g) => g.matchdayId));
   return (S.allMatchdays || S.matchdays).filter((m) => (!m.sample || sbx) && !m.cancelled && rosters(m).length >= 2 && done.has(m.id));
 }
 const recs = () => mergedRecords(appDays);

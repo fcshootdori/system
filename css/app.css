@@ -1413,3 +1413,6 @@ body:has(.dwrap) .ver { display: none; }
 .is-err { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; line-height: 1.55; }
 .is-err ul { margin: 6px 0 0; padding-left: 18px; }
 .is-err code { background: #fff; padding: 0 4px; border-radius: 4px; font-size: 12px; }
+.is-arch { margin: 12px 0 0; padding: 12px; border-radius: 12px; background: var(--soft); display: grid; gap: 8px; }
+.is-arch .switch-row { margin: 0; }
+.is-arch .btn { justify-self: start; }

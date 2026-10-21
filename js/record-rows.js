@@ -128,10 +128,11 @@ export function fromSheet(data, h) {
       }));
       games.push({ id: `${id}~r${i}`, matchdayId: id, date, order: i, round: num(r[1]) || i + 1, a: 0, b: 1, sa: num(r[2]), sb: num(r[3]), goals, og, done: true, fromSheet: true });
     });
-    const no = T(row[2]);
+    const no = T(row[2]), recNo = /^\d+$/.test(no) ? +no : null, source = /승률/.test(T(row[7])) ? 'sheet' : T(row[7]) === '앱' ? 'app' : 'manual';
     mds.push({
-      id, date, status: 'played', event: false, fromSheet: true, recNo: /^\d+$/.test(no) ? +no : null,
-      source: /승률/.test(T(row[7])) ? 'sheet' : T(row[7]) === '앱' ? 'app' : 'manual',
+      id, date, status: 'played', event: false, fromSheet: true, recNo,
+      // 회차: 시트 회차를 그대로 기준 회차로 (비어 있으면 회차에서 제외된 경기)
+      no: recNo, noExclude: recNo == null && source !== 'sheet', source,
       format: { teams: 2, scoring, rounds: Math.max(1, rs.length) },
       teams: [{ color: 'pink', members: teams[0] }, { color: 'blue', members: teams[1] }],
       teamNames: [T(row[4]) || null, T(row[5]) || null], mom, late, guests,

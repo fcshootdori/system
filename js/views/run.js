@@ -1,17 +1,17 @@
 // 운영 > 경기 — 위쪽에 선택한 경기(날짜·장소·상태, 이전/이후)와 단계 막대를 고정하고
 //  신청 → 주장 → 드래프트 → 팀 확정 → 경기 → 결과 단계 화면을 보여 줌 (WD_FUTSAL 경기 메뉴와 같은 구성)
-import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state.js?v=0.1.47';
-import { db } from '../store.js?v=0.1.47';
-import { STATUS } from '../config.js?v=0.1.47';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.47';
-import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel, teamEvent, capEvent } from '../domain.js?v=0.1.47';
-import { colorChip } from '../ui.js?v=0.1.47';
-import { empty } from '../ui.js?v=0.1.47';
-import { fmtSummary, editMatchday, cancelMatchday } from './home.js?v=0.1.47';
-import * as apply from './apply.js?v=0.1.47';
-import * as draft from './draft.js?v=0.1.47';
-import * as games from './games.js?v=0.1.47';
-import * as matchmode from './matchmode.js?v=0.1.47';
+import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state.js?v=0.1.48';
+import { db } from '../store.js?v=0.1.48';
+import { STATUS } from '../config.js?v=0.1.48';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.48';
+import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel, teamEvent, capEvent } from '../domain.js?v=0.1.48';
+import { colorChip } from '../ui.js?v=0.1.48';
+import { empty } from '../ui.js?v=0.1.48';
+import { fmtSummary, editMatchday, cancelMatchday } from './home.js?v=0.1.48';
+import * as apply from './apply.js?v=0.1.48';
+import * as draft from './draft.js?v=0.1.48';
+import * as games from './games.js?v=0.1.48';
+import * as matchmode from './matchmode.js?v=0.1.48';
 
 const STAGES = [['apply', '신청'], ['captain', '주장'], ['draft', '드래프트'], ['teams', '팀 확정'], ['games', '경기'], ['result', '결과']];
 const idx = (k) => STAGES.findIndex(([s]) => s === k);
@@ -30,8 +30,9 @@ export function stageOf(md) {
 }
 
 export function render(root) {
-  const list = [...S.matchdays].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const list = S.matchdays.filter((m) => !m.fromSheet).sort((a, b) => (a.date || '').localeCompare(b.date || ''));   // 시트에 보관된 지난 경기는 운영 메뉴에서 빼고(읽기 전용) 일정·경기결과에서 봄
   let md = matchdayById(S.sel);
+  if (md?.fromSheet) md = null;
   if (!md) { md = nextMatchday() || list[list.length - 1] || null; S.sel = md?.id || null; S.step = null; }
   if (!md) {
     root.innerHTML = `<section class="card center">${empty('경기가 없어요. 일정 메뉴에서 먼저 추가하세요.')}<button class="btn" data-add>＋ 경기 추가</button></section>`;

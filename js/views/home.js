@@ -1,16 +1,17 @@
 // 회원 홈 — 경기장 사진 위 다음 경기 티켓(바로 참석·불참) + 지난 경기 전광판
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.47';
-import { db, newId } from '../store.js?v=0.1.47';
-import { STATUS } from '../config.js?v=0.1.47';
-import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.47';
-import { icon } from '../icons.js?v=0.1.47';
-import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.47';
-import { myBox, bindMy } from './apply.js?v=0.1.47';
-import { TEAM_COLORS } from '../config.js?v=0.1.47';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.47';
-import { norm } from '../cafe-parser.js?v=0.1.47';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.47';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.47';
+import { sheetPending } from '../record-sheet.js?v=0.1.48';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.48';
+import { db, newId } from '../store.js?v=0.1.48';
+import { STATUS } from '../config.js?v=0.1.48';
+import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.48';
+import { icon } from '../icons.js?v=0.1.48';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.48';
+import { myBox, bindMy } from './apply.js?v=0.1.48';
+import { TEAM_COLORS } from '../config.js?v=0.1.48';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.48';
+import { norm } from '../cafe-parser.js?v=0.1.48';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.48';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.48';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);
@@ -116,7 +117,7 @@ export function render(root) {
     <section class="sect">
       <div class="sect-hd"><h2>지난 경기</h2>${last ? `<small>${[noLabel(last), fmtDate(last.date)].filter(Boolean).join(' ')}</small>` : ''}</div>
       ${last ? `<a class="card review" href="#/games/${last.id}">${reviewCard(last)}<span class="more">결과 자세히 ${icon('chevron')}</span></a>`
-        : `<section class="card">${empty('아직 끝난 경기가 없어요.')}</section>`}
+        : `<section class="card">${empty(sheetPending() ? '지난 경기를 불러오는 중이에요…' : '아직 끝난 경기가 없어요.')}</section>`}
     </section>`;
   root.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
   if (md) bindMy(root, md);

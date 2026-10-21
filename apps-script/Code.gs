@@ -25,6 +25,7 @@
 
 var APP_NAME = '슛도리';
 var TABS = { members: '회원', games: '경기', rounds: '라운드', players: '출전기록', stats: '개인기록', guide: '안내' };
+var RAW_TAB = '앱원본';   // 앱(Firebase)에서 지우기 전에 남겨 두는 경기 원본 (숨김 탭)
 var RANK_MIN = 15;
 
 // 탭 칸 — 회색(auto) 칸은 시트가 다시 계산할 때 덮어씁니다
@@ -113,6 +114,7 @@ function guideTab_(ss) {
     ['  앱에서 같은 경기를 다시 고치면(예: MOM 수정) 그 경기 줄은 앱 기록으로 다시 바뀌어요.'],
     ['  경기ID는 앱과 짝을 맞추는 칸이라 바꾸지 마세요. 새 경기를 시트에 직접 적을 땐 겹치지 않는 아무 ID(예: m20261024)를 쓰면 돼요.'],
     ['  이 시트는 공유하지 마세요(회원 연락처가 있어요). 앱은 연결 키로만 회원 명부를 읽어요.'],
+    ['  끝난 지 3일 지난 경기는 앱 서버(Firebase)에서 지워져요. 기록은 이 시트가 기준이고, 신청자·드래프트까지 담긴 원본은 숨김 탭 앱원본에 남아요.'],
   ];
   sh.clear();
   sh.getRange(1, 1, lines.length, 1).setValues(lines);
@@ -162,6 +164,7 @@ function styleAll(quiet) {
   var ss = SpreadsheetApp.getActive();
   ss.getSheets().forEach(function (sh) {
     var n = sh.getName();
+    if (n === RAW_TAB) return;
     try {
       if (n === TABS.members) styleMembers_(sh);
       else if (n === TABS.guide) styleGuide_(sh, sh.getLastRow());
@@ -547,6 +550,44 @@ function hourly() {
   if (PropertiesService.getScriptProperties().getProperty('DIRTY') === '1') rebuild();
 }
 
+// ── 앱 원본 보관 (숨김 탭 '앱원본') ──
+//  앱은 끝난 지 며칠 지난 경기를 Firebase에서 지워 가볍게 유지해요. 지우기 전에 경기일 문서와 라운드 문서를 그대로 여기 남겨 둬요
+//  (신청자·주장·드래프트·포지션까지). 한 칸에 다 안 들어가면 옆 칸으로 나눠 적어요
+function rawSheet_() {
+  var ss = SpreadsheetApp.getActive(), sh = ss.getSheetByName(RAW_TAB);
+  if (!sh) {
+    sh = ss.insertSheet(RAW_TAB, ss.getSheets().length);
+    sh.getRange(1, 1, sh.getMaxRows(), Math.max(10, sh.getMaxColumns())).setNumberFormat('@');
+    sh.getRange(1, 1, 1, 4).setValues([['경기ID', '날짜', '보관 시각', '원본(JSON, 길면 오른쪽 칸으로 이어짐)']]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    try { sh.hideSheet(); } catch (e) {}
+  }
+  return sh;
+}
+function rawIds_() {
+  var sh = SpreadsheetApp.getActive().getSheetByName(RAW_TAB);
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 1).getDisplayValues().map(function (r) { return T_(r[0]); }).filter(String);
+}
+function rawSave_(items) {
+  var withRaw = items.filter(function (it) { return it.raw; });
+  if (!withRaw.length) return;
+  var sh = rawSheet_(), now = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm');
+  var ids = rawIds_();
+  withRaw.forEach(function (it) {
+    var s = String(it.raw), parts = [];
+    for (var i = 0; i < s.length; i += 45000) parts.push(s.slice(i, i + 45000));
+    var row = [T_(it.id), iso_(it.date), now].concat(parts);
+    var at = ids.indexOf(T_(it.id)), r;
+    if (at >= 0) r = at + 2; else { ids.push(T_(it.id)); r = ids.length + 1; }
+    if (sh.getMaxColumns() < row.length) sh.insertColumnsAfter(sh.getMaxColumns(), row.length - sh.getMaxColumns());
+    if (sh.getMaxRows() < r) sh.insertRowsAfter(sh.getMaxRows(), 100);
+    var w = Math.max(row.length, sh.getLastColumn());
+    while (row.length < w) row.push('');
+    sh.getRange(r, 1, 1, w).setNumberFormat('@').setValues([row]);
+  });
+}
+
 // ───────────────────────── 앱 연결 (웹 앱) ─────────────────────────
 //  GET  ?action=records[&ver=N]       경기 기록 (누구나 — 앱 기록 화면). ver가 같으면 { same: true }
 //  GET  ?action=members&key=K         회원 탭 전체 칸 (운영진 기기·자동 반영만 — 연락처가 있어 키 필요)
@@ -584,6 +625,7 @@ function records_(ver) {
     games: M.games.map(function (g) { return [g.id, g.date, g.no, g.kind, g.nameA, g.nameB, g.scoring, g.src, g.hash]; }),
     rounds: M.rounds.map(function (r) { return [r.id, r.r, r.a, r.b, r.ga, r.gb]; }),
     players: M.players.map(function (p) { return [p.id, p.mid, p.name, p.team, p.mom ? 1 : 0, p.late ? 1 : 0]; }),
+    raw: rawIds_(),
   };
   cachePut_(cache, 'rec' + cur, JSON.stringify(o));
   return o;
@@ -622,6 +664,7 @@ function push_(items, del) {
       (it.rounds || []).forEach(function (r) { M.rounds.push({ id: T_(it.id), r: N_(r.r), a: N_(r.a), b: N_(r.b), ga: T_(r.ga), gb: T_(r.gb) }); });
       (it.players || []).forEach(function (p) { M.players.push({ id: T_(it.id), name: T_(p.name), team: T_(p.team) === '블루' ? '블루' : '핑크', mom: !!p.mom, late: !!p.late, mid: T_(p.mid) }); });
     });
+    rawSave_(items);
     writeModel_(M);
     return { ok: true, ver: PropertiesService.getScriptProperties().getProperty('VER'), games: M.games.length, saved: items.length, removed: del.length };
   } finally { lock.releaseLock(); }

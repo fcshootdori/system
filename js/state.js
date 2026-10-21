@@ -1,13 +1,14 @@
 // 앱 전역 상태 — 저장소를 구독해 화면이 항상 최신 데이터를 보도록 함
-import { db } from './store.js?v=0.1.47';
-import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.47';
-import { byName } from './util.js?v=0.1.47';
+import { db } from './store.js?v=0.1.48';
+import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.48';
+import { byName } from './util.js?v=0.1.48';
 
 export const S = {
   team: { ...DEFAULT_TEAM },
   members: [],
   matchdays: [],
-  games: [],
+  games: [],      // Firebase 라운드 + 통합 시트에 보관된 지난 경기 라운드 (fbGames = Firebase만)
+  fbGames: [],
   ready: false,
   operator: sessionStorage.getItem('teamapp:op') === '1',
   captainToken: null,
@@ -49,15 +50,30 @@ export function startSync() {
     S.allMatchdays = list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
     applySampleFilter(); emit();
   });
-  db.watchCol('games', (list) => { S.games = list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); emit(); });
+  db.watchCol('games', (list) => { S.fbGames = list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); applySampleFilter(); emit(); });
 }
+
+// 통합 시트에 보관된 지난 경기 (Firebase에서는 지운 것) — 읽기 전용으로 S.matchdays · S.games에 끼워 넣음
+//  그래서 일정 · 홈 '지난 경기' · 경기 결과 화면 · 출석 · 회차가 예전처럼 그대로 보임 (md.fromSheet = true)
+let archiveSrc = null;
+export function setArchiveSource(fn) { archiveSrc = fn; applySampleFilter(); emit(); }
+export const reapplyArchive = () => { applySampleFilter(); emit(); };
 
 // 베타 테스트 샘플 경기(md.sample): 운영모드이거나 '이 기기에서 샘플 보기'를 켠 기기에서만 보임. 기록·출석·회차에는 들어가지 않음
 export const samplesOnDevice = () => { try { return localStorage.getItem('teamapp:samples') === '1'; } catch { return false; } };
 export const samplesVisible = () => S.operator || localStorage.getItem('teamapp:sandbox') === '1' || samplesOnDevice();
 export function applySampleFilter() {
   const all = S.allMatchdays || [];
-  S.matchdays = samplesVisible() ? all : all.filter((m) => !m.sample);
+  const vis = samplesVisible() ? all : all.filter((m) => !m.sample);
+  const fbG = S.fbGames || [];
+  const ar = archiveSrc && S.allMatchdays ? archiveSrc() : null;
+  if (ar?.mds?.length) {
+    const have = new Set(all.map((m) => m.id));
+    const extra = ar.mds.filter((m) => !have.has(m.id));
+    const ids = new Set(extra.map((m) => m.id));
+    S.matchdays = [...vis, ...extra].sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
+    S.games = [...fbG, ...ar.games.filter((g) => ids.has(g.matchdayId))];
+  } else { S.matchdays = vis; S.games = fbG; }
 }
 export function setSamplesOnDevice(on) { try { on ? localStorage.setItem('teamapp:samples', '1') : localStorage.removeItem('teamapp:samples'); } catch {} applySampleFilter(); emit(); }
 

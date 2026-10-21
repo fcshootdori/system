@@ -1,12 +1,12 @@
-import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.47';
-import { S, me, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.47';
-import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.47';
-import { db } from '../store.js?v=0.1.47';
-import { APP_NAME, APP_VERSION, DEFAULT_TEAM } from '../config.js?v=0.1.47';
-import { sheetApi, sheetKey, setSheetKey, okApiUrl, ping, readCheck, loadRecords, sheetState, pending, push, lastPush } from '../record-sheet.js?v=0.1.47';
-import { esc, toast, fileToDataUrl, todayISO, fmtDate } from '../util.js?v=0.1.47';
-import { modal, empty } from '../ui.js?v=0.1.47';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.47';
+import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.48';
+import { S, me, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.48';
+import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.48';
+import { db } from '../store.js?v=0.1.48';
+import { APP_NAME, APP_VERSION, DEFAULT_TEAM } from '../config.js?v=0.1.48';
+import { sheetApi, sheetKey, setSheetKey, okApiUrl, ping, readCheck, loadRecords, sheetState, pending, push, lastPush, archiveOn, archiveReady, cleanup, lastClean, ARCHIVE_DAYS } from '../record-sheet.js?v=0.1.48';
+import { esc, toast, fileToDataUrl, todayISO, fmtDate } from '../util.js?v=0.1.48';
+import { modal, empty } from '../ui.js?v=0.1.48';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.48';
 
 export function render(root) { return settings(root); }
 
@@ -97,6 +97,7 @@ function sheetCard() {
       <ul><li>Apps Script에서 <b>setup</b>을 실행해 권한 허용까지 마쳤는지 (프로젝트 설정 › 스크립트 속성에 <b>KEY</b>가 있어야 해요)</li>
       <li>배포 › 배포 관리 › 수정(연필): 실행 <b>나</b> · 액세스 <b>모든 사용자</b> ('Google 계정이 있는 모든 사용자'가 아니에요)</li>
       <li>웹 앱 주소 끝에 <code>?action=records</code>를 붙여 브라우저로 열었을 때 <code>{"ok":true,…}</code>가 보이는지</li></ul></div>` : ''}
+    ${api ? archiveBox(pd) : ''}
     <div class="row wrap mt-s">
       ${api && key ? `<button class="btn ghost" data-pushall ${sheetBusy || !pd?.items.length ? 'disabled' : ''}>${sheetBusy === 'push' ? '보내는 중…' : `경기 기록 보내기${pd?.items.length ? ` (${pd.items.length}개)` : ''}`}</button>` : ''}
       ${sheetOpenUrl() ? `<a class="btn ghost" href="${esc(sheetOpenUrl())}" target="_blank" rel="noopener">시트 열기</a>` : ''}
@@ -104,6 +105,17 @@ function sheetCard() {
     </div>
     <div data-isout></div>`}
   </section>`;
+}
+// Firebase 가볍게: 끝난 지 며칠 지난 경기는 시트로 옮긴 걸 확인하고 Firebase에서 지움
+function archiveBox(pd) {
+  const fb = (S.allMatchdays || []).filter((m) => m.status === 'played' && !m.sample).length;
+  const ready = sheetState().ver != null ? archiveReady().length : 0, lc = lastClean();
+  return `<div class="is-arch">
+    <label class="switch-row"><span><b>Firebase 가볍게 쓰기</b><small class="muted">끝난 지 ${ARCHIVE_DAYS}일 지난 경기는 통합 시트에 옮겨진 걸 확인한 뒤 Firebase에서 지워요. 앱 화면(일정·지난 경기·경기결과·출석)에는 시트 기록으로 그대로 보이고, 신청자·드래프트까지 담긴 원본은 시트 숨김 탭 <b>앱원본</b>에 남아요.</small></span>
+      <input type="checkbox" class="switch" data-archon ${archiveOn() ? 'checked' : ''}></label>
+    <p class="small muted">Firebase에 남은 끝난 경기 <b>${fb}</b>개${ready ? ` · 정리할 수 있는 경기 <b>${ready}</b>개` : ''}${pd?.items.length ? ` · 먼저 시트로 보낼 경기 ${pd.items.length}개` : ''}${lc ? ` · 마지막 정리 ${agoTxt(lc.at)} (${lc.n}개)` : ''}</p>
+    ${archiveOn() && ready && sheetKey() ? `<button class="btn ghost sm" data-cleanup ${sheetBusy ? 'disabled' : ''}>${sheetBusy === 'clean' ? '정리 중…' : `지금 정리하기 (${ready}개)`}</button>` : ''}
+  </div>`;
 }
 function bindSheet(root) {
   const re = () => { if (root.isConnected) settings(root); };
@@ -141,6 +153,16 @@ function bindSheet(root) {
     sheetBusy = ''; re();
   });
   root.querySelector('[data-isguide]')?.addEventListener('click', sheetGuide);
+  root.querySelector('[data-archon]')?.addEventListener('change', async (e) => {
+    await db.set('meta/team', { archive: e.target.checked }, { merge: true });
+    toast(e.target.checked ? `끝난 지 ${ARCHIVE_DAYS}일 지난 경기는 Firebase에서 정리해요` : 'Firebase 정리를 멈췄어요');
+  });
+  root.querySelector('[data-cleanup]')?.addEventListener('click', async () => {
+    sheetBusy = 'clean'; re();
+    try { await loadRecords(true); const n = await cleanup(); toast(n ? `지난 경기 ${n}개를 Firebase에서 정리했어요 (시트에 보관됨)` : '정리할 경기가 없어요'); }
+    catch (err) { toast(err.message || '정리하지 못했어요'); }
+    sheetBusy = ''; re();
+  });
 }
 function sheetGuide() {
   const { el } = modal('통합 시트 설정 방법', `<ol class="steps-ol small">

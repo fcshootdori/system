@@ -1,10 +1,10 @@
-import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.47';
-import { db } from '../store.js?v=0.1.47';
-import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.47';
-import { TEAM_COLORS } from '../config.js?v=0.1.47';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.47';
-import { empty, teamChip } from '../ui.js?v=0.1.47';
-import { fmtSummary } from './home.js?v=0.1.47';
+import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.48';
+import { db } from '../store.js?v=0.1.48';
+import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.48';
+import { TEAM_COLORS } from '../config.js?v=0.1.48';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.48';
+import { empty, teamChip } from '../ui.js?v=0.1.48';
+import { fmtSummary } from './home.js?v=0.1.48';
 
 export function render(root, ctx = {}) {
   const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || currentMatchday();
@@ -12,12 +12,12 @@ export function render(root, ctx = {}) {
   const f = fmtOf(md);
   const ros = rosters(md);
   const games = S.games.filter((g) => g.matchdayId === md.id);
-  const head = ctx.embedded ? '' : `${ctx.live ? '' : '<a class="back" href="#/results">‹ 경기결과</a>'}<section class="card"><div class="eyebrow">${esc(md.venue || '')}${md.source === 'sheet' ? ' 승률계산기 기록' : ''}</div>
+  const head = ctx.embedded ? '' : `${ctx.live ? '' : '<a class="back" href="#/results">‹ 경기결과</a>'}<section class="card"><div class="eyebrow">${esc(md.venue || '')}${md.source === 'sheet' ? ' 승률계산기 기록' : md.fromSheet ? ' 통합 시트 기록' : ''}</div>
     <h1>${noLabel(md) ? noLabel(md) + ' · ' : ''}${fmtDate(md.date)} 경기</h1><p class="muted small">${esc(fmtSummary(md))}</p></section>`;
   if (!md.teams?.length) {
     root.innerHTML = head + `<section class="card">${empty('팀이 확정되면 경기 결과를 기록할 수 있어요.')}</section>`; return;
   }
-  const editable = S.operator && md.status !== 'played';
+  const editable = S.operator && md.status !== 'played' && !md.fromSheet;
   const sum = f.scoring === 'sum';
 
   root.innerHTML = head + `
@@ -39,7 +39,8 @@ export function render(root, ctx = {}) {
     ${editable ? `<section class="card op"><h2>운영</h2><p class="muted small">라운드 점수·득점자는 '경기' 단계(경기모드 기록 화면)에서 기록해요.</p>
       <div class="row wrap"><button class="btn" data-finish ${games.length && games.every((g) => g.done) ? '' : 'disabled'}>경기 종료 · 기록 반영</button></div>
       ${games.length && !games.every((g) => g.done) ? '<p class="muted small">모든 라운드를 종료하면 경기를 마칠 수 있어요.</p>' : ''}</section>` : ''}
-    ${S.operator && md.status === 'played' ? `<section class="card op"><button class="btn ghost" data-unfinish>결과 다시 수정하기</button></section>` : ''}`;
+    ${S.operator && md.status === 'played' && !md.fromSheet ? `<section class="card op"><button class="btn ghost" data-unfinish>결과 다시 수정하기</button></section>` : ''}
+    ${S.operator && md.fromSheet ? '<section class="card op"><p class="small muted">📗 통합 시트에 보관된 경기예요. 점수·득점자는 시트 <b>라운드</b> 탭, 출전·MOM·지각은 <b>출전기록</b> 탭에서 고쳐 주세요.</p></section>' : ''}`;
 
   root.querySelector('[data-finish]')?.addEventListener('click', async () => {
     await db.set(mdPath(md.id), { status: 'played' }, { merge: true }); toast('기록에 반영했어요');

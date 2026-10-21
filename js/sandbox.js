@@ -4,14 +4,14 @@
 //    체험판에서 한 일은 이 기기에만 남고 서버·실제 기록에는 전혀 반영되지 않음. 역할은 체험 중에도 바꿀 수 있음
 //  · 데모에서 나가기(실제 앱으로)는 운영진 비밀번호를 넣어야만 가능 → 나가면 실제 운영모드로 접속
 //    운영진이 실제 운영모드 › 설정에서 '베타 데모 기능'을 끄면, 회원 기기도 다음에 열 때 자동으로 실제 앱으로 돌아옴
-import { S, me, onChange, setOperator } from './state.js?v=0.1.47';
-import { db, SANDBOX_KEY, inSandbox } from './store.js?v=0.1.47';
-import { FIREBASE } from './config.js?v=0.1.47';
-import { createSample, clearSamples } from './sample.js?v=0.1.47';
-import { hardReload } from './update.js?v=0.1.47';
-import { saveSession, loadSession, isRemembered } from './auth.js?v=0.1.47';
-import { modal } from './ui.js?v=0.1.47';
-import { esc, toast } from './util.js?v=0.1.47';
+import { S, me, onChange, setOperator } from './state.js?v=0.1.48';
+import { db, SANDBOX_KEY, inSandbox } from './store.js?v=0.1.48';
+import { FIREBASE } from './config.js?v=0.1.48';
+import { createSample, clearSamples } from './sample.js?v=0.1.48';
+import { hardReload } from './update.js?v=0.1.48';
+import { saveSession, loadSession, isRemembered } from './auth.js?v=0.1.48';
+import { modal } from './ui.js?v=0.1.48';
+import { esc, toast } from './util.js?v=0.1.48';
 
 export { inSandbox };
 export const DEMO_PIN = '0000';   // 체험판 안의 운영진 비밀번호 (체험용)
@@ -32,7 +32,7 @@ export function enterSandbox(role = 'member') {
   data['meta/team'] = { ...strip(S.team), operatorPin: DEMO_PIN, betaDemo: true };
   S.members.forEach((m) => { data['members/' + m.id] = strip(m); });
   (S.allMatchdays || S.matchdays).filter((m) => !m.sample).forEach((m) => { data['matchdays/' + m.id] = strip(m); });
-  S.games.filter((g) => !String(g.matchdayId).startsWith('sample_')).forEach((g) => { data['games/' + g.id] = strip(g); });
+  S.fbGames.filter((g) => !String(g.matchdayId).startsWith('sample_')).forEach((g) => { data['games/' + g.id] = strip(g); });
   // 체험할 회원: 로그인한 회원 그대로, 아니면 활동 회원 중 한 명
   const live = loadSession();
   const pool = S.members.filter((m) => m.active !== false && m.inSheet !== false && !/탈퇴/.test(m.grade || ''));
