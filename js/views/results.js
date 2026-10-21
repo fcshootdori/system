@@ -2,11 +2,12 @@
 //  · 경기 결과: 핑크 vs 블루 시즌 전적 · 시즌 흐름(막대를 누르면 그 경기) · 경기 카드(MOM·득점·라운드·출전 명단)
 //  · 전체 순위: 부문별 1위 · 기준별 순위(승점·승률·득점·MOM·출전) · 순위 산정 전 회원
 //  · 개인 기록: 선수 카드 · 시즌 출전 칸 · 팀 평균과 비교 · 전체 경기 기록
-import { S, me } from '../state.js?v=0.1.45';
-import { esc } from '../util.js?v=0.1.45';
-import { icon } from '../icons.js?v=0.1.45';
-import { noLabel } from '../domain.js?v=0.1.45';
-import { buildDB, seasons, METRIC, RANK_MIN, TEAM, RES, pctTxt, ko, sortedBy } from '../records-data.js?v=0.1.45';
+import { S, me, matchdayById } from '../state.js?v=0.1.46';
+import { esc } from '../util.js?v=0.1.46';
+import { icon } from '../icons.js?v=0.1.46';
+import { noLabel } from '../domain.js?v=0.1.46';
+import { sheetState, loadRecords } from '../record-sheet.js?v=0.1.46';
+import { buildDB, fromSheet, seasons, METRIC, RANK_MIN, TEAM, RES, pctTxt, ko, sortedBy } from '../records-data.js?v=0.1.46';
 
 const st = { tab: 'games', season: null, sort: 'pts', q: '', rankLimit: 10, selGame: null, showAll: false, who: null, meSel: null, meSelFor: null, meAll: false };
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
@@ -19,7 +20,7 @@ function fmtD(s) {
   const y = +m[1], mo = +m[2], d = +m[3];
   return { short: `${mo}.${d}`, long: `${mo}월 ${d}일 (${WD[new Date(y, mo - 1, d).getDay()]})`, m: mo, ok: true };
 }
-const gLabel = (g) => noLabel(g.md) || '';
+const gLabel = (g) => (g.md.fromSheet ? (g.md.recNo != null ? `${g.md.recNo}회` : '') : noLabel(g.md) || '');
 const tname = (g, t) => g.names?.[t] || `${TEAM[t]}팀`;
 function bar3(parts) {
   const tot = parts.reduce((s, p) => s + p.v, 0) || 1;
@@ -35,6 +36,7 @@ function monthLabels(G) {
 export function open({ player, tab } = {}) { if (player) { st.who = player; st.tab = 'me'; } else if (tab) st.tab = tab; }
 
 export function render(root) {
+  loadRecords();   // 1분 넘게 지났으면 통합 시트에서 새 기록 확인 (바뀐 게 있을 때만 다시 그림)
   const ss = seasons();
   if (!st.season || !ss.includes(st.season)) st.season = ss[0] || String(new Date().getFullYear());
   const DB = buildDB(st.season);
@@ -48,6 +50,7 @@ export function render(root) {
     <nav class="r-tabs" role="tablist">${[['games', 'ball', '경기 결과'], ['rank', 'trophy', '전체 순위'], ['me', 'user', '개인 기록']].map(([k, i, l]) =>
       `<button type="button" role="tab" data-rtab="${k}" aria-selected="${st.tab === k}">${ic(i)}${l}</button>`).join('')}</nav>
     <div class="r-view" data-rv></div>
+    ${fromSheet() ? `<p class="r-src">📗 통합 시트 기록${sheetState().at ? ` · ${new Date(sheetState().at).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })} 확인` : ''} · 진행 중인 경기는 앱 기록</p>` : ''}
   </div>`;
   const box = root.querySelector('[data-rv]');
   const draw = () => {
@@ -82,7 +85,7 @@ function gameCard(DB, g, opts = {}) {
       ${scorers.length ? `<div>${ic('ball', 'sm')}<span>${scorers.join(' · ')}</span></div>` : ''}</div>` : ''}
     ${ps.length ? `<div class="g-more">${ic('users', 'xs')}<span class="o">출전 명단 보기</span><span class="c">명단 접기</span>${ic('chevron', 'xs rot')}</div>` : '<div style="height:14px"></div>'}
   </summary>${ps.length ? `<div class="r-lineups">${team('A')}${team('B')}</div>
-    <a class="r-detail" href="#/games/${g.id}">라운드별 기록 자세히 ${ic('chevron', 'xs')}</a>` : ''}</details>`;
+    ${matchdayById(g.id) ? `<a class="r-detail" href="#/games/${g.id}">라운드별 기록 자세히 ${ic('chevron', 'xs')}</a>` : ''}` : ''}</details>`;
 }
 
 function gamesView(DB) {

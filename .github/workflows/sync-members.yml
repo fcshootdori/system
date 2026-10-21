@@ -1,7 +1,7 @@
-# 회원현황 구글 시트 → 앱 회원 정보 자동 반영 (3시간마다 + 수동 실행)
+# 통합 시트 › 회원 탭 → 앱 회원 정보 자동 반영 (3시간마다 + 수동 실행)
 #  준비: 저장소 Settings → Secrets and variables → Actions → New repository secret
-#        이름 MEMBER_SHEET_ID, 값 = 회원 시트 주소(또는 ID)
-name: 회원 시트 자동 반영
+#        이름 SHEET_API_KEY, 값 = 통합 시트 연결 키 (시트 메뉴 슛도리 › 앱 연결 정보)
+name: 통합 시트 회원 자동 반영
 on:
   schedule:
     - cron: '7 */3 * * *'
@@ -19,5 +19,5 @@ jobs:
           node-version: 22
       - run: node scripts/sync-members.mjs
         env:
-          MEMBER_SHEET_ID: ${{ secrets.MEMBER_SHEET_ID }}
-          MEMBER_SHEET_GID: ${{ secrets.MEMBER_SHEET_GID }}
+          SHEET_API_KEY: ${{ secrets.SHEET_API_KEY }}
+          SHEET_API_URL: ${{ secrets.SHEET_API_URL }}

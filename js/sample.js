@@ -2,10 +2,10 @@
 //  · md.sample = true: 운영모드(또는 '이 기기에서 샘플 보기')에서만 보이고, 개인 기록·출석·회차에는 들어가지 않음
 //  · 참가자는 실제 활동 회원 중에서 무작위로 (회원 목록을 늘리지 않음, 모자라면 게스트로)
 //  · 한 번에 지우기: 샘플 경기와 그 경기 기록만 삭제
-import { S, mdPath } from './state.js?v=0.1.45';
-import { db, newId } from './store.js?v=0.1.45';
-import { draftState, rosters, teamColor, eventTeamsToTeams, closeTime } from './domain.js?v=0.1.45';
-import { shuffle, randomToken, todayISO } from './util.js?v=0.1.45';
+import { S, mdPath } from './state.js?v=0.1.46';
+import { db, newId } from './store.js?v=0.1.46';
+import { draftState, rosters, teamColor, eventTeamsToTeams, closeTime } from './domain.js?v=0.1.46';
+import { shuffle, randomToken, todayISO } from './util.js?v=0.1.46';
 
 export const SAMPLE_STAGES = [
   ['open', '신청 중', '회원이 참석·불참을 고르는 단계 (신청 마감 전 날짜)'],

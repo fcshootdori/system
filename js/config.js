@@ -7,7 +7,7 @@
 //    경기 방식은 경기일마다 따로 바꿀 수도 있습니다 (경기일 수정 화면).
 // ─────────────────────────────────────────────────────────────
 export const APP_NAME = 'SHOOTDORI';
-export const APP_VERSION = '0.1.45';
+export const APP_VERSION = '0.1.46';
 
 // Firebase 프로젝트: fcshootdori (웹 앱 설정값 — 공개되어도 되는 값이며, 보안은 Firestore 규칙으로 지킴)
 export const FIREBASE = {
@@ -42,7 +42,6 @@ export const DEFAULT_TEAM = {
   cafeUrl: '',
   betaDemo: true,              // 베타 데모 기능: 회원 '데모 체험'(이 기기에만 복사한 체험판) · 샘플 경기 — 운영모드 › 설정에서 켜고 끔
   cafeImport: true,            // 카페 댓글로 참석 받기 (정식 서비스 전 임시 기능 — 설정에서 끄면 앱 신청만 사용)
-  legacySheet: { id: '1A6L2YeHQslEo9s5Pxg13xTupShrQodrysk8IZ1hckbQ' }, // 승률계산기
 };
 
 // 이벤트 경기 (팀이 미리 정해져 있고, 팀원이 그 팀 안에서 참석·불참을 고르는 경기)

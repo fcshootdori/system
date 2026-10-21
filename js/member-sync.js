@@ -1,52 +1,34 @@
-// 회원현황 구글 시트 → 앱 회원 정보 반영 (브라우저)
-//  - 시트 주소는 운영진 기기에만 저장 (공개 저장소·서버에 남기지 않음 — 시트에 연락처가 있어서)
+// 통합 시트 › 회원 탭 → 앱 회원 정보 반영 (브라우저)
+//  - 통합 시트는 공유하지 않고, 운영진 기기에 넣은 연결 키로만 회원 탭을 읽음 (시트에 연락처가 있어서)
 //  - [새로 불러오기]: 바로 읽어 반영. 새 회원·비슷한 이름 짝이 있으면 먼저 확인
-//  - 자동 반영: 시트 주소가 저장된 기기에서 앱을 열 때 + 열어 둔 동안 30분마다
+//  - 자동 반영: 연결 키가 있는 기기에서 앱을 열 때 + 열어 둔 동안 30분마다
 //    (앱을 아무도 안 열어도 반영되게 하려면 GitHub Actions 자동 반영 — README 참고)
-import { db, newId } from './store.js?v=0.1.45';
-import { S, refresh } from './state.js?v=0.1.45';
-import { KNOWN_ALIASES } from './config.js?v=0.1.45';
-import { parseCSV, parseMemberTable, planSync, privateOf, syncSummary, norm } from './member-sheet.js?v=0.1.45';
+import { db, newId } from './store.js?v=0.1.46';
+import { S, refresh, onChange } from './state.js?v=0.1.46';
+import { KNOWN_ALIASES } from './config.js?v=0.1.46';
+import { parseMemberTable, planSync, privateOf, syncSummary, norm } from './member-sheet.js?v=0.1.46';
+import { sheetApi, sheetKey, setSheetKey, fetchMemberRows } from './record-sheet.js?v=0.1.46';
 
-const LS = 'teamapp:msheet';
-export function sheetLink() { try { return JSON.parse(localStorage.getItem(LS)) || null; } catch { return null; } }
-export function setSheetLink(v) { try { v ? localStorage.setItem(LS, JSON.stringify(v)) : localStorage.removeItem(LS); } catch {} }
-export function parseLink(s) {
-  const t = String(s || '').trim();
-  const id = (t.match(/\/d\/([a-zA-Z0-9_-]{20,})/) || t.match(/^([a-zA-Z0-9_-]{30,})$/) || [])[1];
-  if (!id) return null;
-  const gid = (t.match(/[#?&]gid=(\d+)/) || [])[1] || '';
-  return { id, gid };
-}
-export const sheetUrl = (l) => `https://docs.google.com/spreadsheets/d/${l.id}/edit${l.gid ? '#gid=' + l.gid : ''}`;
+// 연결 = 팀 설정의 통합 시트 웹 앱 주소 + 이 기기의 연결 키
+export function sheetLink() { const url = sheetApi(), key = sheetKey(); return url && key ? { url, key } : null; }
+export function setSheetLink(v) { setSheetKey(v?.key || ''); }
+const memo = { url: '' };
+export const sheetUrl = () => memo.url || '';
 
-async function fetchRows(l) {
-  const urls = [
-    `https://docs.google.com/spreadsheets/d/${l.id}/export?format=csv&gid=${l.gid || 0}`,
-    `https://docs.google.com/spreadsheets/d/${l.id}/gviz/tq?tqx=out:csv&headers=0${l.gid ? '&gid=' + l.gid : ''}`,
-  ];
-  let last;
-  for (const u of urls) {
-    try {
-      const res = await fetch(u, { cache: 'no-store' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const txt = await res.text();
-      if (/^\s*</.test(txt)) throw new Error('공유 설정');
-      const rows = parseCSV(txt);
-      if (rows.some((r) => r.includes('닉네임'))) return rows;
-      last = new Error("'닉네임' 머리글이 없어요");
-    } catch (e) { last = e; }
-  }
-  throw new Error(`회원 시트를 읽지 못했어요 (${last?.message || '연결 실패'}). 시트 공유가 '링크가 있는 모든 사용자 · 뷰어'인지, 주소가 회원현황 탭인지 확인해 주세요.`);
+async function fetchRows() {
+  const { rows, url } = await fetchMemberRows();
+  if (url) memo.url = url;
+  if (!rows.some((r) => r.some((c) => String(c).trim() === '닉네임'))) throw new Error("통합 시트 회원 탭에 '닉네임' 머리글이 없어요. 시트 메뉴 슛도리 › 예전 회원 명부 가져오기를 먼저 해 주세요.");
+  return rows.map((r) => r.map((c) => String(c ?? '')));
 }
 
 // 운영진 기기 메모리에만 두는 개인정보 { at, byId: { 회원ID: { realName, birth, phone, absReason, bMonth, bDay, fees } }, updated }
 S.msheet = null;
 
 // 시트를 읽어 계획만 세움 (아직 저장 안 함)
-export async function preview(l = sheetLink()) {
-  if (!l) throw new Error('회원 시트 주소가 없어요');
-  const rows = await fetchRows(l);
+export async function preview() {
+  if (!sheetLink()) throw new Error('이 기기에 통합 시트 연결 키가 없어요');
+  const rows = await fetchRows();
   const parsed = parseMemberTable(rows);
   const plan = planSync(parsed.records, S.members, { knownAliases: KNOWN_ALIASES });
   return { ...parsed, plan };
@@ -108,9 +90,11 @@ export async function autoSync() {
   })();
   return running;
 }
+let waiting = null;
 export function startAutoSync() {
   clearInterval(timer);
-  if (!sheetLink()) return;
+  // 팀 설정(통합 시트 주소)은 앱이 열린 뒤에 들어오므로, 연결이 생기면 그때 시작
+  if (!sheetLink()) { if (!waiting) waiting = onChange(() => { if (sheetLink()) { waiting(); waiting = null; startAutoSync(); } }); return; }
   const kick = () => { if (S.members.length) autoSync(); else setTimeout(kick, 1500); };
   kick();
   timer = setInterval(autoSync, 30 * 60e3);

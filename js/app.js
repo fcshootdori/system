@@ -3,33 +3,34 @@
 //   · 일반 회원: 홈 · 일정 · ⚽경기모드 · 경기결과 · 내 정보
 //   · 운영모드: 일정 · 경기 · 공지 · 회원 · 설정
 //   · 주장: 오른쪽 위 👑 드래프트 버튼으로 입장
-import { APP_NAME, APP_VERSION } from './config.js?v=0.1.45';
-import { initStore, db } from './store.js?v=0.1.45';
-import { initPullRefresh } from './ptr.js?v=0.1.45';
-import { startUpdateCheck } from './update.js?v=0.1.45';
-import { lockZoom } from './nozoom.js?v=0.1.45';
-import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.45';
-import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go } from './state.js?v=0.1.45';
-import { esc, toast } from './util.js?v=0.1.45';
-import { modal, fitBoxes } from './ui.js?v=0.1.45';
-import { icon } from './icons.js?v=0.1.45';
+import { APP_NAME, APP_VERSION } from './config.js?v=0.1.46';
+import { initStore, db } from './store.js?v=0.1.46';
+import { initPullRefresh } from './ptr.js?v=0.1.46';
+import { startUpdateCheck } from './update.js?v=0.1.46';
+import { lockZoom } from './nozoom.js?v=0.1.46';
+import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.46';
+import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go } from './state.js?v=0.1.46';
+import { esc, toast } from './util.js?v=0.1.46';
+import { modal, fitBoxes } from './ui.js?v=0.1.46';
+import { icon } from './icons.js?v=0.1.46';
 
-import * as home from './views/home.js?v=0.1.45';
-import * as schedule from './views/schedule.js?v=0.1.45';
-import * as matchmode from './views/matchmode.js?v=0.1.45';
-import * as results from './views/results.js?v=0.1.45';
-import * as myinfo from './views/me.js?v=0.1.45';
-import * as apply from './views/apply.js?v=0.1.45';
-import * as draft from './views/draft.js?v=0.1.45';
-import * as games from './views/games.js?v=0.1.45';
-import * as run from './views/run.js?v=0.1.45';
-import * as notice from './views/notice.js?v=0.1.45';
-import * as admin from './views/admin.js?v=0.1.45';
-import * as membersView from './views/members.js?v=0.1.45';
-import * as loginView from './views/login.js?v=0.1.45';
-import { loadSession, saveSession, verify } from './auth.js?v=0.1.45';
-import { startAutoSync } from './member-sync.js?v=0.1.45';
-import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.45';
+import * as home from './views/home.js?v=0.1.46';
+import * as schedule from './views/schedule.js?v=0.1.46';
+import * as matchmode from './views/matchmode.js?v=0.1.46';
+import * as results from './views/results.js?v=0.1.46';
+import * as myinfo from './views/me.js?v=0.1.46';
+import * as apply from './views/apply.js?v=0.1.46';
+import * as draft from './views/draft.js?v=0.1.46';
+import * as games from './views/games.js?v=0.1.46';
+import * as run from './views/run.js?v=0.1.46';
+import * as notice from './views/notice.js?v=0.1.46';
+import * as admin from './views/admin.js?v=0.1.46';
+import * as membersView from './views/members.js?v=0.1.46';
+import * as loginView from './views/login.js?v=0.1.46';
+import { loadSession, saveSession, verify } from './auth.js?v=0.1.46';
+import { startAutoSync } from './member-sync.js?v=0.1.46';
+import { startRecordSync } from './record-sheet.js?v=0.1.46';
+import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.46';
 
 const MEMBER_TABS = [['home', '홈', 'home'], ['sched', '일정', 'calendar'], ['mm', '경기모드', 'ball'], ['results', '경기결과', 'board'], ['me', '내 정보', 'user']];
 const OP_TABS = [['plan', '일정', 'calendar'], ['run', '경기 운영', 'whistle'], ['notice', '공지', 'megaphone'], ['members', '회원', 'users'], ['settings', '설정', 'gear']];
@@ -173,7 +174,8 @@ window.addEventListener('error', (ev) => { if (ev?.error) { console.error(ev.err
   lockZoom();
   startUpdateCheck();
   startSandbox();
-  if (!inSandbox()) startAutoSync();   // 회원 시트 주소가 저장된 운영진 기기: 회원 정보 자동 반영
+  if (!inSandbox()) startAutoSync();   // 통합 시트 연결 키가 있는 운영진 기기: 회원 정보 자동 반영
+  startRecordSync();                  // 경기 기록: 통합 시트 읽기 (+ 운영진 기기는 끝난 경기 보내기)
   onChange(safeRender);
   onChange(autoClose); setInterval(autoClose, 60e3);   // 경기일 전 목요일 0시 신청 자동 마감
   renderShell(); render();

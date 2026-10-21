@@ -1,17 +1,17 @@
 // 운영 > 경기 — 위쪽에 선택한 경기(날짜·장소·상태, 이전/이후)와 단계 막대를 고정하고
 //  신청 → 주장 → 드래프트 → 팀 확정 → 경기 → 결과 단계 화면을 보여 줌 (WD_FUTSAL 경기 메뉴와 같은 구성)
-import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state.js?v=0.1.45';
-import { db } from '../store.js?v=0.1.45';
-import { STATUS } from '../config.js?v=0.1.45';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.45';
-import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel, teamEvent, capEvent } from '../domain.js?v=0.1.45';
-import { colorChip } from '../ui.js?v=0.1.45';
-import { empty } from '../ui.js?v=0.1.45';
-import { fmtSummary, editMatchday, cancelMatchday } from './home.js?v=0.1.45';
-import * as apply from './apply.js?v=0.1.45';
-import * as draft from './draft.js?v=0.1.45';
-import * as games from './games.js?v=0.1.45';
-import * as matchmode from './matchmode.js?v=0.1.45';
+import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state.js?v=0.1.46';
+import { db } from '../store.js?v=0.1.46';
+import { STATUS } from '../config.js?v=0.1.46';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.46';
+import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel, teamEvent, capEvent } from '../domain.js?v=0.1.46';
+import { colorChip } from '../ui.js?v=0.1.46';
+import { empty } from '../ui.js?v=0.1.46';
+import { fmtSummary, editMatchday, cancelMatchday } from './home.js?v=0.1.46';
+import * as apply from './apply.js?v=0.1.46';
+import * as draft from './draft.js?v=0.1.46';
+import * as games from './games.js?v=0.1.46';
+import * as matchmode from './matchmode.js?v=0.1.46';
 
 const STAGES = [['apply', '신청'], ['captain', '주장'], ['draft', '드래프트'], ['teams', '팀 확정'], ['games', '경기'], ['result', '결과']];
 const idx = (k) => STAGES.findIndex(([s]) => s === k);

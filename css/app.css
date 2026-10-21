@@ -1403,3 +1403,10 @@ body:has(.dwrap) .ver { display: none; }
 .dwrap .capcard .h-hd .cnt { top: 6px; }
 .dwrap .capcard .h-sw .csw { padding: 6px 2px; }
 .dmini { padding-right: 58px; }
+
+/* 통합 시트 */
+.isheet .is-st { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 12px; }
+.is-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; background: #eef1f5; color: #475467; font: 700 12px var(--font); }
+.is-pill.ok { background: #dcfce7; color: #166534; }
+.steps-ol { padding-left: 20px; display: grid; gap: 8px; margin: 0 0 14px; line-height: 1.55; }
+.r-src { font-size: 11.5px; color: var(--sub); text-align: right; margin: 6px 2px 0; }

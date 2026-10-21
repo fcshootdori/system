@@ -2,8 +2,9 @@
 //  · 경기 = 경기일 하나 (5라운드 합산 1경기). 핑크(A) vs 블루(B)
 //  · 승점 = 승×3 + 무, 승률 = 승 ÷ (승+패) (무승부 제외)
 //  · 승률·득점·MOM 순위는 RANK_MIN 경기 이상 출전한 회원끼리, 승점·출전 순위는 출전한 회원 전체
-import { S, memberById, nameOf } from './state.js?v=0.1.45';
-import { rosters, resultUnits, totals, teamColor, teamName, fmtOf } from './domain.js?v=0.1.45';
+import { S, memberById, nameOf } from './state.js?v=0.1.46';
+import { rosters, resultUnits, totals, teamColor, teamName, fmtOf } from './domain.js?v=0.1.46';
+import { mergedRecords } from './record-sheet.js?v=0.1.46';
 
 export const RANK_MIN = 15;
 export const TEAM = { A: '핑크', B: '블루' };
@@ -28,25 +29,33 @@ function sides(md) {
 }
 
 // 기록에 들어가는 경기일 (샘플·취소 제외, 끝난 라운드가 있는 2팀 경기)
-export function recordDays() {
+//  끝난 경기 기록은 통합 시트에서, 아직 시트에 없는 경기(진행 중·방금 끝남)는 Firebase에서 (record-sheet.js)
+function appDays() {
   const sbx = localStorage.getItem('teamapp:sandbox') === '1';   // 데모 체험판에서는 체험 경기 결과도 기록에 넣어 확인
-  return (S.allMatchdays || S.matchdays).filter((m) => (!m.sample || sbx) && !m.cancelled && rosters(m).length >= 2
-    && S.games.some((g) => g.matchdayId === m.id && g.done))
+  const done = new Set(S.games.filter((g) => g.done).map((g) => g.matchdayId));
+  return (S.allMatchdays || S.matchdays).filter((m) => (!m.sample || sbx) && !m.cancelled && rosters(m).length >= 2 && done.has(m.id));
+}
+const recs = () => mergedRecords(appDays);
+export function recordDays() {
+  const { days, gamesOf } = recs();
+  return days.filter((m) => gamesOf(m.id).some((g) => g.done))
     .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.createdAt || 0) - (b.createdAt || 0));
 }
+export const fromSheet = () => recs().sheet;
 export const seasons = () => [...new Set(recordDays().map((m) => (m.date || '').slice(0, 4)).filter(Boolean))].sort().reverse();
 
 let cache = { key: '', db: null };
 export function buildDB(season) {
+  const { gamesOf } = recs();
   const days = recordDays().filter((m) => !season || (m.date || '').startsWith(season));
-  const key = season + '|' + days.map((m) => m.id + (m.mom || []).join('') + Object.keys(m.late || {}).join('') + rosters(m).flat().join('')).join(',') + '|' + S.games.length + '|' + S.members.length
-    + '|' + S.games.reduce((s, g) => s + (g.sa || 0) * 7 + (g.sb || 0) * 13 + (g.done ? 1 : 0), 0);
+  const key = season + '|' + days.map((m) => m.id + (m.mom || []).join('') + Object.keys(m.late || {}).join('') + rosters(m).flat().join('')
+    + gamesOf(m.id).reduce((s, g) => s + '/' + (g.sa || 0) + ':' + (g.sb || 0) + (g.done ? 'd' : '') + Object.entries(g.goals || {}).join() + Object.entries(g.og || {}).join(), '')).join(',') + '|' + S.members.length;
   if (cache.key === key) return cache.db;
 
   const games = [], mp = [];
   const byGame = new Map();
   days.forEach((md, idx) => {
-    const gs = S.games.filter((g) => g.matchdayId === md.id);
+    const gs = gamesOf(md.id);
     const done = gs.filter((g) => g.done);
     const sd = sides(md), ros = rosters(md);
     const t = totals(md, done);

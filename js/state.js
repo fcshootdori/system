@@ -1,7 +1,7 @@
 // 앱 전역 상태 — 저장소를 구독해 화면이 항상 최신 데이터를 보도록 함
-import { db } from './store.js?v=0.1.45';
-import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.45';
-import { byName } from './util.js?v=0.1.45';
+import { db } from './store.js?v=0.1.46';
+import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.46';
+import { byName } from './util.js?v=0.1.46';
 
 export const S = {
   team: { ...DEFAULT_TEAM },
@@ -38,8 +38,7 @@ function syncOps(on) {
 export function startSync() {
   syncOps(S.operator);
   db.watchDoc('meta/team', (d) => {
-    S.team = { ...DEFAULT_TEAM, ...(d || {}), format: { ...DEFAULT_FORMAT, ...(d?.format || {}) },
-      legacySheet: { ...DEFAULT_TEAM.legacySheet, ...(d?.legacySheet || {}) } };
+    S.team = { ...DEFAULT_TEAM, ...(d || {}), format: { ...DEFAULT_FORMAT, ...(d?.format || {}) } };
     applySampleFilter(); emit();
   });
   db.watchCol('members', (list) => {

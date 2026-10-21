@@ -1,12 +1,12 @@
-import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.45';
-import { S, me, memberById, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.45';
-import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.45';
-import { db, newId } from '../store.js?v=0.1.45';
-import { APP_NAME, APP_VERSION, DEFAULT_TEAM, KNOWN_ALIASES } from '../config.js?v=0.1.45';
-import { fetchTab, parseSheet, suggestMember, buildDocs } from '../sheet-import.js?v=0.1.45';
-import { esc, toast, fileToDataUrl, todayISO, byName, fmtDate } from '../util.js?v=0.1.45';
-import { modal, empty } from '../ui.js?v=0.1.45';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.45';
+import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.46';
+import { S, me, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.46';
+import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.46';
+import { db } from '../store.js?v=0.1.46';
+import { APP_NAME, APP_VERSION, DEFAULT_TEAM } from '../config.js?v=0.1.46';
+import { sheetApi, sheetKey, setSheetKey, okApiUrl, ping, loadRecords, sheetState, pending, push, lastPush } from '../record-sheet.js?v=0.1.46';
+import { esc, toast, fileToDataUrl, todayISO, fmtDate } from '../util.js?v=0.1.46';
+import { modal, empty } from '../ui.js?v=0.1.46';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.46';
 
 export function render(root) { return settings(root); }
 
@@ -35,14 +35,7 @@ function settings(root) {
       <button class="btn">저장</button>
     </form></section>
 
-  <section class="card"><h2>승률계산기에서 가져오기</h2>
-    <p class="muted small">Members · Games · Match_Player 탭을 읽어 회원과 지난 경기를 경기일별로 옮겨요. 시트는 읽기만 하고, 다시 가져오면 같은 경기는 덮어써요.</p>
-    <form class="stack" data-sheet>
-      <label>시트 주소 또는 ID<input name="id" value="${esc(t.legacySheet?.id || '')}" placeholder="https://docs.google.com/spreadsheets/d/..."></label>
-      <button class="btn">시트 읽기</button>
-    </form>
-    <div data-sheet-out>${t.legacySheet?.importedAt ? `<p class="muted small">마지막 가져오기: ${esc(t.legacySheet.importedAt)} · ${t.legacySheet.count || 0}경기</p>` : ''}</div>
-  </section>
+  ${sheetCard()}
 
   <section class="card"><h2>데이터</h2>
     <p class="muted small">저장 방식: <b>${db.mode === 'sandbox' ? '데모 체험판 (이 기기에만 · 실제 기록과 별개)' : db.mode === 'demo' ? '데모 모드 (이 브라우저에만 저장)' : 'Firebase (모든 회원 공유)'}</b> · ${APP_NAME} Ver.${APP_VERSION}</p>
@@ -66,7 +59,7 @@ function settings(root) {
     e.preventDefault();
     await db.set('meta/team', { format: readFormat(ff), winRate: ff.winRate.value }, { merge: true }); toast('저장했어요');
   });
-  root.querySelector('[data-sheet]').addEventListener('submit', (e) => { e.preventDefault(); readSheet(e.target, root.querySelector('[data-sheet-out]')); });
+  bindSheet(root);
   root.querySelector('[data-backup]').addEventListener('click', backup);
   root.querySelector('[data-restore]')?.addEventListener('change', async (e) => {
     const file = e.target.files[0]; if (!file) return;
@@ -80,101 +73,86 @@ function settings(root) {
   });
 }
 
-// ── 승률계산기 시트 읽기 → 확인 → 가져오기 ──
-async function readSheet(form, out) {
-  const raw = form.id.value.trim();
-  const id = (raw.match(/\/d\/([\w-]+)/) || [])[1] || raw;
-  if (!id) return toast('시트 주소를 넣어 주세요');
-  out.innerHTML = '<p class="muted">시트를 읽는 중…</p>';
-  let parsed;
-  try {
-    const [members, games, players] = await Promise.all([fetchTab(id, 'Members'), fetchTab(id, 'Games'), fetchTab(id, 'Match_Player')]);
-    parsed = parseSheet({ members, games, players });
-  } catch (err) {
-    out.innerHTML = `<p class="err">시트를 읽지 못했어요: ${esc(err.message)}<br>시트 공유가 '링크가 있는 모든 사용자 · 뷰어'인지 확인해 주세요.</p>`;
-    return;
-  }
-  out.innerHTML = '';
-
-  // 시트 회원 + 이미 있는 회원으로 이름 사전 만들기
-  const known = new Map();
-  S.members.forEach((m) => { known.set(m.name, m.id); (m.aliases || []).forEach((a) => known.set(a, m.id)); });
-  const sheetNames = new Set(parsed.members.map((m) => m.name));
-  // 기본 별칭(config KNOWN_ALIASES): 시트에만 있는 회원이어도 오타 이름을 같은 사람으로
-  Object.entries(KNOWN_ALIASES).forEach(([name, aliases]) => {
-    const target = S.members.find((m) => m.name === name)?.id || (sheetNames.has(name) ? 'new:' + name : null);
-    if (target) aliases.forEach((a) => { if (!known.has(a)) known.set(a, target); });
-  });
-  const pool = [...S.members.map((m) => ({ id: m.id, name: m.name })),
-    ...parsed.members.filter((m) => !known.has(m.name)).map((m) => ({ id: 'new:' + m.name, name: m.name }))].sort(byName);
-  const counts = new Map();
-  parsed.matches.forEach((mt) => mt.players.forEach((p) => {
-    if (known.has(p.name) || sheetNames.has(p.name)) return;
-    counts.set(p.name, (counts.get(p.name) || 0) + 1);
-  }));
-  const unknown = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  const appDates = new Set(S.matchdays.filter((m) => m.source !== 'sheet' && S.games.some((g) => g.matchdayId === m.id && g.done)).map((m) => m.date));
-  const dates = parsed.matches.map((m) => m.date).sort();
-
-  const dlg = modal('승률계산기 가져오기', '', { wide: true });
-  out = dlg.el.querySelector('.modal-body');
-  out.innerHTML = `
-    <div class="stats3">
-      <div><b>${parsed.members.length}</b><span>회원 (활동 ${parsed.members.filter((m) => m.active).length})</span></div>
-      <div><b>${parsed.matches.length}</b><span>경기</span></div>
-      <div><b>${unknown.length}</b><span>확인할 이름</span></div>
+// ── 통합 시트 (회원 명부 + 경기 기록) ──
+const LSU = 'teamapp:sheeturl';
+const sheetOpenUrl = () => { try { return localStorage.getItem(LSU) || ''; } catch { return ''; } };
+const agoTxt = (ts) => { if (!ts) return ''; const m = Math.round((Date.now() - ts) / 60000); return m < 1 ? '방금' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : new Date(ts).toLocaleDateString('ko-KR'); };
+let sheetBusy = '', triedAt = 0;
+function sheetCard() {
+  const api = sheetApi(), key = sheetKey(), st = sheetState(), lp = lastPush();
+  const pd = api && st.ver != null ? pending() : null;
+  const status = !api ? '<span class="is-pill">연결 안 됨</span>'
+    : st.ver == null ? `<span class="is-pill">${st.err ? '읽기 실패' : '불러오는 중…'}</span>${st.err ? ` <small class="err">${esc(st.err)}</small>` : ''}`
+    : `<span class="is-pill ok">연결됨</span> <small class="muted">시트 기록 ${st.games}경기${pd ? ` · 보낼 경기 ${pd.items.length}개` : ''}${lp ? ` · 마지막 보냄 ${agoTxt(lp.at)}` : ''}</small>`;
+  return `<section class="card isheet"><h2>📗 통합 시트</h2>
+    <p class="muted small">신청·드래프트·경기 진행처럼 <b>실시간</b>이 필요한 건 앱(Firebase)이, <b>끝난 경기 기록과 회원 명부</b>는 통합 시트 하나가 맡아요. 경기결과·개인기록 화면은 시트 기록을 읽고, 경기를 마치면 연결 키가 있는 운영진 기기에서 시트로 자동으로 보내요.</p>
+    <div class="is-st">${status}</div>
+    ${inSandbox() ? '<p class="small warn-t">데모 체험판에서는 통합 시트에 보내지 않아요.</p>' : `
+    <form class="stack" data-isheet>
+      <label>웹 앱 주소 <small class="muted">모든 회원 공통 — 경기 기록 읽기용</small><input name="url" value="${esc(api)}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" inputmode="url"></label>
+      <label>연결 키 <small class="muted">이 기기에만 저장 — 회원 명부 읽기·기록 보내기용</small><input name="key" type="password" value="${esc(key)}" autocomplete="off"></label>
+      <button class="btn" ${sheetBusy ? 'disabled' : ''}>${sheetBusy === 'ping' ? '확인 중…' : '연결 확인하고 저장'}</button>
+    </form>
+    <div class="row wrap mt-s">
+      ${api && key ? `<button class="btn ghost" data-pushall ${sheetBusy || !pd?.items.length ? 'disabled' : ''}>${sheetBusy === 'push' ? '보내는 중…' : `경기 기록 보내기${pd?.items.length ? ` (${pd.items.length}개)` : ''}`}</button>` : ''}
+      ${sheetOpenUrl() ? `<a class="btn ghost" href="${esc(sheetOpenUrl())}" target="_blank" rel="noopener">시트 열기</a>` : ''}
+      <button class="btn ghost" data-isguide>설정 방법</button>
     </div>
-    <p class="muted small">${dates[0] || ''} ~ ${dates[dates.length - 1] || ''}${parsed.problems.length ? ' · ' + parsed.problems.join(' · ') : ''}</p>
-    ${unknown.length ? `<h2 class="mt">회원 명단에 없는 이름</h2>
-      <p class="muted small">오타·줄임말이면 회원을 골라 주세요(별칭으로 저장돼요). 게스트로 두면 승률계산기처럼 개인 기록에서 빠져요. <b>추천</b>은 비슷한 이름을 미리 골라 둔 거예요.</p>
-      <div class="tbl-wrap"><table class="tbl parse"><thead><tr><th>시트 이름</th><th>경기</th><th>연결</th></tr></thead><tbody>
-      ${unknown.map(([name, n]) => {
-        const sg = suggestMember(name, pool);
-        return `<tr data-name="${esc(name)}"><td><b>${esc(name)}</b>${sg ? `<div class="tiny ${sg.strong ? 'ok-t' : 'muted'}">추천: ${esc(pool.find((p) => p.id === sg.id).name)}</div>` : ''}</td><td>${n}</td>
-          <td><select><option value="">게스트</option>${pool.map((p) => `<option value="${esc(p.id)}" ${sg?.strong && sg.id === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></td></tr>`;
-      }).join('')}</tbody></table></div>` : ''}
-    ${appDates.size && parsed.matches.some((m) => appDates.has(m.date)) ? '<p class="small warn-t">앱에서 이미 기록한 날짜와 겹치는 시트 경기는 건너뛰어요.</p>' : ''}
-    <button class="btn full mt-s" data-import>가져오기</button>`;
-
-  out.querySelector('[data-import]').addEventListener('click', async (e) => {
-    e.target.disabled = true; e.target.textContent = '가져오는 중…';
-    // 1) 회원
-    const idOf = new Map(known);
-    const newIds = new Map();
-    e.target.textContent = '회원 등록 중…';
-    const writes = [];
-    for (const m of parsed.members) {
-      const ex = S.members.find((x) => x.name === m.name);
-      if (ex) { if ((ex.active !== false) !== m.active) writes.push(db.set('members/' + ex.id, { active: m.active }, { merge: true })); idOf.set(m.name, ex.id); }
-      else { const nid = newId(); newIds.set('new:' + m.name, nid); idOf.set(m.name, nid);
-        writes.push(db.set('members/' + nid, { name: m.name, aliases: [], active: m.active, createdAt: Date.now(), source: 'sheet' })); }
-    }
-    await Promise.all(writes);
-    // 2) 확인한 이름 → 별칭
-    const aliasAdds = new Map();
-    out.querySelectorAll('tr[data-name]').forEach((tr) => {
-      let v = tr.querySelector('select').value;
-      if (!v) return;
-      if (v.startsWith('new:')) v = newIds.get(v) || idOf.get(v.slice(4));
-      idOf.set(tr.dataset.name, v);
-      aliasAdds.set(v, [...(aliasAdds.get(v) || []), tr.dataset.name]);
-    });
-    for (const [mid, names] of aliasAdds) {
-      const cur = memberById(mid)?.aliases || [];
-      await db.set('members/' + mid, { aliases: [...new Set([...cur, ...names])] }, { merge: true });
-    }
-    // 3) 경기일·경기
-    const resolve = (name) => { const v = idOf.get(name); return v && String(v).startsWith('new:') ? newIds.get(v) || idOf.get(v.slice(4)) || null : v || null; };
-    const { docs, skipped } = buildDocs(parsed.matches, resolve, appDates);
-    for (let i = 0; i < docs.length; i += 10) {
-      await Promise.all(docs.slice(i, i + 10).flatMap((d) => [db.set(d.md.path, d.md.data), db.set(d.game.path, d.game.data)]));
-      e.target.textContent = `가져오는 중… ${Math.min(i + 10, docs.length)}/${docs.length}`;
-    }
-    await db.set('meta/team', { legacySheet: { ...(S.team.legacySheet || {}), id, importedAt: new Date().toLocaleString('ko-KR'), count: docs.length } }, { merge: true });
-    toast(`회원 ${parsed.members.length}명 · 경기 ${docs.length}개를 가져왔어요${skipped.length ? ` (${skipped.length}개 건너뜀)` : ''}`);
-    out.innerHTML = `<p class="ok-t">완료했어요 — 회원 ${parsed.members.length}명, 경기 ${docs.length}개${skipped.length ? ` (겹치는 날짜 ${skipped.length}개 건너뜀)` : ''}</p>
-      <a class="btn full" href="#/records" data-done>기록 보기</a>`;
-    out.querySelector('[data-done]').addEventListener('click', () => dlg.close());
+    <div data-isout></div>`}
+  </section>`;
+}
+function bindSheet(root) {
+  const re = () => { if (root.isConnected) settings(root); };
+  // 아직 못 읽었으면 한 번만 읽어 보고 다시 그림 (실패하면 상태 줄에 이유만 보여 줌 — 계속 다시 시도하지 않음)
+  if (sheetApi() && sheetState().ver == null && Date.now() - triedAt > 30e3) { triedAt = Date.now(); loadRecords(true).then(re); }
+  root.querySelector('[data-isheet]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const url = e.target.url.value.trim(), key = e.target.key.value.trim();
+    if (url && !okApiUrl(url)) return toast('웹 앱 주소는 https://script.google.com/macros/s/…/exec 모양이에요');
+    if (!url) { await db.set('meta/team', { sheetApi: '' }, { merge: true }); setSheetKey(''); toast('통합 시트 연결을 해제했어요'); return re(); }
+    sheetBusy = 'ping'; re();
+    try {
+      if (key) {
+        const j = await ping(url, key);
+        try { localStorage.setItem(LSU, j.url || ''); } catch {}
+        setSheetKey(key);
+        toast(`연결됐어요 — ${j.name} · 기록 ${j.games}경기`);
+      } else { await (await fetch(url + (url.includes('?') ? '&' : '?') + 'action=records&ver=x')).json(); setSheetKey(''); toast('저장했어요 (연결 키가 없어 기록 읽기만 해요)'); }
+      if (url !== sheetApi()) await db.set('meta/team', { sheetApi: url }, { merge: true });
+      await loadRecords(true);
+    } catch (err) { toast(err.message || '연결하지 못했어요'); }
+    sheetBusy = ''; re();
+  });
+  root.querySelector('[data-pushall]')?.addEventListener('click', async (e) => {
+    const { items } = pending();
+    if (!items.length) return toast('보낼 경기가 없어요');
+    if (items.length > 30 && !confirm(`경기 ${items.length}개를 통합 시트로 보낼까요? (같은 경기는 앱 기록으로 바꿔 써요)`)) return;
+    sheetBusy = 'push'; e.target.disabled = true;
+    const out = root.querySelector('[data-isout]');
+    try {
+      await push(items, [], (d, n) => { if (out) out.innerHTML = `<p class="small muted">보내는 중… ${d}/${n}</p>`; });
+      toast(`경기 ${items.length}개를 통합 시트로 보냈어요`);
+    } catch (err) { toast(err.message || '보내지 못했어요'); }
+    sheetBusy = ''; re();
+  });
+  root.querySelector('[data-isguide]')?.addEventListener('click', sheetGuide);
+}
+function sheetGuide() {
+  const { el } = modal('통합 시트 설정 방법', `<ol class="steps-ol small">
+    <li><b>새 구글 시트</b>를 만들어요 (운영진 계정 · <b>공유하지 않음</b> — 회원 연락처가 들어가요).</li>
+    <li>시트 메뉴 <b>확장 프로그램 › Apps Script</b> → 원래 있던 코드를 지우고 아래 <b>코드 복사</b>로 복사한 코드를 붙여 넣고 저장(💾).</li>
+    <li>위쪽 함수 목록에서 <b>setup</b>을 골라 <b>▶ 실행</b> → 권한 허용 (계정 선택 › 고급 › 이동 › 허용). 회원·경기·라운드·출전기록·개인기록·안내 탭이 생겨요.</li>
+    <li><b>배포 › 새 배포</b> → 유형 <b>웹 앱</b> · 실행 <b>나</b> · 액세스 <b>모든 사용자</b> → 배포 → <b>웹 앱 주소</b> 복사.</li>
+    <li>시트로 돌아가 새로고침 → 메뉴 <b>슛도리 › 앱 연결 정보</b>에서 <b>연결 키</b> 확인.</li>
+    <li>여기(설정 › 통합 시트)에 웹 앱 주소와 연결 키를 넣고 <b>연결 확인하고 저장</b> → <b>경기 기록 보내기</b> (지금까지 기록이 모두 시트로 들어가요).</li>
+    <li>시트 메뉴 <b>슛도리 › 예전 회원 명부 가져오기</b> → 예전 회원현황 시트 주소를 넣으면 회원 탭으로 그대로 복사돼요. (원하면 <b>예전 승률계산기 보관하기</b>로 원본도 참고용으로 보관)</li>
+    <li>다른 운영진 기기는 연결 키만 넣으면 돼요 (운영 › 회원 또는 여기). 앱을 아무도 안 열 때도 회원 명부를 반영하려면 GitHub 저장소 Secret <b>SHEET_API_KEY</b>에 연결 키를 넣어요.</li>
+  </ol>
+  <div class="row wrap"><button class="btn" data-copycode>코드 복사</button><a class="btn ghost" href="apps-script/Code.gs" download="Code.gs">코드 파일 받기</a></div>
+  <p class="tiny muted">예전 회원현황 시트와 승률계산기 시트는 이제 앱에서 쓰지 않아요. 기록 화면은 통합 시트를 읽고, 시트에 아직 없는 경기(진행 중·방금 끝남)만 앱 기록으로 보여 줘요.</p>`, { wide: true });
+  el.querySelector('[data-copycode]').addEventListener('click', async (e) => {
+    try { const t = await (await fetch('apps-script/Code.gs', { cache: 'no-store' })).text(); await navigator.clipboard.writeText(t); e.target.textContent = '복사했어요 ✓'; }
+    catch { toast('복사하지 못했어요 — [코드 파일 받기]로 받아 주세요'); }
   });
 }
 
