@@ -48,6 +48,7 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu(APP_NAME)
     .addItem('처음 설정 (탭 만들기)', 'setup')
     .addItem('기록 다시 계산', 'rebuild')
+    .addItem('디자인 정리 (모든 탭)', 'styleAll')
     .addSeparator()
     .addItem('예전 회원 명부 가져오기', 'importOldMembers')
     .addItem('예전 승률계산기 보관하기 (참고용)', 'archiveOldRecords')
@@ -71,6 +72,7 @@ function setup() {
   if (have.indexOf('onSheetEdit') < 0) ScriptApp.newTrigger('onSheetEdit').forSpreadsheet(ss).onEdit().create();
   if (have.indexOf('hourly') < 0) ScriptApp.newTrigger('hourly').timeBased().everyHours(1).create();
   rebuild();
+  styleAll(true);
   ui_('처음 설정을 마쳤어요.\n\n다음 순서:\n1) 배포 › 새 배포 › 웹 앱 (실행: 나, 액세스: 모든 사용자) → 웹 앱 주소 복사\n2) 슛도리 메뉴 › 앱 연결 정보 에서 연결 키 확인\n3) 앱 운영모드 › 설정 › 통합 시트 에 주소·키를 넣고 [경기 기록 모두 보내기]\n4) 슛도리 메뉴 › 예전 회원 명부 가져오기');
 }
 function ensureTab_(ss, name, index) {
@@ -114,9 +116,7 @@ function guideTab_(ss) {
   ];
   sh.clear();
   sh.getRange(1, 1, lines.length, 1).setValues(lines);
-  sh.getRange(1, 1).setFontSize(16).setFontWeight('bold');
-  [7, 14].forEach(function (r) { sh.getRange(r, 1).setFontWeight('bold'); });
-  sh.setColumnWidth(1, 900);
+  styleGuide_(sh, lines.length);
 }
 function key_() {
   var p = PropertiesService.getScriptProperties(), k = p.getProperty('KEY');
@@ -136,6 +136,207 @@ function showConnection() {
     '\n\n앱 운영모드 › 설정 › 통합 시트 에 넣어 주세요.\n연결 키는 운영진끼리만 알고 있어야 해요 (회원 명부를 읽을 수 있는 열쇠).');
 }
 function ui_(msg) { try { SpreadsheetApp.getUi().alert(msg); } catch (e) { Logger.log(msg); } }
+
+// ───────────────────────── 디자인 (모든 탭 같은 모양) ─────────────────────────
+//  앱과 같은 색: 남색 머리글 · 핑크/블루 팀 색 · 자동 계산 칸은 회색 · 줄무늬 · 같은 글꼴
+var D = {
+  font: 'Noto Sans KR', size: 10,
+  navy: '#171c61', ink: '#121633', sub: '#5f6680', faint: '#8b93a5', line: '#dfe3ea',
+  band: '#f7f8fb', white: '#ffffff', autoHead: '#6b7096', autoBody: '#e9ecf2',
+  pink: '#e11d48', pinkD: '#b0123a', pinkT: '#fde4ea', blue: '#2563eb', blueD: '#1a46b8', blueT: '#e2ebfd',
+  win: '#16a36a', winT: '#e3f5ec', loss: '#d93a40', lossT: '#fde8e8', gold: '#a87400', goldT: '#fdf3dc',
+  late: '#c2410c', lateT: '#fff1e6', turf: '#1f7a3d', tabRec: '#171c61', tabStat: '#e0a100', tabEtc: '#9aa4b2',
+};
+// 칸마다: 너비 · 정렬 · 작게(회색) · 머리글 색
+var LOOK = {
+  games: { id: [96, 'left', 'small'], date: [92, 'center'], no: [56, 'center'], kind: [60, 'center'], nameA: [110, 'left'], nameB: [110, 'left'], scoring: [76, 'center'],
+    sa: [70, 'center', 'bold', 'pink'], sb: [70, 'center', 'bold', 'blue'], result: [110, 'center', 'bold'], nr: [72, 'center'], momText: [150, 'left'], goalText: [240, 'left'],
+    src: [92, 'center'], hash: [96, 'center', 'small'], sentAt: [124, 'center', 'small'] },
+  rounds: { id: [96, 'left', 'small'], date: [92, 'center'], r: [62, 'center'], a: [70, 'center', 'bold', 'pink'], b: [70, 'center', 'bold', 'blue'], ga: [260, 'left', '', 'pink'], gb: [260, 'left', '', 'blue'] },
+  players: { id: [96, 'left', 'small'], date: [92, 'center'], name: [120, 'left', 'bold'], team: [64, 'center'], mom: [58, 'center'], late: [58, 'center'],
+    res: [58, 'center', 'bold'], goals: [58, 'center'], og: [64, 'center'], mid: [120, 'left', 'small'] },
+  stats: { s: [64, 'center'], rank: [56, 'center', 'bold'], name: [120, 'left', 'bold'], gp: [58, 'center'], w: [52, 'center'], d: [52, 'center'], l: [52, 'center'],
+    pts: [64, 'center', 'bold'], wr: [72, 'center'], g: [58, 'center'], og: [64, 'center'], mom: [58, 'center'], late: [58, 'center'], ranked: [80, 'center', 'small'] },
+};
+function styleAll(quiet) {
+  var ss = SpreadsheetApp.getActive();
+  ss.getSheets().forEach(function (sh) {
+    var n = sh.getName();
+    try {
+      if (n === TABS.members) styleMembers_(sh);
+      else if (n === TABS.guide) styleGuide_(sh, sh.getLastRow());
+      else {
+        var k = Object.keys(TABS).filter(function (x) { return TABS[x] === n && COLS[x]; })[0];
+        if (k) styleTab_(k); else styleGeneric_(sh);
+      }
+    } catch (e) { Logger.log(n + ': ' + e); }
+  });
+  if (quiet !== true) ui_('모든 탭의 디자인을 정리했어요.');
+}
+function base_(sh, rows) {
+  var cols = Math.max(1, sh.getMaxColumns());
+  var all = sh.getRange(1, 1, rows, cols);
+  all.setFontFamily(D.font).setFontSize(D.size).setFontColor(D.ink).setVerticalAlignment('middle').setFontWeight('normal').setFontStyle('normal');
+  sh.getBandings().forEach(function (b) { b.remove(); });
+  sh.setConditionalFormatRules([]);
+  try { sh.setHiddenGridlines(true); } catch (e) {}
+  return all;
+}
+function head_(rg, color) {
+  rg.setBackground(color || D.navy).setFontColor(D.white).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle').setWrap(true)
+    .setBorder(true, true, true, true, true, false, color || D.navy, SpreadsheetApp.BorderStyle.SOLID);
+}
+function band_(sh, row, rows, cols) {
+  if (rows < 1) return;
+  var b = sh.getRange(row, 1, rows, cols).applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, false, false);
+  b.setFirstRowColor(D.white).setSecondRowColor(D.band);
+}
+function rule_(rg, text, bg, fg, bold) {
+  var r = SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo(text).setFontColor(fg);
+  if (bg) r = r.setBackground(bg);
+  if (bold) r = r.setBold(true);
+  return r.setRanges([rg]).build();
+}
+function colOf_(sh, header) { var h = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getDisplayValues()[0].map(T_); return h.indexOf(header) + 1; }
+
+// 기록 탭 (경기 · 라운드 · 출전기록 · 개인기록)
+function styleTab_(k) {
+  var ss = SpreadsheetApp.getActive(), sh = ss.getSheetByName(TABS[k]);
+  if (!sh) return;
+  if (sh.getMaxRows() < 1000) sh.insertRowsAfter(sh.getMaxRows(), 1000 - sh.getMaxRows());
+  var rows = sh.getMaxRows(), cols = Math.max(1, sh.getLastColumn());
+  base_(sh, rows);
+  sh.setFrozenRows(1);
+  try { sh.setFrozenColumns(k === 'stats' ? 3 : k === 'players' ? 3 : 2); } catch (e) {}
+  sh.setRowHeight(1, 36);
+  try { sh.setRowHeightsForced(2, rows - 1, 26); } catch (e) { sh.setRowHeights(2, rows - 1, 26); }
+  head_(sh.getRange(1, 1, 1, cols));
+  band_(sh, 2, rows - 1, cols);
+  var rules = [];
+  COLS[k].forEach(function (c) {
+    var ci = colOf_(sh, c[0]); if (ci < 1) return;
+    var lk = (LOOK[k] || {})[c[1]] || [90, 'left'];
+    var body = sh.getRange(2, ci, rows - 1, 1), h = sh.getRange(1, ci);
+    sh.setColumnWidth(ci, lk[0]);
+    body.setHorizontalAlignment(lk[1]).setWrap(false);
+    if (lk[2] === 'small') body.setFontSize(9).setFontColor(D.faint);
+    if (lk[2] === 'bold') body.setFontWeight('bold');
+    if (lk[3] === 'pink') head_(h, D.pink);
+    if (lk[3] === 'blue') head_(h, D.blue);
+    if (c[2] && k !== 'stats') {   // 자동 계산 칸
+      if (!lk[3]) head_(h, D.autoHead);
+      body.setBackground(D.autoBody).setFontColor(lk[2] === 'small' ? D.faint : D.sub);
+      h.setNote('자동 계산 칸 — 고쳐도 다시 계산할 때 바뀌어요');
+    } else h.clearNote();
+    if (c[1] === 'team') { rules.push(rule_(body, '핑크', D.pinkT, D.pinkD, true)); rules.push(rule_(body, '블루', D.blueT, D.blueD, true)); }
+    if (c[1] === 'res') { rules.push(rule_(body, '승', D.winT, D.win, true)); rules.push(rule_(body, '패', D.lossT, D.loss, true)); rules.push(rule_(body, '무', D.autoBody, D.sub, true)); }
+    if (c[1] === 'result') rules.push(rule_(body, '무승부', D.autoBody, D.sub, true));
+    if (c[1] === 'mom') rules.push(rule_(body, 'O', D.goldT, D.gold, true));
+    if (c[1] === 'late') rules.push(rule_(body, 'O', D.lateT, D.late, true));
+    if (c[1] === 'ranked') rules.push(rule_(body, 'O', null, D.win, true));
+    if (c[1] === 'wr') body.setNumberFormat('0.0%');
+    if (k === 'stats' && c[1] === 'rank') {
+      [['1', '#fdf3dc', '#a87400'], ['2', '#eef1f6', '#5b6676'], ['3', '#f8eadf', '#9a5a2c']].forEach(function (x) {
+        rules.push(SpreadsheetApp.newConditionalFormatRule().whenNumberEqualTo(+x[0]).setBackground(x[1]).setFontColor(x[2]).setBold(true).setRanges([body]).build());
+      });
+    }
+  });
+  if (k === 'stats') {   // 시즌이 바뀌는 줄에 구분선 + 통산 줄은 남색 기운
+    var sc = colOf_(sh, '시즌');
+    if (sc > 0) {
+      var L = String.fromCharCode(64 + sc);
+      rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$' + L + '2="통산"').setBackground('#eef0fb').setRanges([sh.getRange(2, 1, rows - 1, cols)]).build());
+    }
+  }
+  sh.setConditionalFormatRules(rules);
+  sh.setTabColor(k === 'stats' ? D.tabStat : D.tabRec);
+}
+
+// 회원 탭 (예전 회원현황 그대로 옮긴 표 — 값은 그대로 두고 모양만)
+function styleMembers_(sh) {
+  var last = sh.getLastRow(), cols = Math.max(1, sh.getLastColumn());
+  sh.setTabColor(D.turf);
+  if (!last) return;
+  var vals = sh.getRange(1, 1, Math.min(last, 30), cols).getDisplayValues();
+  var hi = -1;
+  vals.forEach(function (r, i) { if (hi < 0 && r.some(function (c) { return T_(c) === '닉네임'; })) hi = i + 1; });
+  if (hi < 0) return styleGeneric_(sh);
+  var rows = Math.max(last, sh.getMaxRows());
+  var all = base_(sh, rows);
+  all.setBackground(null).setBorder(false, false, false, false, false, false);
+  // 머리글 위 (제목 · 등급 안내): 작게, 제목만 크게
+  if (hi > 1) {
+    var top = sh.getRange(1, 1, hi - 1, cols);
+    top.setFontSize(9).setFontColor(D.sub);
+    vals.slice(0, hi - 1).forEach(function (r, i) {
+      r.forEach(function (c, j) {
+        if (/회원현황|회원\s*명부/.test(c)) sh.getRange(i + 1, j + 1).setFontSize(15).setFontWeight('bold').setFontColor(D.navy);
+        if (/최종\s*업데이트/.test(c)) { sh.getRange(i + 1, j + 1).setFontWeight('bold'); if (j + 2 <= cols) sh.getRange(i + 1, j + 2).setFontWeight('bold').setFontColor(D.navy); }
+      });
+    });
+  }
+  sh.setFrozenRows(hi);
+  var H = vals[hi - 1].map(T_);
+  var nick = H.indexOf('닉네임') + 1;
+  try { sh.setFrozenColumns(nick > 0 ? nick : 0); } catch (e) {}
+  sh.setRowHeight(hi, 36);
+  head_(sh.getRange(hi, 1, 1, cols));
+  if (rows > hi) {
+    try { sh.setRowHeightsForced(hi + 1, rows - hi, 26); } catch (e) {}
+    band_(sh, hi + 1, rows - hi, cols);
+  }
+  var rules = [];
+  H.forEach(function (h, j) {
+    var ci = j + 1, body = rows > hi ? sh.getRange(hi + 1, ci, rows - hi, 1) : null;
+    var w = /닉네임|^이름|성명/.test(h) ? 110 : /연락처|전화/.test(h) ? 120 : /사유|내용/.test(h) ? 160 : /운영진/.test(h) ? 70 : /일자|생년월일/.test(h) ? 96 : /회비/.test(h) ? 52 : /^연번|^번호/.test(h) ? 48 : 80;
+    sh.setColumnWidth(ci, w);
+    if (!body) return;
+    body.setHorizontalAlignment(/닉네임|^이름|성명|사유|내용/.test(h) ? 'left' : 'center').setWrap(false);
+    if (/닉네임/.test(h)) body.setFontWeight('bold');
+    if (/회비/.test(h)) {
+      head_(sh.getRange(hi, ci), D.autoHead);
+      [['◎', D.winT, D.win], ['♥', D.pinkT, D.pinkD], ['O', D.blueT, D.blueD], ['▲', D.lateT, D.late], ['■', D.autoBody, D.sub]].forEach(function (x) { rules.push(rule_(body, x[0], x[1], x[2], true)); });
+    }
+    if (/등급/.test(h)) {
+      var L = String.fromCharCode(64 + ci);
+      rules.push(SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=REGEXMATCH($' + L + (hi + 1) + ',"탈퇴|방출")').setFontColor('#a3adbd').setRanges([sh.getRange(hi + 1, 1, rows - hi, cols)]).build());
+      rules.push(rule_(body, 'VIP', D.goldT, D.gold, true));
+    }
+  });
+  sh.setConditionalFormatRules(rules);
+}
+
+// 예전 시트에서 옮겨 온 참고용 탭 (명부·…, 보관·…): 첫 줄(또는 칸이 2개 이상 찬 첫 줄)을 머리글로
+function styleGeneric_(sh) {
+  var last = sh.getLastRow(), cols = Math.max(1, sh.getLastColumn());
+  sh.setTabColor(D.tabEtc);
+  if (!last) return;
+  var rows = Math.max(last, 2);
+  var all = base_(sh, rows);
+  all.setBackground(null).setBorder(false, false, false, false, false, false).setHorizontalAlignment('left');
+  var vals = sh.getRange(1, 1, Math.min(last, 10), cols).getDisplayValues(), hi = 1;
+  for (var i = 0; i < vals.length; i++) { if (vals[i].filter(function (c) { return T_(c); }).length >= 2) { hi = i + 1; break; } }
+  sh.setFrozenRows(hi);
+  head_(sh.getRange(hi, 1, 1, cols));
+  if (last > hi) band_(sh, hi + 1, last - hi, cols);
+  for (var c = 1; c <= cols; c++) sh.setColumnWidth(c, 96);
+}
+
+function styleGuide_(sh, n) {
+  var rows = Math.max(n, 1);
+  base_(sh, rows);
+  sh.getRange(1, 1, rows, 1).setWrap(true).setFontColor(D.ink).setBackground(null);
+  sh.setColumnWidth(1, 900);
+  try { sh.setRowHeightsForced(1, rows, 28); } catch (e) {}
+  sh.getRange(1, 1).setFontSize(18).setFontWeight('bold').setFontColor(D.navy);
+  sh.setRowHeight(1, 48);
+  var vals = sh.getRange(1, 1, rows, 1).getDisplayValues();
+  vals.forEach(function (r, i) {
+    if (/^(고치는 곳|주의)$/.test(T_(r[0]))) sh.getRange(i + 1, 1).setFontWeight('bold').setFontColor(D.white).setBackground(D.navy);
+    else if (/^\s{2}/.test(r[0])) sh.getRange(i + 1, 1).setFontColor(D.sub);
+  });
+  sh.setTabColor(D.tabEtc);
+}
 
 // ───────────────────────── 예전 시트 가져오기 ─────────────────────────
 // 예전 회원현황 시트: 회원현황 탭 → 회원 탭 (서식 그대로, 값으로), 나머지 탭 → '명부·탭이름'
@@ -160,6 +361,7 @@ function importOldMembers() {
     copyTab_(s, ss, name, s === main ? 0 : null); n++;
   });
   bump_();
+  styleAll(true);
   ui_('회원 명부를 가져왔어요 (탭 ' + n + '개). 회원 탭이 앱 회원 정보의 기준이 돼요.\n예전 회원 시트는 이제 쓰지 않아도 돼요.');
 }
 // 예전 승률계산기: 참고용으로 값만 보관 ('보관·탭이름'). 앱 기록은 앱에서 [경기 기록 모두 보내기]로 경기·라운드·출전기록 탭에 들어와요
@@ -171,6 +373,7 @@ function archiveOldRecords() {
   try { src = SpreadsheetApp.openByUrl(r.getResponseText().trim()); } catch (e) { return ui_('시트를 열지 못했어요: ' + e.message); }
   var ss = SpreadsheetApp.getActive(), n = 0;
   src.getSheets().forEach(function (s) { var sh = copyTab_(s, ss, '보관·' + s.getName(), null); sh.setTabColor('#9aa4b2'); n++; });
+  styleAll(true);
   ui_('승률계산기 탭 ' + n + '개를 보관했어요 (참고용). 맨 뒤에 있어요.');
 }
 function hasNick_(s) {
@@ -226,7 +429,7 @@ function writeTab_(k, list) {
   // 우리 칸만 지우고 다시 씀 (운영진이 오른쪽에 덧붙인 메모 칸은 건드리지 않음 — 다만 줄 순서는 바뀔 수 있음)
   if (last > 1) fieldAt.forEach(function (f, i) { if (f) sh.getRange(2, i + 1, last - 1, 1).clearContent(); });
   if (!list.length) return;
-  if (sh.getMaxRows() < list.length + 1) sh.insertRowsAfter(sh.getMaxRows(), list.length + 1 - sh.getMaxRows());
+  if (sh.getMaxRows() < list.length + 1) { sh.insertRowsAfter(sh.getMaxRows(), list.length + 200 - sh.getMaxRows()); try { styleTab_(k); } catch (e) {} }   // 늘어난 줄에도 같은 디자인
   // 칸마다 이어진 묶음으로 씀
   var i = 0;
   while (i < fieldAt.length) {
