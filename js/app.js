@@ -3,34 +3,35 @@
 //   · 일반 회원: 홈 · 일정 · ⚽경기모드 · 경기결과 · 내 정보
 //   · 운영모드: 일정 · 경기 · 공지 · 회원 · 설정
 //   · 주장: 오른쪽 위 👑 드래프트 버튼으로 입장
-import { APP_NAME, APP_VERSION } from './config.js?v=0.1.50';
-import { initStore, db } from './store.js?v=0.1.50';
-import { initPullRefresh } from './ptr.js?v=0.1.50';
-import { startUpdateCheck } from './update.js?v=0.1.50';
-import { lockZoom } from './nozoom.js?v=0.1.50';
-import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.50';
-import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go } from './state.js?v=0.1.50';
-import { esc, toast } from './util.js?v=0.1.50';
-import { modal, fitBoxes } from './ui.js?v=0.1.50';
-import { icon } from './icons.js?v=0.1.50';
+import { APP_NAME, APP_VERSION } from './config.js?v=0.1.51';
+import { initStore, db } from './store.js?v=0.1.51';
+import { initPullRefresh } from './ptr.js?v=0.1.51';
+import { startUpdateCheck } from './update.js?v=0.1.51';
+import { lockZoom } from './nozoom.js?v=0.1.51';
+import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.51';
+import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go } from './state.js?v=0.1.51';
+import { esc, toast } from './util.js?v=0.1.51';
+import { modal, fitBoxes } from './ui.js?v=0.1.51';
+import { icon } from './icons.js?v=0.1.51';
 
-import * as home from './views/home.js?v=0.1.50';
-import * as schedule from './views/schedule.js?v=0.1.50';
-import * as matchmode from './views/matchmode.js?v=0.1.50';
-import * as results from './views/results.js?v=0.1.50';
-import * as myinfo from './views/me.js?v=0.1.50';
-import * as apply from './views/apply.js?v=0.1.50';
-import * as draft from './views/draft.js?v=0.1.50';
-import * as games from './views/games.js?v=0.1.50';
-import * as run from './views/run.js?v=0.1.50';
-import * as notice from './views/notice.js?v=0.1.50';
-import * as admin from './views/admin.js?v=0.1.50';
-import * as membersView from './views/members.js?v=0.1.50';
-import * as loginView from './views/login.js?v=0.1.50';
-import { loadSession, saveSession, verify } from './auth.js?v=0.1.50';
-import { startAutoSync } from './member-sync.js?v=0.1.50';
-import { startRecordSync } from './record-sheet.js?v=0.1.50';
-import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.50';
+import * as home from './views/home.js?v=0.1.51';
+import * as schedule from './views/schedule.js?v=0.1.51';
+import * as matchmode from './views/matchmode.js?v=0.1.51';
+import * as results from './views/results.js?v=0.1.51';
+import * as myinfo from './views/me.js?v=0.1.51';
+import * as apply from './views/apply.js?v=0.1.51';
+import * as draft from './views/draft.js?v=0.1.51';
+import * as games from './views/games.js?v=0.1.51';
+import * as run from './views/run.js?v=0.1.51';
+import * as notice from './views/notice.js?v=0.1.51';
+import * as admin from './views/admin.js?v=0.1.51';
+import * as membersView from './views/members.js?v=0.1.51';
+import * as loginView from './views/login.js?v=0.1.51';
+import { loadSession, saveSession, verify } from './auth.js?v=0.1.51';
+import { startAutoSync } from './member-sync.js?v=0.1.51';
+import { startRecordSync } from './record-sheet.js?v=0.1.51';
+import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.51';
+import { applyEmblemMarks } from './emblem-mark.js?v=0.1.51';
 
 const MEMBER_TABS = [['home', '홈', 'home'], ['sched', '일정', 'calendar'], ['mm', '경기', 'ball'], ['results', '기록', 'board'], ['me', '내 정보', 'user']];
 const OP_TABS = [['plan', '일정', 'calendar'], ['run', '경기 운영', 'whistle'], ['notice', '공지', 'megaphone'], ['members', '회원', 'users'], ['settings', '설정', 'gear']];
@@ -56,6 +57,7 @@ function parseHash() {
 function renderShell() {
   document.documentElement.style.setProperty('--brand', S.team.primary || '#1e3a8a');
   document.title = S.team.name;
+  applyEmblemMarks(S.team.emblem);
   const { name } = parseHash();
   const capMd = !S.operator && captainMatchday();
   document.getElementById('topbar').innerHTML = `

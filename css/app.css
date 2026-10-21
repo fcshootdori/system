@@ -1638,3 +1638,29 @@ body[data-route="home"] #view > .hero2:first-child { margin-top: -14px; }
 .icon-btn { border-radius: 50%; box-shadow: inset 0 0 0 1.5px #d6d9e4; }
 .cal-head .icon-btn { width: 40px; height: 40px; font-size: 20px; }
 .cal-head b { font-size: 19px; }
+/* ═══ 0.1.51 엠블럼 무늬 — 사진·남색 머리·기록 카드·경기장 가운데·빈 화면·바닥글 ═══ */
+:root { --emb-w: url(../assets/emblem-w.png); --emb-n: url(../assets/emblem-n.png); }
+/* 홈 사진: 오른쪽 아래에 흰 엠블럼 */
+.hero2::before { content: ''; position: absolute; z-index: 0; right: -18px; bottom: 14px; width: 176px; aspect-ratio: 1; background: var(--emb-w) center / contain no-repeat; opacity: .14; pointer-events: none; }
+.hero2 .h2-in { z-index: 1; }
+@media (min-width: 701px) { .hero2::before { right: 4%; bottom: 22px; width: 220px; opacity: .2; } }
+/* 경기모드 남색 머리: 가운데 원 대신 엠블럼 */
+.mm-hero::before { top: -34px; width: 300px; height: 300px; margin-left: -150px; border: 0; border-radius: 0; background: var(--emb-w) center / contain no-repeat; opacity: .07; }
+.mm-hero.emb::before { top: -20px; width: 240px; height: 240px; margin-left: -120px; }
+/* 기록 머리: 오른쪽에 흰 엠블럼 */
+.r-hero::before { content: ''; position: absolute; right: -14px; top: 50%; width: 132px; aspect-ratio: 1; margin-top: -66px; background: var(--emb-w) center / contain no-repeat; opacity: .2; pointer-events: none; }
+.r-hero > * { position: relative; z-index: 1; }
+/* 개인 기록 카드 띠 */
+.r-pcard .band::before { content: ''; position: absolute; right: -26px; bottom: -34px; width: 168px; aspect-ratio: 1; background: var(--emb-w) center / contain no-repeat; opacity: .14; pointer-events: none; }
+/* 드래프트 경기장 가운데 원 */
+.pitch .lines .circ::after { content: ''; position: absolute; inset: 13px; background: var(--emb-w) center / contain no-repeat; opacity: .28; }
+/* 빈 화면 · 불러오는 중 */
+.empty::before { content: ''; display: block; width: 52px; aspect-ratio: 1; margin: 0 auto 10px; background: var(--emb-n) center / contain no-repeat; opacity: .16; }
+.boot { display: grid; justify-items: center; gap: 14px; padding: 18vh 0 0; color: var(--sub); font-size: 14px; font-weight: 600; }
+.boot img { width: 96px; height: 96px; animation: bootPulse 1.6s ease-in-out infinite; }
+@keyframes bootPulse { 0%, 100% { opacity: .9; transform: scale(1); } 50% { opacity: .55; transform: scale(.96); } }
+/* 바닥글: 작은 엠블럼 서명 */
+.ver::before { content: ''; display: block; width: 34px; aspect-ratio: 1; margin: 6px auto 6px; background: var(--emb-n) center / contain no-repeat; opacity: .3; }
+body.gate .ver::before { background-image: var(--emb-w); opacity: .4; }
+@media (prefers-reduced-motion: reduce) { .boot img { animation: none; } }
+.ver:empty::before { display: none; }
