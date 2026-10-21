@@ -1,18 +1,18 @@
 // 회원 홈 — 경기장 사진 첫 화면(다음 경기 한 줄) + 참석 카드(바로 참석·불참) + MOM 알림 + 지난 경기 카드
-import { sheetPending } from '../record-sheet.js?v=0.1.52';
-import { momAsks, momStrip } from './mom.js?v=0.1.52';
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.52';
-import { db, newId } from '../store.js?v=0.1.52';
-import { STATUS } from '../config.js?v=0.1.52';
-import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.52';
-import { icon } from '../icons.js?v=0.1.52';
-import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.52';
-import { myBox, bindMy } from './apply.js?v=0.1.52';
-import { TEAM_COLORS } from '../config.js?v=0.1.52';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.52';
-import { norm } from '../cafe-parser.js?v=0.1.52';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.52';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.52';
+import { sheetPending } from '../record-sheet.js?v=0.1.53';
+import { momAsks, momStrip } from './mom.js?v=0.1.53';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.53';
+import { db, newId } from '../store.js?v=0.1.53';
+import { STATUS } from '../config.js?v=0.1.53';
+import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.53';
+import { icon } from '../icons.js?v=0.1.53';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.53';
+import { myBox, bindMy } from './apply.js?v=0.1.53';
+import { TEAM_COLORS, DEFAULT_SLOT } from '../config.js?v=0.1.53';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.53';
+import { norm } from '../cafe-parser.js?v=0.1.53';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.53';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.53';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);
@@ -60,21 +60,15 @@ export function placeName(venue) {
   const w = ws[0] || '', cut = w.replace(FIELD, '');
   return /공원$/.test(cut) ? cut : w;   // "어린이대공원잔디축구장"은 공원까지, "효창운동장"은 그대로
 }
-// 홈 첫 화면 문구: "토요일 아침 7시, / 보라매공원에서 만나요"
+// 홈 첫 화면 문구: "10월 24일 (토) 14:00 / 어린이대공원에서 만나요" — 시작 시간을 날짜 옆에
 function headline(md) {
-  const d = new Date(md.date + 'T00:00:00'), dow = DOW[d.getDay()];
-  const m = String(md.time || '').match(/(\d{1,2}):(\d{2})/);
-  let l1 = `${d.getMonth() + 1}월 ${d.getDate()}일 ${dow}요일,`;
-  if (m) {
-    const h = +m[1], mi = +m[2];
-    const part = h < 5 ? '새벽' : h < 10 ? '아침' : h < 12 ? '오전' : h < 18 ? '오후' : '저녁';
-    l1 = `${dow}요일 ${part} ${h > 12 ? h - 12 : h}시${mi ? ` ${mi}분` : ''},`;
-  }
+  const d = new Date(md.date + 'T00:00:00');
+  const start = parseTime(md.time)?.[0];
+  const l1 = `${d.getMonth() + 1}월 ${d.getDate()}일 (${DOW[d.getDay()]})`;
   const place = placeName(md.venue);
   const l2 = md.cancelled ? '이 경기는 취소됐어요' : place ? `${place}에서 만나요` : '경기장에서 만나요';
-  return `${esc(l1)}<br>${esc(l2)}`;
+  return `<span class="h2-when">${esc(l1)}${start ? ` <b class="h2-time">${esc(start)}</b>` : ''}</span><br>${esc(l2)}`;
 }
-const longDate = (date) => { const d = new Date(date + 'T00:00:00'); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일`; };
 
 // 다음 경기 참석 카드: 참석 인원 · 마감 · 시간·장소 · 내 참석/불참 · 명단·팀·포지션 바로가기
 function ticket(md) {
@@ -142,7 +136,7 @@ export function render(root) {
   root.innerHTML = `
     <section class="hero2" aria-label="다음 경기">
       <div class="h2-in">
-        ${md ? `<div class="h2-meta"><span class="h2-dd">${dday(md.date)}</span><span>${esc([noLabel(md), longDate(md.date)].filter(Boolean).join(' · '))}</span></div>
+        ${md ? `<div class="h2-meta"><span class="h2-dd">${dday(md.date)}</span>${noLabel(md) ? `<span>${esc(noLabel(md))}</span>` : ''}</div>
           <h1>${headline(md)}</h1>` : '<h1>다음 경기를<br>준비하고 있어요</h1>'}
         <a class="h2-link" href="#/sched">전체 일정 ${icon('chevron')}</a>
       </div>
@@ -164,13 +158,13 @@ export function render(root) {
 export function editMatchday(md, presetDate) {
   const isNew = !md;
   const f = fmtOf(md);
-  const t0 = parseTime(md?.time) || (isNew ? lastTime() : ['', '']);
+  const t0 = parseTime(md?.time) || (isNew ? DEFAULT_SLOT.time : ['', '']);
   const ev0 = eventTeams(md);
   const custom = !!md?.format;
   const { el, close } = modal(isNew ? '경기 추가' : '경기일 수정', `
     <form class="stack">
       <div class="row">
-        <label>날짜<input type="date" name="date" required value="${esc(md?.date || presetDate || todayISO())}"></label>
+        <label>날짜<input type="date" name="date" required value="${esc(md?.date || (presetDate && !S.matchdays.some((m) => m.date === presetDate && !m.cancelled) ? presetDate : nextFreeDay()))}"></label>
         <label>회차<input type="number" name="no" min="1" inputmode="numeric" value="${md?.no ?? ''}" placeholder="자동"></label>
       </div>
       <p class="tiny muted no-hint" data-nohint></p>
@@ -389,10 +383,17 @@ function parseTime(s) {
   const f = (h, mm) => `${String(+h).padStart(2, '0')}:${mm}`;
   return [f(m[1], m[2]), m[3] ? f(m[3], m[4]) : ''];
 }
-// 새 경기 기본 시간 = 가장 최근에 등록한 경기의 시간 (없으면 07:00~09:00)
-function lastTime() {
-  const m = [...S.matchdays].filter((x) => x.source !== 'sheet' && x.time).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
-  return parseTime(m?.time) || ['07:00', '09:00'];
+// 새 경기 기본값 = 토요일 14:00~16:00 (대부분의 경기) — 날짜는 아직 경기가 없는 가장 가까운 토요일
+function nextFreeDay() {
+  const taken = new Set(S.matchdays.filter((m) => !m.cancelled).map((m) => m.date));
+  const d = new Date(todayISO() + 'T00:00:00');
+  d.setDate(d.getDate() + ((DEFAULT_SLOT.dow - d.getDay() + 7) % 7));
+  for (let k = 0; k < 60; k++) {
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (!taken.has(iso)) return iso;
+    d.setDate(d.getDate() + 7);
+  }
+  return todayISO();
 }
 // 예전에 쓴 구장 이름 (자주 쓴 순)
 function venues() {

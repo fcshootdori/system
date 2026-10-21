@@ -1,14 +1,14 @@
 // 일정 — 회원: 달력 보기 / 운영: 달력·목록에서 경기 추가·수정  (WD_FUTSAL 일정 메뉴와 같은 구성)
-import { S, go, mdPath, today, statusLabel } from '../state.js?v=0.1.52';
-import { db } from '../store.js?v=0.1.52';
-import { STATUS } from '../config.js?v=0.1.52';
-import { applicants, fmtOf, noLabel, isOpen, closeLabel } from '../domain.js?v=0.1.52';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.52';
-import { empty } from '../ui.js?v=0.1.52';
-import { editMatchday, fmtSummary, reviewCard, cancelMatchday } from './home.js?v=0.1.52';
-import { forget } from '../record-sheet.js?v=0.1.52';
+import { S, go, mdPath, today, statusLabel } from '../state.js?v=0.1.53';
+import { db } from '../store.js?v=0.1.53';
+import { STATUS } from '../config.js?v=0.1.53';
+import { applicants, fmtOf, noLabel, isOpen, closeLabel } from '../domain.js?v=0.1.53';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.53';
+import { empty } from '../ui.js?v=0.1.53';
+import { editMatchday, fmtSummary, reviewCard, cancelMatchday } from './home.js?v=0.1.53';
+import { forget } from '../record-sheet.js?v=0.1.53';
 
-let ym = null, sel = null, view = 'cal';
+let ym = null, sel = null, view = 'cal', picked = false;   // picked: 달력에서 날짜를 직접 눌렀는지
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const p2 = (n) => String(n).padStart(2, '0');
 // 달력 색: 초록 신청 중 · 파랑 경기 예정 · 회색 종료
@@ -59,7 +59,7 @@ export function render(root, { sub }) {
     <section class="card">${md ? detail(md, op) : `<p class="muted">${fmtDate(sel)} — 경기가 없어요.</p>${op ? `<button class="btn" data-addday>이 날 경기 추가</button>` : ''}`}</section>`;
 
   bindCommon(root);
-  root.querySelectorAll('[data-day]').forEach((b) => b.addEventListener('click', () => { sel = b.dataset.day; render(root, { sub }); }));
+  root.querySelectorAll('[data-day]').forEach((b) => b.addEventListener('click', () => { sel = b.dataset.day; picked = true; render(root, { sub }); }));
   root.querySelectorAll('[data-mon]').forEach((b) => b.addEventListener('click', () => {
     const d = new Date(y, mo - 1 + +b.dataset.mon, 1); ym = `${d.getFullYear()}-${p2(d.getMonth() + 1)}`; render(root, { sub });
   }));
@@ -78,7 +78,7 @@ export function render(root, { sub }) {
 
 function bindCommon(root) {
   root.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => { view = b.dataset.view; b.closest('#view') && render(root, { sub: 'op' }); }));
-  root.querySelector('[data-add]')?.addEventListener('click', () => editMatchday(null, sel));
+  root.querySelector('[data-add]')?.addEventListener('click', () => editMatchday(null, picked ? sel : null));   // 날짜를 고르지 않았으면 다음 빈 토요일
 }
 
 function detail(md, op) {

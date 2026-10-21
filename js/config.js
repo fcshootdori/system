@@ -7,7 +7,7 @@
 //    경기 방식은 경기일마다 따로 바꿀 수도 있습니다 (경기일 수정 화면).
 // ─────────────────────────────────────────────────────────────
 export const APP_NAME = 'SHOOTDORI';
-export const APP_VERSION = '0.1.52';
+export const APP_VERSION = '0.1.53';
 
 // Firebase 프로젝트: fcshootdori (웹 앱 설정값 — 공개되어도 되는 값이며, 보안은 Firestore 규칙으로 지킴)
 export const FIREBASE = {
@@ -20,6 +20,8 @@ export const FIREBASE = {
   measurementId: 'G-EV052CP0TG',
 };
 
+// 새 경기 기본 일정: 매주 토요일 14:00~16:00
+export const DEFAULT_SLOT = { dow: 6, time: ['14:00', '16:00'] };
 export const DEFAULT_FORMAT = {
   teams: 2,                    // 경기일 팀 수 (= 주장 수)
   rounds: 5,                   // 라운드 수 (2팀이면 핑크 vs 블루 5번)
