@@ -1,12 +1,12 @@
 // MOM 선정 — 경기가 끝나면 승리 팀 주장이 자기 팀에서 1명, 무승부면 두 팀 주장이 각자 자기 팀에서 1명
 //  · 경기 결과 화면(#/games/ID)에서 고르고, 홈에는 뽑을 차례인 주장에게 알림 띠를 보여 줌
 //  · 운영진은 모든 팀을 대신 고를 수 있음 (주장이 없거나 못 고를 때)
-import { S, me, mdPath, nameOf, today } from '../state.js?v=0.1.49';
-import { db, inSandbox } from '../store.js?v=0.1.49';
-import { rosters, teamName, teamColor, momTeams, momTeamsFor, momPicked, momPending, applyMomPick } from '../domain.js?v=0.1.49';
-import { TEAM_COLORS } from '../config.js?v=0.1.49';
-import { esc, toast, fmtDate } from '../util.js?v=0.1.49';
-import { teamChip } from '../ui.js?v=0.1.49';
+import { S, me, mdPath, nameOf, today } from '../state.js?v=0.1.50';
+import { db, inSandbox } from '../store.js?v=0.1.50';
+import { rosters, teamName, teamColor, momTeams, momTeamsFor, momPicked, momPending, applyMomPick } from '../domain.js?v=0.1.50';
+import { TEAM_COLORS } from '../config.js?v=0.1.50';
+import { esc, toast, fmtDate } from '../util.js?v=0.1.50';
+import { teamChip } from '../ui.js?v=0.1.50';
 
 const label = (md, ti) => teamName(md, ti) || `${TEAM_COLORS.find((c) => c.key === teamColor(md, ti))?.label || ti + 1 + '번'}팀`;
 const gamesOf = (md) => S.games.filter((g) => g.matchdayId === md.id);
@@ -62,4 +62,4 @@ export function momAsks() {
     .map((m) => ({ md: m, teams: momTeamsFor(m, me.id, false).filter((ti) => !momPicked(m, ti)) }))
     .filter((x) => x.teams.length);
 }
-export const momStrip = (x) => `<a class="card cap-strip mom-strip" href="#/games/${x.md.id}"><span class="ms-ic">🏆</span><span><b>${fmtDate(x.md.date)} 경기 MOM</b>을 뽑아 주세요 · ${x.teams.map((ti) => esc(label(x.md, ti))).join(', ')} 주장</span><span aria-hidden="true">›</span></a>`;
+export const momStrip = (x) => `<a class="card cap-strip mom-strip" href="#/games/${x.md.id}"><span class="ms-ic"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="m12 2 3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21l1.4-7L2 9.3l7-.8z" fill="#e0a100"/></svg></span><span><b>${fmtDate(x.md.date)} 경기 MOM</b>을 뽑아 주세요 · ${x.teams.map((ti) => esc(label(x.md, ti))).join(', ')} 주장</span><span class="ms-go" aria-hidden="true">›</span></a>`;

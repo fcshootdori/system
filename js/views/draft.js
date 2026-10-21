@@ -1,11 +1,11 @@
-import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.49';
-import { db } from '../store.js?v=0.1.49';
-import { TEAM_COLORS } from '../config.js?v=0.1.49';
-import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.49';
-import { TEAM_COLORS as TC } from '../config.js?v=0.1.49';
-import { modal } from '../ui.js?v=0.1.49';
-import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.49';
-import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.49';
+import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.50';
+import { db } from '../store.js?v=0.1.50';
+import { TEAM_COLORS } from '../config.js?v=0.1.50';
+import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.50';
+import { TEAM_COLORS as TC } from '../config.js?v=0.1.50';
+import { modal } from '../ui.js?v=0.1.50';
+import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.50';
+import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.50';
 
 let lastCtx = {};
 export function render(root, ctx = {}) {
@@ -105,8 +105,8 @@ const palette = () => COLORS2.map(colorOf);
 const seen = new Set();      // 새로 들어온 선수 표시(한 번만 튀어오르게)
 let wasMyTurn = false;
 
-// ── 선수 유니폼 아이콘 (WD_FUTSAL과 같은 반팔 유니폼 + 가슴에 이름) ──
-const FIG_SVG = '<svg class="pfs" viewBox="0 0 80 72" aria-hidden="true"><path class="pf-body" d="M27 4Q40 11 53 4L66 7Q73 9 76 17L79 33L65 35L64 67Q40 71 16 67L15 35L1 33L4 17Q7 9 14 7Z"/><path class="pf-cuff" d="M1.9 28.6L15 30.6V35L1 33ZM78.1 28.6L65 30.6V35L79 33Z"/><path class="pf-seam" d="M15 31V21M65 31V21"/><path class="pf-colw" d="M27 4Q40 12.5 53 4"/><path class="pf-coll" d="M27 4Q40 11 53 4M25.5 5.4Q40 15.5 54.5 5.4"/></svg>';
+// ── 선수 유니폼 아이콘 (흰 카라 · 진한 소매 끝단 · 오른쪽 음영 + 가슴에 이름) ──
+const FIG_SVG = '<svg class="pfs" viewBox="0 0 44 40" aria-hidden="true"><path class="pf-body" d="M15.5 2.5 8 6.2 3 14.4l6 3.8.5-.5V36h25V17.7l.5.5 6-3.8-5-8.2-7.5-3.7c-1.3 2.6-3.7 4-6.5 4s-5.2-1.4-6.5-4Z"/><path class="pf-shade" d="M28.5 2.5 36 6.2l5 8.2-6 3.8-.5-.5V36H28.6V7.6c0-1.7 0-3.4-.1-5.1Z"/><path class="pf-cuff" d="m3 14.4 6 3.8.9-1.5-6-3.8Zm38 0-6 3.8-.9-1.5 6-3.8Z"/><path class="pf-colw" d="M15.5 2.5c1.3 2.6 3.7 4 6.5 4s5.2-1.4 6.5-4l-2-.7c-1 2-2.6 3-4.5 3s-3.5-1-4.5-3Z"/></svg>';
 // 닉네임이 길면(5글자 이상) 두 줄로 — 어절(띄어쓰기) 단위로 줄을 바꿈. 괄호 부분은 따로 한 어절로 봄 (스테이(stay) → 스테이 / (stay))
 //  띄어쓰기가 없는 한 낱말 닉네임은 읽기 좋게 가운데에서 (앞줄을 한 글자 길게: 그림자호수 → 그림자 / 호수)
 export function nameLines(name, min = 5) {   // min 글자부터 두 줄 (팀 칸의 작은 유니폼은 4글자부터)

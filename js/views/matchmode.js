@@ -2,14 +2,14 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.49';
-import { db, newId } from '../store.js?v=0.1.49';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.49';
-import { TEAM_COLORS } from '../config.js?v=0.1.49';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.49';
-import { icon } from '../icons.js?v=0.1.49';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.49';
-import { figHTML } from './draft.js?v=0.1.49';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.50';
+import { db, newId } from '../store.js?v=0.1.50';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.50';
+import { TEAM_COLORS } from '../config.js?v=0.1.50';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.50';
+import { icon } from '../icons.js?v=0.1.50';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.50';
+import { figHTML } from './draft.js?v=0.1.50';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -27,6 +27,7 @@ const POS = { GK: 'GK', LB: 'LB', RB: 'RB', LCB: 'CB', RCB: 'CB', CB: 'CB', LM: 
 const DEF_FORM = '4-4-2';
 
 const ui = { md: null, round: null, view: null, sel: null, ogMode: false, roundFor: null };
+const inkOf = (md, i) => { const h = hexOf(md, i); return /^#?fff/i.test(h.text.replace('#', '')) ? h.hex : '#121633'; };
 const hexOf = (md, i) => TEAM_COLORS.find((c) => c.key === teamColor(md, i)) || { hex: '#64748b', text: '#fff' };
 const gamesOf = (md) => S.games.filter((g) => g.matchdayId === md.id).sort((a, b) => (a.round || 0) - (b.round || 0) || (a.order || 0) - (b.order || 0));
 const nRounds = (md) => Math.max(fmtOf(md).rounds, ...gamesOf(md).map((g) => g.round || 0));
@@ -64,17 +65,17 @@ export function render(root, ctx = {}) {
   const g = games.find((x) => x.round === ui.round);
 
   root.innerHTML = `
-    ${ctx.embedded ? '' : `<div class="mm-head"><span class="mm-live-tag">${played ? '경기 종료' : '<i></i> LIVE'}</span>
-      <h1>${noLabel(md) ? noLabel(md) + ' · ' : ''}${fmtDate(md.date)}</h1><p class="muted small">${esc([md.time, md.venue].filter(Boolean).join(' · '))}</p></div>`}
-    <section class="card board mm-board">
-      <div class="sb-team">${teamChip(md, 0)}</div>
-      <div class="sb-score"><b>${t[0] ?? 0}</b><span>:</span><b>${t[1] ?? 0}</b></div>
-      <div class="sb-team">${teamChip(md, 1)}</div>
-      <p class="sb-note">${played ? '경기 종료 · 라운드 합산' : liveG ? `${liveG.round}라운드 진행 중 · 라운드 합산` : '경기 전'}</p>
+    <section class="mm-hero ${ctx.embedded ? 'emb' : ''}">
+      ${ctx.embedded ? '' : `<div class="mm-hh"><span class="mm-tag ${played ? 'end' : ''}">${played ? '경기 종료' : '<i></i>LIVE'}</span>
+        <h1>${noLabel(md) ? noLabel(md) + ' · ' : ''}${fmtDate(md.date)}</h1>${md.time || md.venue ? `<small>${esc([md.time, md.venue].filter(Boolean).join(' · '))}</small>` : ''}</div>`}
+      <div class="mm-split">
+        ${[0, 1].map((i) => `<div class="mm-t ${i ? 'b' : 'a'}" style="--tc:${hexOf(md, i).hex};--ti:${hexOf(md, i).text}"><span>${esc(teamLabel(md, i))}</span><b>${t[i] ?? 0}</b></div>`).join('')}
+        <div class="mm-mid"><b>${played ? '종료' : liveG ? `${liveG.round}R` : '경기 전'}</b><small>${played ? '라운드 합산' : liveG ? '<i></i>LIVE' : '곧 시작'}</small></div>
+      </div>
     </section>
     <nav class="mm-rounds" aria-label="라운드">${[...Array(R)].map((_, k) => { const r = k + 1, x = games.find((q) => q.round === r);
       return `<button type="button" data-round="${r}" class="${r === ui.round ? 'on' : ''} ${x?.done ? 'done' : x && x === liveG ? 'live' : ''}">
-        <span>${r}R</span><b>${x && (x.done || x.sa || x.sb) ? `${x.sa}:${x.sb}` : x === liveG && x ? '진행' : '–'}</b></button>`; }).join('')}</nav>
+        <span>${r}R${x && x === liveG && !x.done ? ' 진행' : ''}</span><b>${x && (x.done || x.sa || x.sb) ? `<em style="--sc:${inkOf(md, x.a ?? 0)}">${x.sa}</em><i>:</i><em style="--sc:${inkOf(md, x.b ?? 1)}">${x.sb}</em>` : x === liveG && x ? '0<i>:</i>0' : '–'}</b></button>`; }).join('')}</nav>
     ${op ? recorder(md, games, g) : roundCard(md, g)}
     ${md.status !== 'played' || capOf.length ? lineupCard(md, capOf, op) : lineupCard(md, [], false)}
     ${!op && !played ? scorersCard(md, games) : ''}
@@ -168,7 +169,7 @@ function pitchHTML(md, ti, lu, editable) {
     </svg>
     ${list.map(([k, x, y]) => { const id = s[k] && ros.includes(s[k]) ? s[k] : null;
       return `<div class="lp-slot ${id ? 'full' : ''} ${editable && ui.sel?.id === id && id ? 'sel' : ''}" style="left:${x}%;top:${(1.7 + y * 0.9).toFixed(1)}%" ${editable ? `data-slot="${k}"` : ''}>
-        ${id ? `<span class="jf vest lp-j ${k === 'GK' ? 'gk' : ''}" ${k === 'GK' ? 'style="--tc:#facc15;--ti:#131c2b"' : ''} ${editable ? `data-drag="${id}" data-from="${k}"` : ''}>${figHTML(nameOf(id, md), '', 4)}</span>` : `<span class="lp-empty">${POS[k] || k}</span>`}
+        ${id ? `<span class="jf vest lp-j pos ${k === 'GK' ? 'gk' : ''}" ${k === 'GK' ? 'style="--tc:#facc15;--ti:#5c4300"' : ''} ${editable ? `data-drag="${id}" data-from="${k}"` : ''}>${figHTML(POS[k] || k, '', 9)}<em class="lp-nm">${esc(nameOf(id, md))}</em></span>` : `<span class="lp-empty">${POS[k] || k}</span>`}
       </div>`; }).join('')}
   </div>`;
 }

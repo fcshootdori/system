@@ -7,7 +7,7 @@
 //    경기 방식은 경기일마다 따로 바꿀 수도 있습니다 (경기일 수정 화면).
 // ─────────────────────────────────────────────────────────────
 export const APP_NAME = 'SHOOTDORI';
-export const APP_VERSION = '0.1.49';
+export const APP_VERSION = '0.1.50';
 
 // Firebase 프로젝트: fcshootdori (웹 앱 설정값 — 공개되어도 되는 값이며, 보안은 Firestore 규칙으로 지킴)
 export const FIREBASE = {

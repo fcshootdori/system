@@ -4,11 +4,11 @@
 //  · 연결 키는 운영진 기기에만 — 회원 명부(연락처 포함)를 읽고 시트에 기록을 쓰는 열쇠라서
 //  · 기록 화면: 시트 기록 + 아직 시트에 없는(또는 시트에 보낸 뒤 앱에서 고친) 경기는 Firebase 기록
 //  · 운영진 기기(연결 키 있음): 경기를 마치거나 고치면 잠시 뒤 시트로 자동으로 보냄
-import { S, refresh, memberById, onChange, setArchiveSource, reapplyArchive, today } from './state.js?v=0.1.49';
-import { inSandbox, db } from './store.js?v=0.1.49';
-import { rosters, teamColor, teamName, fmtOf, matchNumbers, momPending } from './domain.js?v=0.1.49';
-import { toItem, fromSheet } from './record-rows.js?v=0.1.49';
-import { norm } from './member-sheet.js?v=0.1.49';
+import { S, refresh, memberById, onChange, setArchiveSource, reapplyArchive, today } from './state.js?v=0.1.50';
+import { inSandbox, db } from './store.js?v=0.1.50';
+import { rosters, teamColor, teamName, fmtOf, matchNumbers, momPending } from './domain.js?v=0.1.50';
+import { toItem, fromSheet } from './record-rows.js?v=0.1.50';
+import { norm } from './member-sheet.js?v=0.1.50';
 
 const LK = 'teamapp:sheetkey', LC = 'teamapp:rec', LP = 'teamapp:recpush';
 const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); return true; } catch { return false; } }, del: (k) => { try { localStorage.removeItem(k); } catch {} } };

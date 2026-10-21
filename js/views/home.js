@@ -1,18 +1,18 @@
-// 회원 홈 — 경기장 사진 위 다음 경기 티켓(바로 참석·불참) + 지난 경기 전광판
-import { sheetPending } from '../record-sheet.js?v=0.1.49';
-import { momAsks, momStrip } from './mom.js?v=0.1.49';
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.49';
-import { db, newId } from '../store.js?v=0.1.49';
-import { STATUS } from '../config.js?v=0.1.49';
-import { applicants, rosters, draftState, fmtOf, totals, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.49';
-import { icon } from '../icons.js?v=0.1.49';
-import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.49';
-import { myBox, bindMy } from './apply.js?v=0.1.49';
-import { TEAM_COLORS } from '../config.js?v=0.1.49';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.49';
-import { norm } from '../cafe-parser.js?v=0.1.49';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.49';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.49';
+// 회원 홈 — 경기장 사진 첫 화면(다음 경기 한 줄) + 참석 카드(바로 참석·불참) + MOM 알림 + 지난 경기 카드
+import { sheetPending } from '../record-sheet.js?v=0.1.50';
+import { momAsks, momStrip } from './mom.js?v=0.1.50';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.50';
+import { db, newId } from '../store.js?v=0.1.50';
+import { STATUS } from '../config.js?v=0.1.50';
+import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.50';
+import { icon } from '../icons.js?v=0.1.50';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.50';
+import { myBox, bindMy } from './apply.js?v=0.1.50';
+import { TEAM_COLORS } from '../config.js?v=0.1.50';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.50';
+import { norm } from '../cafe-parser.js?v=0.1.50';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.50';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.50';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);
@@ -51,9 +51,25 @@ function dday(date) {
   const n = Math.round((b - a) / 864e5);
   return n === 0 ? '오늘' : n > 0 ? `D-${n}` : '지난 경기';
 }
+// 홈 첫 화면 문구: "토요일 아침 7시, / 보라매공원에서 만나요"
+function headline(md) {
+  const d = new Date(md.date + 'T00:00:00'), dow = DOW[d.getDay()];
+  const m = String(md.time || '').match(/(\d{1,2}):(\d{2})/);
+  let l1 = `${d.getMonth() + 1}월 ${d.getDate()}일 ${dow}요일,`;
+  if (m) {
+    const h = +m[1], mi = +m[2];
+    const part = h < 5 ? '새벽' : h < 10 ? '아침' : h < 12 ? '오전' : h < 18 ? '오후' : '저녁';
+    l1 = `${dow}요일 ${part} ${h > 12 ? h - 12 : h}시${mi ? ` ${mi}분` : ''},`;
+  }
+  const place = String(md.venue || '').trim().split(/\s+/)[0];
+  const l2 = md.cancelled ? '이 경기는 취소됐어요' : place ? `${place}에서 만나요` : '경기장에서 만나요';
+  return `${esc(l1)}<br>${esc(l2)}`;
+}
+const longDate = (date) => { const d = new Date(date + 'T00:00:00'); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일`; };
+
+// 다음 경기 참석 카드: 참석 인원 · 마감 · 시간·장소 · 내 참석/불참 · 명단·팀·포지션 바로가기
 function ticket(md) {
   const f = fmtOf(md);
-  const d = new Date(md.date + 'T00:00:00');
   const list = applicants(md);
   const nIn = list.filter((a) => !a.wait).length;
   const min = f.minPlayers || 0;
@@ -64,36 +80,49 @@ function ticket(md) {
   const open = isOpen(md);
   const v = signupView(md);
   const [t1, t2] = String(md.time || '').split('~');
-  return `<section class="ticket" aria-label="다음 경기">
-    <div class="tk-main">
-      <div class="tk-when">
-        <b class="tk-date">${d.getMonth() + 1}.${String(d.getDate()).padStart(2, '0')}</b>
-        <span class="tk-dow">${DOW[d.getDay()]}요일</span>
-      </div>
-      <div class="tk-info">
-        <div class="tk-tags"><span class="tk-dday">${dday(md.date)}</span>${noLabel(md) ? `<span class="tk-no">${noLabel(md)}</span>` : ''}<span class="tk-st">${esc(STATUS[md.status]?.label || '')}</span></div>
-        ${md.time ? `<p class="tk-line">${icon('clock')}<span>${esc(t1)}${t2 ? ` – ${esc(t2)}` : ''}</span></p>` : ''}
-        ${md.venue ? `<p class="tk-line">${icon('pin')}<span>${esc(md.venue)}</span></p>` : ''}
-        <p class="tk-line sub">${icon('flag')}<span>${esc(fmtSummary(md))}</span></p>
-      </div>
+  const amCap = [0, 1].some((i) => captainIds(md, i).includes(me.id));
+  return `<section class="card att" aria-label="다음 경기 참석">
+    <div class="att-top">
+      <div class="att-n"><b>${nIn}</b><span>${min ? `/ ${min}명 참석` : '명 참석'}</span></div>
+      <span class="att-st ${open && closeLabel(md) && !md.reopened ? 'dl' : ''}">${open && closeLabel(md) && !md.reopened ? esc(closeLabel(md)) : esc(STATUS[md.status]?.label || '')}</span>
     </div>
-    <div class="tk-perf" aria-hidden="true"></div>
-    <div class="tk-stub">
-      <div class="tk-count"><span><b>${nIn}</b>명 참석</span><small>${min ? (nIn >= min ? `최소 ${min}명 충족` : `최소 ${min}명까지 ${min - nIn}명`) : ''}</small></div>
-      <div class="tk-bar ${min && nIn >= min ? 'ok' : ''}"><i style="width:${pct}%"></i></div>
-      ${open && closeLabel(md) && !md.reopened ? `<p class="tk-dl">${icon('clock')} 신청 ${closeLabel(md)}</p>` : ''}
-      ${md.note ? `<p class="tk-note">${esc(md.note)}</p>` : ''}
-      ${myTeam >= 0 ? `<p class="tk-me">내 팀 ${teamChip(md, myTeam)}</p>`
-        : open ? `<div class="tk-reply">${myBox(md, v, open)}</div>`
-        : `<p class="tk-me">${md.cancelled ? '취소된 경기예요' : '신청이 마감됐어요'}${(md.apps || {})[me.id] ? ' · 나는 참석' : ''}</p>`}
-      ${ds && ds.turn != null ? `<p class="tk-me">드래프트 중 · 지금 <b>${esc(nameOf(md.captains[ds.turn].id, md))}</b> 주장 차례</p>` : ''}
-      <div class="tk-links">
-        <button class="btn ghost sm" data-go="apply/${md.id}">${icon('users')}신청 명단</button>
-        ${md.teams?.length || md.status === 'drafting' ? `<button class="btn ghost sm" data-go="draft/${md.id}">${icon('shirt')}${md.teams?.length ? '팀 구성' : '드래프트 보기'}</button>` : ''}
-        ${md.teams?.length && md.status !== 'played' ? `<button class="btn ${[0, 1].some((i) => captainIds(md, i).includes(me.id)) ? '' : 'ghost'} sm" data-go="mm">${icon('field')}${[0, 1].some((i) => captainIds(md, i).includes(me.id)) ? '포지션 정하기' : '경기모드'}</button>` : ''}
-      </div>
+    <div class="att-bar ${min && nIn >= min ? 'ok' : ''}"><i style="width:${pct}%"></i></div>
+    <p class="att-info">${md.time ? `<span>${icon('clock')}${esc(t1)}${t2 ? `–${esc(t2)}` : ''}</span>` : ''}${md.venue ? `<span>${icon('pin')}${esc(md.venue)}</span>` : ''}<span>${icon('flag')}${esc(fmtSummary(md))}</span></p>
+    ${md.note ? `<p class="tk-note">${esc(md.note)}</p>` : ''}
+    ${myTeam >= 0 ? `<p class="tk-me">내 팀 ${teamChip(md, myTeam)}</p>`
+      : open ? `<div class="tk-reply">${myBox(md, v, open)}</div>`
+      : `<p class="tk-me">${md.cancelled ? '취소된 경기예요' : '신청이 마감됐어요'}${(md.apps || {})[me.id] ? ' · 나는 참석' : ''}</p>`}
+    ${ds && ds.turn != null ? `<p class="tk-me">드래프트 중 · 지금 <b>${esc(nameOf(md.captains[ds.turn].id, md))}</b> 주장 차례</p>` : ''}
+    <div class="tk-links">
+      <button class="btn ghost sm" data-go="apply/${md.id}">${icon('users')}신청 명단</button>
+      ${md.teams?.length || md.status === 'drafting' ? `<button class="btn ghost sm" data-go="draft/${md.id}">${icon('shirt')}${md.teams?.length ? '팀 구성' : '드래프트 보기'}</button>` : ''}
+      ${md.teams?.length && md.status !== 'played' ? `<button class="btn ${amCap ? '' : 'ghost'} sm" data-go="mm">${icon('field')}${amCap ? '포지션 정하기' : '경기모드'}</button>` : ''}
     </div>
   </section>`;
+}
+
+// 지난 경기 카드 — 경기기록과 같은 모양 (팀 색 점수 막대 · VS · 라운드 점수 · MOM · 득점)
+const hexOfTeam = (md, i) => TEAM_COLORS.find((c) => c.key === teamColor(md, i)) || { hex: '#64748b', text: '#ffffff' };
+function lastCard(md) {
+  const f = fmtOf(md), games = S.games.filter((g) => g.matchdayId === md.id), done = games.filter((g) => g.done);
+  const head = `<div class="lg-hd"><span><b>지난 경기</b> · ${esc([noLabel(md), fmtDate(md.date)].filter(Boolean).join(' '))}</span>`;
+  if (f.teams !== 2) return `<a class="card lgame" href="#/games/${md.id}">${head}</div>${reviewCard(md)}</a>`;
+  // 두 팀 경기는 경기기록 화면과 같이 라운드 득점 합계로 승패를 보여요
+  const t = [0, 0];
+  done.forEach((g) => { t[g.a ?? 0] += +g.sa || 0; t[g.b ?? 1] += +g.sb || 0; });
+  const win = t[0] > t[1] ? 0 : t[0] < t[1] ? 1 : -1;
+  const hx = [0, 1].map((i) => hexOfTeam(md, i));
+  const goals = {};
+  done.forEach((g) => Object.entries(g.goals || {}).forEach(([id, n]) => { goals[id] = (goals[id] || 0) + n; }));
+  const top = Object.entries(goals).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const ink = (h) => (h.text === '#ffffff' ? h.hex : '#121633');
+  const rounds = done.slice().sort((a, b) => (a.round || 0) - (b.round || 0));
+  return `<a class="card lgame" href="#/games/${md.id}">${head}
+      ${win < 0 ? '<span class="lg-tag d">무승부</span>' : `<span class="lg-tag" style="--tc:${hx[win].hex}">${esc(teamLabel(md, win))} 승</span>`}</div>
+    <div class="lg-bar">${[0, 1].map((i) => `<div class="lg-t ${i ? 'b' : 'a'} ${win === 1 - i ? 'lose' : ''}" style="--tc:${hx[i].hex};--ti:${hx[i].text}"><span>${esc(teamLabel(md, i))}</span><b>${t[i]}</b></div>`).join('')}<i class="lg-vs">VS</i></div>
+    ${rounds.length > 1 ? `<div class="lg-rounds">${rounds.map((g) => `<span><small>${g.round}R</small><b><em style="color:${ink(hx[g.a])}">${g.sa}</em>:<em style="color:${ink(hx[g.b])}">${g.sb}</em></b></span>`).join('')}</div>` : ''}
+    <p class="lg-meta">${(md.mom || []).length ? `<span><b class="mom">★ MOM</b> ${esc(md.mom.map((id) => nameOf(id, md)).join(', '))}</span>` : ''}${top.length ? `<span>⚽ ${esc(top.map(([id, n]) => `${nameOf(id, md)}${n > 1 ? ' ' + n : ''}`).join(' · '))}</span>` : ''}</p>
+  </a>`;
 }
 
 export function render(root) {
@@ -102,25 +131,22 @@ export function render(root) {
   const capMd = captainMatchday();
   const cancels = upcomingCancelled();
   root.innerHTML = `
-    <section class="hero">
-      <div class="hero-head">
-        <h1 class="hero-title">${md ? '다음 경기' : '다음 경기 준비 중'}</h1>
-        <a class="hero-link" href="#/sched">전체 일정 ${icon('chevron')}</a>
+    <section class="hero2" aria-label="다음 경기">
+      <div class="h2-in">
+        ${md ? `<div class="h2-meta"><span class="h2-dd">${dday(md.date)}</span><span>${esc([noLabel(md), longDate(md.date)].filter(Boolean).join(' · '))}</span></div>
+          <h1>${headline(md)}</h1>` : '<h1>다음 경기를<br>준비하고 있어요</h1>'}
+        <a class="h2-link" href="#/sched">전체 일정 ${icon('chevron')}</a>
       </div>
-      ${md ? ticket(md) : `<div class="ticket empty-t"><p>운영진이 다음 경기를 올리면 여기에서 바로 참석을 정할 수 있어요.</p></div>`}
     </section>
+    ${md ? ticket(md) : '<section class="card att empty-t"><p class="muted">운영진이 다음 경기를 올리면 여기에서 바로 참석을 정할 수 있어요.</p></section>'}
     ${inSandbox() ? `<section class="card beta-entry sbx"><div><b>🧪 ${sandboxRole() === 'captain' ? '주장' : '일반 회원'} 화면 체험 중</b><p class="small muted">${sandboxRole() === 'captain'
-      ? '내가 주장인 체험 경기가 있어요. 위쪽 <b>👑 드래프트</b> 버튼으로 팀 색 고르기·우선순위 추첨·선수 뽑기를 하고, <b>경기모드</b>에서 라운드별 포지션을 정해 보세요.'
-      : '다음 경기에서 <b>참석·불참</b>을 눌러 보고, <b>경기모드</b>에서 우리 팀 포지션·실시간 점수를, <b>경기결과</b>에서 기록을 확인해 보세요.'}</p></div>
+      ? '내가 주장인 체험 경기가 있어요. 위쪽 <b>👑 드래프트</b> 버튼으로 팀 색 고르기·우선순위 추첨·선수 뽑기를 하고, <b>경기</b> 탭에서 라운드별 포지션을 정해 보세요.'
+      : '다음 경기에서 <b>참석·불참</b>을 눌러 보고, <b>경기</b> 탭에서 우리 팀 포지션·실시간 점수를, <b>기록</b> 탭에서 기록을 확인해 보세요.'}</p></div>
       <a class="btn ghost sm" href="#/sched">체험 경기 보기</a></section>` : ''}
     ${cancels.map((c) => `<a class="card cancel-strip" href="#/sched"><b>${fmtDate(c.date)} 경기 취소</b>${c.cancelReason ? ` · ${esc(c.cancelReason)}` : ''}</a>`).join('')}
     ${momAsks().map(momStrip).join('')}
     ${capMd ? `<a class="card cap-strip" href="#/draft">${icon('crown')}<span><b>${fmtDate(capMd.date)} 드래프트</b>에 주장으로 참여 중이에요</span>${icon('chevron')}</a>` : ''}
-    <section class="sect">
-      <div class="sect-hd"><h2>지난 경기</h2>${last ? `<small>${[noLabel(last), fmtDate(last.date)].filter(Boolean).join(' ')}</small>` : ''}</div>
-      ${last ? `<a class="card review" href="#/games/${last.id}">${reviewCard(last)}<span class="more">결과 자세히 ${icon('chevron')}</span></a>`
-        : `<section class="card">${empty(sheetPending() ? '지난 경기를 불러오는 중이에요…' : '아직 끝난 경기가 없어요.')}</section>`}
-    </section>`;
+    ${last ? lastCard(last) : `<section class="card">${empty(sheetPending() ? '지난 경기를 불러오는 중이에요…' : '아직 끝난 경기가 없어요.')}</section>`}`;
   root.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
   if (md) bindMy(root, md);
 }

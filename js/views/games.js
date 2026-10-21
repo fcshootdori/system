@@ -1,11 +1,11 @@
-import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.49';
-import { db } from '../store.js?v=0.1.49';
-import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.49';
-import { TEAM_COLORS } from '../config.js?v=0.1.49';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.49';
-import { empty, teamChip } from '../ui.js?v=0.1.49';
-import { fmtSummary } from './home.js?v=0.1.49';
-import { momCard, bindMom } from './mom.js?v=0.1.49';
+import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.50';
+import { db } from '../store.js?v=0.1.50';
+import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.50';
+import { TEAM_COLORS } from '../config.js?v=0.1.50';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.50';
+import { empty, teamChip, teamLabel } from '../ui.js?v=0.1.50';
+import { fmtSummary } from './home.js?v=0.1.50';
+import { momCard, bindMom } from './mom.js?v=0.1.50';
 
 export function render(root, ctx = {}) {
   const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || currentMatchday();
@@ -13,7 +13,7 @@ export function render(root, ctx = {}) {
   const f = fmtOf(md);
   const ros = rosters(md);
   const games = S.games.filter((g) => g.matchdayId === md.id);
-  const head = ctx.embedded ? '' : `${ctx.live ? '' : '<a class="back" href="#/results">‹ 경기결과</a>'}<section class="card"><div class="eyebrow">${esc(md.venue || '')}${md.source === 'sheet' ? ' 승률계산기 기록' : md.fromSheet ? ' 통합 시트 기록' : ''}</div>
+  const head = ctx.embedded ? '' : `${ctx.live ? '' : '<a class="back" href="#/results">‹ 기록</a>'}<section class="card"><div class="eyebrow">${esc(md.venue || '')}${md.source === 'sheet' ? ' 승률계산기 기록' : md.fromSheet ? ' 통합 시트 기록' : ''}</div>
     <h1>${noLabel(md) ? noLabel(md) + ' · ' : ''}${fmtDate(md.date)} 경기</h1><p class="muted small">${esc(fmtSummary(md))}</p></section>`;
   if (!md.teams?.length) {
     root.innerHTML = head + `<section class="card">${empty('팀이 확정되면 경기 결과를 기록할 수 있어요.')}</section>`; return;
@@ -55,12 +55,12 @@ export function render(root, ctx = {}) {
 function scoreboard(md, games) {
   const t = totals(md, games);
   const done = games.length && games.every((g) => g.done);
-  const res = (i) => (!done ? '' : t[i] > t[1 - i] ? '<em class="res w">승</em>' : t[i] < t[1 - i] ? '<em class="res l">패</em>' : '<em class="res d">무</em>');
-  return `<section class="card board">
-    <div class="sb-team">${teamChip(md, 0)}${res(0)}</div>
-    <div class="sb-score"><b>${t[0] ?? 0}</b><span>:</span><b>${t[1] ?? 0}</b></div>
-    <div class="sb-team">${teamChip(md, 1)}${res(1)}</div>
-    ${done ? '' : '<p class="muted small sb-note">진행 중 · 라운드 점수 합산</p>'}
+  const win = !done ? null : t[0] > t[1] ? 0 : t[0] < t[1] ? 1 : -1;
+  const hx = [0, 1].map((i) => TEAM_COLORS.find((c) => c.key === teamColor(md, i)) || { hex: '#64748b', text: '#ffffff' });
+  return `<section class="card lgame gsb">
+    <div class="lg-hd"><span><b>${done ? '최종 스코어' : '진행 중'}</b> · 라운드 점수 합산</span>
+      ${win == null ? '' : win < 0 ? '<span class="lg-tag d">무승부</span>' : `<span class="lg-tag" style="--tc:${hx[win].hex}">${esc(teamLabel(md, win))} 승</span>`}</div>
+    <div class="lg-bar">${[0, 1].map((i) => `<div class="lg-t ${i ? 'b' : 'a'} ${win === 1 - i ? 'lose' : ''}" style="--tc:${hx[i].hex};--ti:${hx[i].text}"><span>${esc(teamLabel(md, i))}</span><b>${t[i] ?? 0}</b></div>`).join('')}<i class="lg-vs">VS</i></div>
   </section>`;
 }
 
