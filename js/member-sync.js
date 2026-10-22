@@ -3,11 +3,11 @@
 //  - [새로 불러오기]: 바로 읽어 반영. 새 회원·비슷한 이름 짝이 있으면 먼저 확인
 //  - 자동 반영: 연결 키가 있는 기기에서 앱을 열 때 + 열어 둔 동안 30분마다
 //    (앱을 아무도 안 열어도 반영되게 하려면 GitHub Actions 자동 반영 — README 참고)
-import { db, newId } from './store.js?v=0.1.66';
-import { S, refresh, onChange } from './state.js?v=0.1.66';
-import { KNOWN_ALIASES } from './config.js?v=0.1.66';
-import { parseMemberTable, planSync, privateOf, syncSummary, norm } from './member-sheet.js?v=0.1.66';
-import { sheetApi, sheetKey, setSheetKey, fetchMemberRows } from './record-sheet.js?v=0.1.66';
+import { db, newId } from './store.js?v=0.1.67';
+import { S, refresh, onChange } from './state.js?v=0.1.67';
+import { KNOWN_ALIASES } from './config.js?v=0.1.67';
+import { parseMemberTable, planSync, privateOf, syncSummary, norm } from './member-sheet.js?v=0.1.67';
+import { sheetApi, sheetKey, setSheetKey, fetchMemberRows } from './record-sheet.js?v=0.1.67';
 
 // 연결 = 팀 설정의 통합 시트 웹 앱 주소 + 이 기기의 연결 키
 export function sheetLink() { const url = sheetApi(), key = sheetKey(); return url && key ? { url, key } : null; }

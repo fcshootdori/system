@@ -1762,3 +1762,7 @@ body.gate .ver::before { background-image: var(--emb-w); opacity: .4; }
 .lp-pubst { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: #fff8e6; color: #8a5a00; font-size: 13px; font-weight: 700; }
 .lp-pubst.on { background: #e7f6ee; color: #0f7a4a; }
 .lp-pub { margin-top: 12px; }
+/* 0.1.67 대기·팀 명단 유니폼: 칸을 고르게 나눠 가운데 정렬 */
+.lp-bl { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); justify-items: center; align-items: start; gap: 8px 4px; }
+.lp-bl > .muted { grid-column: 1 / -1; justify-self: center; }
+@media (max-width: 420px) { .lp-bl { grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); } }
