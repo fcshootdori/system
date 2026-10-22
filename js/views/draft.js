@@ -1,11 +1,11 @@
-import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.65';
-import { db } from '../store.js?v=0.1.65';
-import { TEAM_COLORS } from '../config.js?v=0.1.65';
-import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.65';
-import { TEAM_COLORS as TC } from '../config.js?v=0.1.65';
-import { modal } from '../ui.js?v=0.1.65';
-import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.65';
-import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.65';
+import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.66';
+import { db } from '../store.js?v=0.1.66';
+import { TEAM_COLORS } from '../config.js?v=0.1.66';
+import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.66';
+import { TEAM_COLORS as TC } from '../config.js?v=0.1.66';
+import { modal } from '../ui.js?v=0.1.66';
+import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.66';
+import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.66';
 
 let lastCtx = {};
 export function render(root, ctx = {}) {
@@ -571,7 +571,8 @@ function groupSplit(md) {
     const teams = groups.map(([, ids], i) => ({ color: picks[i], members: [...ids] }));
     rest.forEach((id) => teams.reduce((a, b) => (b.members.length < a.members.length ? b : a)).members.push(id));
     await db.tx(mdPath(md.id), (cur) => {
-      cur.captains = []; cur.picks = []; cur.teams = teams; cur.status = 'teams'; cur.draftStarted = false;
+      cur.picks = []; cur.teams = teams; cur.status = 'teams'; cur.draftStarted = false;   // 정해 둔 주장은 그대로 — 팀 명단에 있는 주장이 그 팀 주장
+      cur.teamNames = groups.map(([g]) => String(g).replace(/^\[|\]$/g, '').trim());   // 팀 이름 = 댓글 구역 이름 (예: 준찬팀)
       cur.format = { ...fmtOf(cur), teams: teams.length, teamMode: 'fixed', fixedColors: [...picks, ...colors.filter((c) => !picks.includes(c))] };
       return cur;
     });

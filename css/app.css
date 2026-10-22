@@ -1758,3 +1758,7 @@ body.gate .ver::before { background-image: var(--emb-w); opacity: .4; }
 .rb-tools { flex-wrap: wrap; row-gap: 6px; align-items: center; }
 .rb-tools .rb-back { margin-right: auto; color: var(--navy); font-weight: 800; text-decoration: none; padding: 4px 10px; border-radius: 999px; background: #e9ebf7; }
 .rb-links { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: flex-end; margin-left: auto; }
+/* 0.1.66 포지션 공개 (주장 [포지션 확정]) */
+.lp-pubst { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: #fff8e6; color: #8a5a00; font-size: 13px; font-weight: 700; }
+.lp-pubst.on { background: #e7f6ee; color: #0f7a4a; }
+.lp-pub { margin-top: 12px; }

@@ -1,7 +1,7 @@
 // 경기 운영 규칙 — 경기 방식, 신청 순서, 드래프트 순번, 대진, 결과, 개인 기록
 //  승률계산기 시트와 같은 규칙: 승률 = 승 ÷ (승+패), 승점 = 승×3 + 무
-import { S, memberById, matchdayById } from './state.js?v=0.1.65';
-import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.65';
+import { S, memberById, matchdayById } from './state.js?v=0.1.66';
+import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.66';
 
 // ── 경기 방식: 팀 기본값 + 경기일별 변경값 ──
 export function fmtOf(md) {
@@ -320,9 +320,26 @@ export const capEvent = (md) => (eventMode(md) === 'captains' ? eventTeams(md) :
 // 이벤트 팀에 미리 정한 주장들 (여러 명 가능 — 첫 번째가 대표)
 export const evCaps = (t) => (t?.captains?.length ? t.captains : t?.captain ? [t.captain] : []);
 // 팀 i의 주장: 드래프트 주장 → 이벤트 경기에 미리 정한 주장
-export const captainOf = (md, i) => md?.captains?.[i]?.id || evCaps(eventTeams(md)?.[i])[0] || null;
+export const captainOf = (md, i) => (md?.teams?.length ? captainIds(md, i)[0] : null) || md?.captains?.[i]?.id || evCaps(eventTeams(md)?.[i])[0] || null;
 // 팀 i의 주장 전원 (대표 + 공동 주장)
-export const captainIds = (md, i) => { const c = md?.captains?.[i]; return c ? [c.id, ...(c.co || [])] : evCaps(eventTeams(md)?.[i]); };
+//  팀이 정해지기 전(주장·드래프트 단계): 주장 목록 순서 = 팀 순서
+//  팀이 정해진 뒤: 순서와 상관없이 '그 팀 명단에 들어 있는 주장' — 구역대로 팀 만들기·밸런스 조정·자리 바꾸기로
+//   주장 목록 순서와 팀 순서가 어긋나도 주장 권한(포지션·MOM)이 따라감
+//  주장이 따로 없으면(카페 구역대로 만든 팀) 팀 이름 "○○팀"의 ○○ 회원
+const capGroups = (md) => [...(md?.captains || []).filter((c) => c?.id).map((c) => [c.id, ...(c.co || [])]), ...(eventTeams(md) || []).map(evCaps).filter((a) => a.length)];
+const nk = (s) => String(s || '').toLowerCase().replace(/[^0-9a-z가-힣]/g, '');
+export const captainIds = (md, i) => {
+  if (!md?.teams?.length) { const c = md?.captains?.[i]; return c ? [c.id, ...(c.co || [])] : evCaps(eventTeams(md)?.[i]); }
+  const ros = md.teams[i]?.members || [];
+  const ids = [...new Set(capGroups(md).flatMap((g) => (g.some((id) => ros.includes(id)) ? g.filter((id) => ros.includes(id)) : [])))];
+  if (ids.length) return ids;
+  const m = String(teamName(md, i) || '').match(/^(.+?)\s*팀$/);
+  if (m && nk(m[1])) {
+    const hit = ros.find((id) => { const mem = memberById(id); return mem && [mem.name, ...(mem.aliases || [])].some((a) => nk(a) === nk(m[1])); });
+    if (hit) return [hit];
+  }
+  return [];
+};
 export const teamName = (md, i) => md?.teamNames?.[i] || eventTeams(md)?.[i]?.name || null;
 
 // 참석·불참·협의 정리 (+ 이벤트 경기면 팀별로)

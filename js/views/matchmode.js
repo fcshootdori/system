@@ -2,14 +2,14 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.65';
-import { db, newId } from '../store.js?v=0.1.65';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.65';
-import { TEAM_COLORS } from '../config.js?v=0.1.65';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.65';
-import { icon } from '../icons.js?v=0.1.65';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.65';
-import { figHTML } from './draft.js?v=0.1.65';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.66';
+import { db, newId } from '../store.js?v=0.1.66';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.66';
+import { TEAM_COLORS } from '../config.js?v=0.1.66';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.66';
+import { icon } from '../icons.js?v=0.1.66';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.66';
+import { figHTML } from './draft.js?v=0.1.66';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -37,8 +37,10 @@ const lineupOf = (md, ti, r) => md.lineups?.[ti]?.[r] || null;
 export function liveMatchday() {
   const t = today();
   const withTeams = S.matchdays.filter((m) => m.teams?.length && m.source !== 'sheet' && !m.cancelled);
-  return withTeams.find((m) => m.date === t && m.status !== 'played' && !m.sample)
-    || withTeams.filter((m) => m.status === 'teams').sort((a, b) => !!a.sample - !!b.sample || a.date.localeCompare(b.date))[0]
+  const live = withTeams.filter((m) => m.status !== 'played');
+  return live.find((m) => m.date === t && !m.sample)
+    || live.filter((m) => (m.date || '') >= t).sort((a, b) => !!a.sample - !!b.sample || a.date.localeCompare(b.date))[0]
+    || live.filter((m) => m.status === 'teams').sort((a, b) => !!a.sample - !!b.sample || b.date.localeCompare(a.date))[0]
     || withTeams.find((m) => m.date === t)
     || null;
 }
@@ -57,7 +59,9 @@ export function render(root, ctx = {}) {
   const liveG = games.find((g) => !g.done);
   if (ui.round == null || ui.round > R) ui.round = liveG?.round || games[games.length - 1]?.round || 1;
   const op = S.operator && md.status !== 'played';
-  const capOf = [0, 1].filter((i) => captainIds(md, i).includes(me.id));
+  // 주장: 로그인한 회원이 그 팀 주장이거나, 주장 링크로 들어온 기기
+  const linkCap = (md.captains || []).filter((c) => S.captainToken && c.token === S.captainToken).map((c) => c.id);
+  const capOf = [0, 1].filter((i) => captainIds(md, i).some((id) => id === me.id || linkCap.includes(id)));
   const myTeam = rosters(md).findIndex((ids) => ids.includes(me.id));
   if (ui.view == null) ui.view = capOf[0] ?? (myTeam >= 0 ? myTeam : 0);
   const t = totals(md, games);
@@ -185,7 +189,10 @@ function lineupCard(md, capOf, op) {
     <p class="muted small lp-none">포지션은 그 팀 선수만 볼 수 있어요.</p></section>`;
   if (!vis.includes(ui.view)) ui.view = vis[0];
   const ti = ui.view;
-  const lu = lineupOf(md, ti, R), edit = canEdit(ti);
+  const edit = canEdit(ti);
+  // 포지션 공개: 주장이 [포지션 확정]을 누르기 전에는 주장만 보고(다른 사람에게는 '지정 중'), 확정 뒤에는 고치는 대로 바로 보임
+  const pub = !!md.lineupPub?.[ti] || md.status === 'played';
+  const lu = edit || pub ? lineupOf(md, ti, R) : null;
   const placed = new Set(Object.values(lu?.s || {}));
   const bench = (ros[ti] || []).filter((id) => !placed.has(id));
   const { f } = slotsOf(lu);
@@ -196,9 +203,9 @@ function lineupCard(md, capOf, op) {
         <div class="lp-forms">${Object.keys(FORMS).map((k) => `<button type="button" data-form="${k}" class="${k === f ? 'on' : ''}">${k}</button>`).join('')}</div>
         <p class="tiny muted">${capOf.includes(ti) ? '주장 화면 · ' : '운영진 · '}아래 선수 유니폼을 끌어다 자리에 놓아요 (선수를 누르고 자리를 눌러도 돼요). 자리에 있는 선수를 아래 명단으로 끌면 빠져요.</p>
       </div>` : ''}
-    ${pitchHTML(md, ti, lu, edit, !edit && md.status !== 'played'
-      && Object.values(lu?.s || {}).filter((id) => (ros[ti] || []).includes(id)).length < Math.min(slotsOf(lu).list.length, (ros[ti] || []).length)
-      ? `<div class="lp-wait" role="status"><b>주장이 포지션 지정 중입니다</b><small>${esc(teamLabel(md, ti))} · ${R}라운드</small></div>` : '')}
+    ${edit ? (pub ? '<p class="lp-pubst on">✓ 팀원에게 공개됨 · 고치면 바로 보여요</p>' : '<p class="lp-pubst">🔒 아직 나만 보여요 — 다 정했으면 아래 [포지션 확정]을 눌러 공개해요</p>') : ''}
+    ${pitchHTML(md, ti, lu, edit, !edit && !pub
+      ? `<div class="lp-wait" role="status"><b>주장이 포지션 지정 중입니다</b><small>${esc(teamLabel(md, ti))}</small></div>` : '')}
     <div class="lp-bench ${edit ? 'edit' : ''}" ${edit ? 'data-bench' : ''}>
       <div class="lp-bh"><b>${lu || edit ? '대기 · 교체' : '팀 명단 · 자리 정하기 전'}</b><small>${bench.length}명</small></div>
       <div class="lp-bl">${bench.map((id) => `<span class="jf vest lp-j ${edit && ui.sel?.id === id ? 'sel' : ''}" style="--tc:${hexOf(md, ti).hex};--ti:${hexOf(md, ti).text}" ${edit ? `data-drag="${id}" data-from="bench"` : ''}>${figHTML(nameOf(id, md), '', 4)}</span>`).join('') || '<span class="muted small">모두 자리에 있어요</span>'}</div>
@@ -207,7 +214,8 @@ function lineupCard(md, capOf, op) {
       ${R > 1 ? `<button type="button" class="btn ghost sm" data-copyprev>${icon('copy', 'sm')} ${R - 1}라운드 그대로</button>` : ''}
       <button type="button" class="btn ghost sm" data-copyall>${icon('copy', 'sm')} 모든 라운드에 적용</button>
       ${lu ? '<button type="button" class="btn ghost sm danger" data-clear>비우기</button>' : ''}
-    </div>` : ''}
+    </div>
+    ${pub ? '' : '<button type="button" class="btn full big lp-pub" data-lppub>포지션 확정 · 팀원에게 공개</button>'}` : ''}
   </section>`;
 }
 
@@ -306,6 +314,12 @@ function bind(root, md, ctx) {
     if (!confirm(`${ui.round}라운드 포지션을 모든 라운드에 똑같이 넣을까요?`)) return;
     saveLineup(md, ti, [...Array(nRounds(md))].map((_, k) => k + 1), () => ({ f: cur.f, s: { ...cur.s } })).then(() => toast('모든 라운드에 적용했어요')); });
   q('[data-clear]')?.addEventListener('click', () => saveLineup(md, ti, [ui.round], () => null));
+  q('[data-lppub]')?.addEventListener('click', async () => {
+    const cnt = Object.keys(lineupOf(md, ti, ui.round)?.s || {}).length;
+    if (!cnt && !confirm('아직 자리에 놓은 선수가 없어요. 그래도 공개할까요?')) return;
+    await db.tx(mdPath(md.id), (cur) => { cur.lineupPub = { ...(cur.lineupPub || {}), [ti]: Date.now() }; return cur; });
+    toast('포지션을 공개했어요 — 이제 고치는 내용이 바로 보여요');
+  });
   dnd(root, md);
 }
 

@@ -1,12 +1,12 @@
 // MOM 선정 — 경기가 끝나면 승리 팀 주장이 자기 팀에서 1명, 무승부면 두 팀 주장이 각자 자기 팀에서 1명
 //  · 경기 결과 화면(#/games/ID)에서 고르고, 홈에는 뽑을 차례인 주장에게 알림 띠를 보여 줌
 //  · 운영진은 모든 팀을 대신 고를 수 있음 (주장이 없거나 못 고를 때)
-import { S, me, mdPath, nameOf, today } from '../state.js?v=0.1.65';
-import { db, inSandbox } from '../store.js?v=0.1.65';
-import { rosters, teamName, teamColor, momTeams, momTeamsFor, momPicked, momPending, applyMomPick } from '../domain.js?v=0.1.65';
-import { TEAM_COLORS } from '../config.js?v=0.1.65';
-import { esc, toast, fmtDate } from '../util.js?v=0.1.65';
-import { teamChip } from '../ui.js?v=0.1.65';
+import { S, me, mdPath, nameOf, today } from '../state.js?v=0.1.66';
+import { db, inSandbox } from '../store.js?v=0.1.66';
+import { rosters, teamName, teamColor, momTeams, momTeamsFor, momPicked, momPending, applyMomPick } from '../domain.js?v=0.1.66';
+import { TEAM_COLORS } from '../config.js?v=0.1.66';
+import { esc, toast, fmtDate } from '../util.js?v=0.1.66';
+import { teamChip } from '../ui.js?v=0.1.66';
 
 const label = (md, ti) => teamName(md, ti) || `${TEAM_COLORS.find((c) => c.key === teamColor(md, ti))?.label || ti + 1 + '번'}팀`;
 const gamesOf = (md) => S.games.filter((g) => g.matchdayId === md.id);
