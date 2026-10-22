@@ -1740,15 +1740,13 @@ body.gate .ver::before { background-image: var(--emb-w); opacity: .4; }
   .sp-bar i { left: 0; width: 100%; opacity: .6; }
 }
 /* 0.1.61 포지션 미정이어도 빈 축구장 */
-/* 주장이 포지션 정하기 전: 빈 축구장 위 가운데 안내 · 일부만 정했으면 위쪽 작은 띠 */
-.lp-wait { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; display: grid; justify-items: center; gap: 2px; padding: 14px 20px; border-radius: 16px;
-  background: rgba(15,20,66,.86); color: #fff; text-align: center; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,.3); backdrop-filter: blur(4px); pointer-events: none; }
-.lp-wait b { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; }
-.lp-wait b::before { content: ''; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,.3); border-top-color: #ffcf3d; animation: spSpin 1s linear infinite; }
+/* 주장이 포지션 정하기 전 (아무도 안 놓았을 때 · 일부만 놓았을 때 모두): 축구장 바로 위 같은 자리에 붙은 띠 */
+.lp-wait { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 0 0; padding: 9px 14px; border-radius: 14px 14px 0 0; background: var(--night, #0f1442); color: #fff; text-align: center; }
+.lp-wait + .lp-pitch.has-wait { margin-top: 0; border-radius: 0 0 14px 14px; }
+.lp-wait b { display: flex; align-items: center; gap: 7px; font-size: 14.5px; font-weight: 800; }
+.lp-wait b::before { content: ''; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,.3); border-top-color: #ffcf3d; animation: spSpin 1s linear infinite; }
 .lp-wait small { font-size: 12px; color: #b8bde6; font-weight: 600; }
-.lp-wait.mini { top: 8px; transform: translateX(-50%); padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-.lp-wait.mini::before { content: ''; width: 10px; height: 10px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); border-top-color: #ffcf3d; animation: spSpin 1s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .lp-wait b::before, .lp-wait.mini::before { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .lp-wait b::before { animation: none; } }
 /* 0.1.63 운영 경기 화면: 기록 | 포지션 탭 · 라운드 종료 큰 버튼 */
 .mm-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 16px; }
 .mm-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; font-size: 15px; font-weight: 800; }
