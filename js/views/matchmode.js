@@ -2,14 +2,14 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.67';
-import { db, newId } from '../store.js?v=0.1.67';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.67';
-import { TEAM_COLORS } from '../config.js?v=0.1.67';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.67';
-import { icon } from '../icons.js?v=0.1.67';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.67';
-import { figHTML } from './draft.js?v=0.1.67';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.68';
+import { db, newId } from '../store.js?v=0.1.68';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.68';
+import { TEAM_COLORS } from '../config.js?v=0.1.68';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.68';
+import { icon } from '../icons.js?v=0.1.68';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.68';
+import { figHTML } from './draft.js?v=0.1.68';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -165,7 +165,7 @@ function recorder(md, games, g) {
 function slotsOf(lu) { const f = FORMS[lu?.f] ? lu.f : DEF_FORM; return { f, list: FORMS[f], s: lu?.s || {} }; }
 function pitchHTML(md, ti, lu, editable, note = '') {
   const { list, s } = slotsOf(lu), hx = hexOf(md, ti), ros = rosters(md)[ti] || [];
-  return `${note}<div class="lp-pitch ${editable ? 'edit' : ''} ${note ? 'has-wait' : ''}" style="--tc:${hx.hex};--ti:${hx.text}">
+  return `<div class="lp-pitch ${editable ? 'edit' : ''} ${note ? 'has-wait' : ''}" style="--tc:${hx.hex};--ti:${hx.text}">${note}
     <svg class="lp-lines" viewBox="0 0 68 60" preserveAspectRatio="none" aria-hidden="true">
       <rect x="1" y="1" width="66" height="54" /><path d="M1 1H67" class="half"/>
       <path d="M25.85 1A9.15 9.15 0 0 0 42.15 1"/><circle cx="34" cy="1" r=".7" class="dot"/>
@@ -205,7 +205,7 @@ function lineupCard(md, capOf, op) {
       </div>` : ''}
     ${edit ? (pub ? '<p class="lp-pubst on">✓ 팀원에게 공개됨 · 고치면 바로 보여요</p>' : '<p class="lp-pubst">🔒 아직 나만 보여요 — 다 정했으면 아래 [포지션 확정]을 눌러 공개해요</p>') : ''}
     ${pitchHTML(md, ti, lu, edit, !edit && !pub
-      ? `<div class="lp-wait" role="status"><b>주장이 포지션 지정 중입니다</b><small>${esc(teamLabel(md, ti))}</small></div>` : '')}
+      ? `<div class="lp-wait" role="status"><div><b>주장이 포지션 지정 중입니다</b><small>${esc(teamLabel(md, ti))} 주장이 확정하면 여기에 보여요</small></div></div>` : '')}
     <div class="lp-bench ${edit ? 'edit' : ''}" ${edit ? 'data-bench' : ''}>
       <div class="lp-bh"><b>${lu || edit ? '대기 · 교체' : '팀 명단 · 자리 정하기 전'}</b><small>${bench.length}명</small></div>
       <div class="lp-bl">${bench.map((id) => `<span class="jf vest lp-j ${edit && ui.sel?.id === id ? 'sel' : ''}" style="--tc:${hexOf(md, ti).hex};--ti:${hexOf(md, ti).text}" ${edit ? `data-drag="${id}" data-from="bench"` : ''}>${figHTML(nameOf(id, md), '', 4)}</span>`).join('') || '<span class="muted small">모두 자리에 있어요</span>'}</div>
