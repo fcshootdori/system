@@ -3,35 +3,35 @@
 //   · 일반 회원: 홈 · 일정 · ⚽경기모드 · 경기결과 · 내 정보
 //   · 운영모드: 일정 · 경기 · 공지 · 회원 · 설정
 //   · 주장: 오른쪽 위 👑 드래프트 버튼으로 입장
-import { APP_NAME, APP_VERSION } from './config.js?v=0.1.58';
-import { initStore, db } from './store.js?v=0.1.58';
-import { initPullRefresh } from './ptr.js?v=0.1.58';
-import { startUpdateCheck } from './update.js?v=0.1.58';
-import { lockZoom } from './nozoom.js?v=0.1.58';
-import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.58';
-import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go, today } from './state.js?v=0.1.58';
-import { esc, toast } from './util.js?v=0.1.58';
-import { modal, fitBoxes } from './ui.js?v=0.1.58';
-import { icon } from './icons.js?v=0.1.58';
+import { APP_NAME, APP_VERSION } from './config.js?v=0.1.59';
+import { initStore, db } from './store.js?v=0.1.59';
+import { initPullRefresh } from './ptr.js?v=0.1.59';
+import { startUpdateCheck } from './update.js?v=0.1.59';
+import { lockZoom } from './nozoom.js?v=0.1.59';
+import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.59';
+import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go, today } from './state.js?v=0.1.59';
+import { esc, toast } from './util.js?v=0.1.59';
+import { modal, fitBoxes } from './ui.js?v=0.1.59';
+import { icon } from './icons.js?v=0.1.59';
 
-import * as home from './views/home.js?v=0.1.58';
-import * as schedule from './views/schedule.js?v=0.1.58';
-import * as matchmode from './views/matchmode.js?v=0.1.58';
-import * as results from './views/results.js?v=0.1.58';
-import * as myinfo from './views/me.js?v=0.1.58';
-import * as apply from './views/apply.js?v=0.1.58';
-import * as draft from './views/draft.js?v=0.1.58';
-import * as games from './views/games.js?v=0.1.58';
-import * as run from './views/run.js?v=0.1.58';
-import * as notice from './views/notice.js?v=0.1.58';
-import * as admin from './views/admin.js?v=0.1.58';
-import * as membersView from './views/members.js?v=0.1.58';
-import * as loginView from './views/login.js?v=0.1.58';
-import { loadSession, saveSession, verify } from './auth.js?v=0.1.58';
-import { startAutoSync } from './member-sync.js?v=0.1.58';
-import { startRecordSync } from './record-sheet.js?v=0.1.58';
-import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.58';
-import { applyEmblemMarks } from './emblem-mark.js?v=0.1.58';
+import * as home from './views/home.js?v=0.1.59';
+import * as schedule from './views/schedule.js?v=0.1.59';
+import * as matchmode from './views/matchmode.js?v=0.1.59';
+import * as results from './views/results.js?v=0.1.59';
+import * as myinfo from './views/me.js?v=0.1.59';
+import * as apply from './views/apply.js?v=0.1.59';
+import * as draft from './views/draft.js?v=0.1.59';
+import * as games from './views/games.js?v=0.1.59';
+import * as run from './views/run.js?v=0.1.59';
+import * as notice from './views/notice.js?v=0.1.59';
+import * as admin from './views/admin.js?v=0.1.59';
+import * as membersView from './views/members.js?v=0.1.59';
+import * as loginView from './views/login.js?v=0.1.59';
+import { loadSession, saveSession, verify } from './auth.js?v=0.1.59';
+import { startAutoSync } from './member-sync.js?v=0.1.59';
+import { startRecordSync } from './record-sheet.js?v=0.1.59';
+import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.59';
+import { applyEmblemMarks } from './emblem-mark.js?v=0.1.59';
 
 const MEMBER_TABS = [['home', '홈', 'home'], ['sched', '일정', 'calendar'], ['mm', '경기', 'ball'], ['results', '기록', 'board'], ['me', '내 정보', 'user']];
 const OP_TABS = [['plan', '일정', 'calendar'], ['run', '경기 운영', 'whistle'], ['notice', '공지', 'megaphone'], ['members', '회원', 'users'], ['settings', '설정', 'gear']];
@@ -205,6 +205,15 @@ function startMatchJump() {
   });
 }
 
+// ── 로딩 화면: 회원·경기 목록을 받으면 (최소 0.9초 보여 주고) 사라짐, 늦어도 7초 ──
+const T0 = performance.now();
+function hideSplash() {
+  const sp = document.getElementById('splash');
+  if (!sp || sp.dataset.hiding) return;
+  sp.dataset.hiding = '1';
+  setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 500); }, Math.max(0, 900 - (performance.now() - T0)));
+}
+
 (async function boot() {
   const qs = new URLSearchParams(location.search);
   if (qs.get('c')) localStorage.setItem('teamapp:captain', qs.get('c'));
@@ -223,6 +232,9 @@ function startMatchJump() {
   onChange(safeRender);
   onChange(autoClose); setInterval(autoClose, 60e3);   // 경기일 전 목요일 0시 신청 자동 마감
   renderShell(); render();
+  const offSplash = onChange(() => { if (S.ready && S.allMatchdays) { offSplash(); hideSplash(); } });
+  if (S.ready && S.allMatchdays) hideSplash();
+  setTimeout(hideSplash, 7000);
   // 자동 로그인 정보 확인 (비밀번호가 바뀌었거나 운영진이 초기화했으면 다시 로그인)
   if (S.auth) verify(S.auth).then((ok) => {
     if (!ok) { S.auth = null; saveSession(null); toast('다시 로그인해 주세요'); renderShell(); render(); }

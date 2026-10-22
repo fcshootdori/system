@@ -1,6 +1,6 @@
 // 저장소 계층 — 데모(localStorage) / Firebase(Firestore) 공통 인터페이스
 //   경로 규칙: 'collection/docId' 또는 'collection/docId/sub/subId'
-import { FIREBASE } from './config.js?v=0.1.58';
+import { FIREBASE } from './config.js?v=0.1.59';
 
 const clean = (o) => JSON.parse(JSON.stringify(o ?? null));
 export const newId = () =>
