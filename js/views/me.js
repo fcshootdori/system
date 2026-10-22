@@ -1,11 +1,11 @@
 // 내 정보 — 내 이름, 내 기록 요약, 앱 정보, 운영모드 입구 (WD_FUTSAL 내 정보와 같은 위치)
-import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.56';
-import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.56';
-import { modal } from '../ui.js?v=0.1.56';
-import { toast } from '../util.js?v=0.1.56';
-import { allStats, pct } from '../domain.js?v=0.1.56';
-import { esc } from '../util.js?v=0.1.56';
-import { inSandbox, sandboxRole, ROLES, pickRole, switchRole, askExit } from '../sandbox.js?v=0.1.56';
+import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.57';
+import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.57';
+import { modal } from '../ui.js?v=0.1.57';
+import { toast } from '../util.js?v=0.1.57';
+import { allStats, pct } from '../domain.js?v=0.1.57';
+import { esc } from '../util.js?v=0.1.57';
+import { inSandbox, sandboxRole, ROLES, pickRole, switchRole, askExit } from '../sandbox.js?v=0.1.57';
 
 export function render(root) {
   const m = memberById(me.id);
@@ -26,7 +26,8 @@ export function render(root) {
       </div></a>` : ''}
     <section class="card">
       <h2>홈 화면에 추가</h2>
-      <p class="muted small">안드로이드 크롬: 메뉴 ⋮ → <b>홈 화면에 추가</b> · 아이폰 사파리: 공유 → <b>홈 화면에 추가</b> 하면 앱처럼 아이콘이 생겨요.</p>
+      <p class="muted small">브라우저 메뉴에서 <b>홈 화면에 추가(설치)</b>하면 앱처럼 아이콘이 생겨요. 아이폰·갤럭시·크롬별로 그림과 함께 보여 드려요.</p>
+      <a class="btn full" href="install.html">📲 앱 설치 방법 보기</a>
       ${S.team.cafeUrl ? `<a class="btn ghost full" href="${esc(S.team.cafeUrl)}" target="_blank" rel="noopener">다음 카페 열기 ↗</a>` : ''}
     </section>
     ${inSandbox() ? `<section class="card beta">

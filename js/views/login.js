@@ -1,8 +1,8 @@
 // 로그인 — 카페 닉네임 → (처음) 비밀번호 정하기 / (다음부터) 비밀번호 입력, 자동 로그인
-import { S, refresh } from '../state.js?v=0.1.56';
-import { register, login, status, saveSession, validPin } from '../auth.js?v=0.1.56';
-import { norm } from '../cafe-parser.js?v=0.1.56';
-import { esc } from '../util.js?v=0.1.56';
+import { S, refresh } from '../state.js?v=0.1.57';
+import { register, login, status, saveSession, validPin } from '../auth.js?v=0.1.57';
+import { norm } from '../cafe-parser.js?v=0.1.57';
+import { esc } from '../util.js?v=0.1.57';
 
 let step = { pid: null, registered: false }, nick = '', err = '', denied = false;
 
@@ -43,6 +43,7 @@ export function render(root) {
     </div>
     ${denied ? `<button class="btn ghost full" data-temp>비밀번호 없이 닉네임으로만 들어가기 (임시)</button>` : ''}
     <button class="link lg-op" data-op>운영진이신가요? 운영모드로 들어가기 ›</button>
+    ${matchMedia('(display-mode: standalone)').matches || navigator.standalone ? '' : '<a class="lg-inst" href="install.html">📲 휴대폰 홈 화면에 앱 설치하는 방법</a>'}
   </section>`;
 
   const q = (s) => root.querySelector(s);

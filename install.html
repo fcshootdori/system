@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#171c61">
+<title>슛도리 앱 설치 안내</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+:root{--bg:#f3f4f8;--card:#fff;--ink:#121633;--sub:#5f6680;--line:#e7e9f1;--navy:#171c61;--night:#0f1442;--pink:#e11d48;--blue:#2563eb;--gold:#ffcf3d;
+  --font:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;--shadow:0 1px 2px rgba(18,22,51,.05),0 8px 20px -14px rgba(18,22,51,.3)}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.6;letter-spacing:-.02em;word-break:keep-all;-webkit-text-size-adjust:100%}
+img{display:block;max-width:100%;height:auto}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px;border-radius:8px}
+/* 머리 */
+.top{position:relative;color:#fff;background:linear-gradient(180deg,rgba(11,16,51,.55),rgba(11,16,51,.92)),url(assets/stadium-sm.jpg) center 35%/cover no-repeat,var(--night);overflow:hidden}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:linear-gradient(90deg,var(--pink) 50%,var(--blue) 50%)}
+.top::before{content:"";position:absolute;right:-20px;bottom:10px;width:170px;aspect-ratio:1;background:url(assets/emblem-w.png) center/contain no-repeat;opacity:.14;pointer-events:none}
+.top-in{position:relative;max-width:760px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 14px) 20px 30px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px}
+.brand img{width:32px;height:32px;border-radius:50%;background:#fff;padding:2px}
+.brand a.open{margin-left:auto;font-size:13px;font-weight:700;text-decoration:none;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.top h1{margin:30px 0 8px;font-size:clamp(27px,7vw,36px);line-height:1.25;font-weight:800;letter-spacing:-.04em}
+.top p{margin:0;color:rgba(255,255,255,.82);font-size:15px;max-width:34em}
+.top p b{color:#fff}
+main>*{min-width:0}
+main{max-width:760px;margin:0 auto;padding:18px 16px calc(40px + env(safe-area-inset-bottom,0px));display:grid;gap:14px}
+.card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:18px}
+h2{margin:0 0 4px;font-size:19px;font-weight:800;letter-spacing:-.03em}
+.muted{color:var(--sub)}
+/* 내 폰 고르기 */
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;border-radius:16px;background:#e8eaf1}
+.seg button{font:inherit;color:var(--sub);background:transparent;border:0;border-radius:12px;padding:8px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.3}
+.seg button b{font-size:15px;color:inherit;font-weight:800}.seg button small{font-size:12px}
+.seg button[aria-selected=true]{background:#fff;color:var(--navy);box-shadow:0 1px 2px rgba(18,22,51,.12),0 4px 10px -6px rgba(18,22,51,.3)}
+.ipanel[hidden]{display:none}
+.track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin-top:14px;overscroll-behavior-x:contain;scroll-behavior:smooth}
+.track::-webkit-scrollbar{display:none}
+.icard{flex:0 0 100%;scroll-snap-align:start;display:grid;grid-template-columns:minmax(0,43%) 1fr;gap:16px;align-items:center;min-width:0;padding:2px}
+.iph{margin:0;border:6px solid #1d2238;border-radius:28px;overflow:hidden;background:#000;box-shadow:0 18px 36px -18px rgba(18,22,51,.6)}
+.iph.and{border-radius:20px}
+.itx small{display:block;font-size:13px;font-weight:800;color:var(--pink);letter-spacing:.02em}
+.itx small i{font-style:normal;color:var(--sub);font-weight:600}
+.itx p{margin:8px 0 0;font-size:17px;font-weight:700;line-height:1.65}
+.itx .sub{margin-top:8px;font-size:14px;font-weight:500;color:var(--sub);line-height:1.55}
+.itx .sub b{color:var(--ink)}
+.end{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:6px 12px;border-radius:999px;background:#e7f6ee;color:#0f7a4a;font-weight:800;font-size:14px}
+.url{display:inline-block;font-size:15px;overflow-wrap:anywhere;color:var(--navy);font-weight:800;background:#e9ebf7;padding:0 6px;border-radius:6px}
+.cpy{font:inherit;font-size:13px;font-weight:700;margin-top:12px;padding:7px 14px;border-radius:999px;border:0;background:var(--navy);color:#fff;cursor:pointer}
+.chip{display:inline-flex;align-items:center;gap:5px;vertical-align:middle;padding:2px 10px;margin:0 2px;border-radius:9px;background:#eef0f6;color:var(--ink);font-size:14.5px;font-weight:700;line-height:1.55;white-space:nowrap;box-shadow:inset 0 0 0 1px #dfe2ec}
+.chip svg{width:16px;height:16px;flex:none}
+.chip.blue{background:#0a84ff;color:#fff;border-radius:999px;padding:2px 14px;box-shadow:none}
+.chip.lblue{color:#1a73e8}
+.ico{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#eef0f6;color:var(--ink);vertical-align:middle;margin:0 3px;box-shadow:inset 0 0 0 1px #dfe2ec}
+.ico svg{width:18px;height:18px}
+.inav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}
+.inav button{font:inherit;font-weight:700;font-size:14px;min-width:44px;height:42px;padding:0 16px;white-space:nowrap;flex:none;border-radius:999px;border:0;background:var(--bg);color:var(--ink);cursor:pointer;box-shadow:inset 0 0 0 1.5px #d6d9e4}
+.inav button.nx{background:var(--navy);color:#fff;box-shadow:none}
+.inav button:disabled{opacity:.35;cursor:default}
+.dots{display:flex;gap:6px}.dots i{width:7px;height:7px;border-radius:50%;background:#d6d9e4;transition:.2s}.dots i.on{width:20px;border-radius:4px;background:var(--navy)}
+/* 안 될 때 */
+.tips{display:grid;gap:10px;margin-top:12px}
+@media (min-width:640px){.tips{grid-template-columns:1fr 1fr}}
+.tip{display:flex;gap:12px;padding:14px;border-radius:16px;background:var(--bg)}
+.tip>span{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:19px;background:#fff}
+.tip b{display:block;font-size:15px}.tip p{margin:2px 0 0;color:var(--sub);font-size:14px;line-height:1.55}.tip p b{display:inline;color:var(--ink);font-size:inherit}
+.tip.warn{background:#fff5f5}.tip.info{background:#eef3fe}
+.after{display:flex;align-items:center;gap:14px}
+.after img{width:56px;height:56px;border-radius:14px;box-shadow:var(--shadow);flex:none}
+.after p{margin:0;font-size:14.5px;color:var(--sub)}.after p b{color:var(--ink)}
+.go{display:flex;align-items:center;justify-content:center;min-height:50px;margin-top:14px;border-radius:999px;background:var(--navy);color:#fff;font-weight:800;text-decoration:none}
+footer{text-align:center;color:#8b91a8;font-size:12px;padding:4px 0 0}
+@media (min-width:640px){.icard{grid-template-columns:240px 1fr;gap:28px;padding:4px 10px}}
+@media (max-width:389px){.inav .w{display:none}.inav button{padding:0 14px}.itx p{font-size:16px}}
+@media (prefers-reduced-motion:reduce){.track{scroll-behavior:auto}.dots i{transition:none}}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <div class="brand"><img src="assets/emblem.png" alt=""><span>슛도리</span><a class="open" href="./">앱 열기</a></div>
+  <h1>처음이라면<br>이것만 하면 돼요</h1>
+  <p>앱스토어에서 받을 필요 없어요. 쓰는 브라우저로 주소를 열고 <b>홈 화면에 설치</b>해 두면, 아이콘을 눌러 앱처럼 바로 열려요. 내 폰과 브라우저를 고르고 순서대로 따라 해 보세요.</p>
+</div></header>
+
+<main>
+<section class="card" aria-labelledby="h-inst">
+  <h2 id="h-inst">홈 화면에 설치하기</h2>
+  <p class="muted" style="margin:0 0 12px;font-size:14px">그림을 옆으로 밀거나 아래 [다음 단계]를 눌러 넘겨 보세요.</p>
+  <div class="seg" role="tablist" aria-label="내 폰과 브라우저">
+    <button role="tab" type="button" data-os="ios" aria-selected="true"><b>아이폰</b><small>사파리</small></button>
+    <button role="tab" type="button" data-os="sam" aria-selected="false"><b>갤럭시</b><small>삼성인터넷</small></button>
+    <button role="tab" type="button" data-os="chr" aria-selected="false"><b>안드로이드</b><small>크롬</small></button>
+  </div>
+
+  <div class="ipanel" role="tabpanel" data-os="ios" aria-label="아이폰 사파리"><div class="track">
+    <article class="icard" aria-label="1/6단계"><figure class="iph"><img src="assets/install/ios-1.webp" alt="사파리 주소창에 슛도리 주소를 입력한 화면" width="480" height="1040"></figure>
+      <div class="itx"><small>STEP 01 <i>/ 06</i></small><p><b>사파리</b>를 열고 <span class="url">fcshootdori.<wbr>github.io<wbr>/system</span> 로 접속합니다.</p>
+        <button class="cpy" type="button" data-copy="https://fcshootdori.github.io/system/">📋 주소 복사</button>
+        <p class="sub">카톡에서 링크를 눌렀다면 꼭 사파리로 다시 열어 주세요.</p></div></article>
+    <article class="icard" aria-label="2/6단계"><figure class="iph"><img src="assets/install/ios-2.webp" alt="주소창 왼쪽 페이지 메뉴 아이콘 위치" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 02 <i>/ 06</i></small><p>주소표시줄의 <span class="ico" role="img" aria-label="페이지 메뉴"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></span> 아이콘을 누릅니다.</p>
+        <p class="sub">주소창 왼쪽에 있어요. 예전 iOS라면 화면 아래 공유 버튼 <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg></span>을 바로 눌러도 돼요.</p></div></article>
+    <article class="icard" aria-label="3/6단계"><figure class="iph"><img src="assets/install/ios-3.webp" alt="페이지 메뉴의 공유 항목" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 03 <i>/ 06</i></small><p><span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>공유</span> 를 선택합니다.</p></div></article>
+    <article class="icard" aria-label="4/6단계"><figure class="iph"><img src="assets/install/ios-4.webp" alt="공유 화면의 더 보기 버튼" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 04 <i>/ 06</i></small><p><span class="ico" role="img" aria-label="더 보기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span> 더 보기를 선택합니다.</p>
+        <p class="sub">아이콘 줄 맨 오른쪽에 있어요.</p></div></article>
+    <article class="icard" aria-label="5/6단계"><figure class="iph"><img src="assets/install/ios-5.webp" alt="공유 목록의 홈 화면에 추가 항목" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 05 <i>/ 06</i></small><p><span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></svg>홈 화면에 추가</span> 를 선택합니다.</p>
+        <p class="sub">목록 아래쪽에 있어요. 안 보이면 위로 밀어 보세요.</p></div></article>
+    <article class="icard" aria-label="6/6단계"><figure class="iph"><img src="assets/install/ios-6.webp" alt="홈 화면에 추가 화면의 추가 버튼" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 06 <i>/ 06</i></small><p>오른쪽 위 <span class="chip blue">추가</span> 를 선택합니다.</p>
+        <p class="sub">"웹 앱으로 열기"는 켜 둔 그대로 두세요.</p>
+        <span class="end">✓ 끝!</span><p class="sub">홈 화면에 생긴 <b>슛도리</b> 아이콘으로 열면 돼요.</p></div></article>
+  </div><div class="inav"><button type="button" class="pv">‹ 이전<span class="w"> 단계</span></button><div class="dots"></div><button type="button" class="nx">다음<span class="w"> 단계</span> ›</button></div></div>
+
+  <div class="ipanel" role="tabpanel" data-os="sam" aria-label="갤럭시 삼성인터넷" hidden><div class="track">
+    <article class="icard" aria-label="1/5단계"><figure class="iph and"><img src="assets/install/sam-1.webp" alt="삼성인터넷 주소창에 슛도리 주소를 입력한 화면" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 01 <i>/ 05</i></small><p><b>삼성인터넷</b> 앱을 열고 <span class="url">fcshootdori.<wbr>github.io<wbr>/system</span> 로 접속합니다.</p>
+        <button class="cpy" type="button" data-copy="https://fcshootdori.github.io/system/">📋 주소 복사</button></div></article>
+    <article class="icard" aria-label="2/5단계"><figure class="iph and"><img src="assets/install/sam-2.webp" alt="주소창 오른쪽 설치 아이콘 위치" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 02 <i>/ 05</i></small><p>주소표시줄의 <span class="ico" role="img" aria-label="설치(아래 화살표)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v8M8.5 11.5 12 15l3.5-3.5"/></svg></span> 아이콘을 누릅니다.</p>
+        <p class="sub">주소창 오른쪽 끝에 있어요.</p></div></article>
+    <article class="icard" aria-label="3/5단계"><figure class="iph and"><img src="assets/install/sam-3.webp" alt="앱스 화면에 추가할지 묻는 창" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 03 <i>/ 05</i></small><p>"앱스 화면에 이 웹페이지를 추가할까요?"에서 <span class="chip lblue">추가</span> 를 선택합니다.</p></div></article>
+    <article class="icard" aria-label="4/5단계"><figure class="iph and"><img src="assets/install/sam-4.webp" alt="안전하지 않은 앱 차단됨 창의 세부정보 더보기" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 04 <i>/ 05</i></small><p><span class="chip lblue">세부정보 더보기 ⌄</span> 를 선택합니다.</p>
+        <p class="sub">"안전하지 않은 앱 차단됨" 창은 플레이 스토어를 거치지 않은 앱이라 뜨는 안내예요. 우리 팀 앱이니 걱정하지 마세요.</p></div></article>
+    <article class="icard" aria-label="5/5단계"><figure class="iph and"><img src="assets/install/sam-5.webp" alt="무시하고 설치하기 위치" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 05 <i>/ 05</i></small><p><span class="chip lblue">무시하고 설치하기</span> 를 선택합니다.</p>
+        <span class="end">✓ 끝!</span><p class="sub">홈 화면(앱스 화면)에 생긴 <b>슛도리</b> 아이콘으로 열면 돼요.</p></div></article>
+  </div><div class="inav"><button type="button" class="pv">‹ 이전<span class="w"> 단계</span></button><div class="dots"></div><button type="button" class="nx">다음<span class="w"> 단계</span> ›</button></div></div>
+
+  <div class="ipanel" role="tabpanel" data-os="chr" aria-label="안드로이드 크롬" hidden><div class="track">
+    <article class="icard" aria-label="1/5단계"><figure class="iph and"><img src="assets/install/chr-1.webp" alt="크롬 주소창에 슛도리 주소를 입력한 화면" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 01 <i>/ 05</i></small><p><b>Chrome</b> 앱을 열고 <span class="url">fcshootdori.<wbr>github.io<wbr>/system</span> 로 접속합니다.</p>
+        <button class="cpy" type="button" data-copy="https://fcshootdori.github.io/system/">📋 주소 복사</button></div></article>
+    <article class="icard" aria-label="2/5단계"><figure class="iph and"><img src="assets/install/chr-2.webp" alt="주소창 오른쪽 점 3개 메뉴 위치" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 02 <i>/ 05</i></small><p>주소표시줄 오른쪽 <span class="ico" role="img" aria-label="더보기(점 3개)"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></span> 아이콘을 누릅니다.</p></div></article>
+    <article class="icard" aria-label="3/5단계"><figure class="iph and"><img src="assets/install/chr-3.webp" alt="크롬 메뉴의 설치 및 바로가기 만들기" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 03 <i>/ 05</i></small><p><span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 7v5M9.5 9.5 12 12l2.5-2.5"/></svg>설치 및 바로가기 만들기</span> 를 선택합니다.</p></div></article>
+    <article class="icard" aria-label="4/5단계"><figure class="iph and"><img src="assets/install/chr-4.webp" alt="설치와 바로가기 만들기 중 설치" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 04 <i>/ 05</i></small><p><span class="chip">설치 ›</span> 를 선택합니다.</p>
+        <p class="sub">"바로가기 만들기"가 아니라 <b>설치</b>를 골라 주세요.</p></div></article>
+    <article class="icard" aria-label="5/5단계"><figure class="iph and"><img src="assets/install/chr-5.webp" alt="앱 설치 창의 설치 버튼" width="480" height="1040" loading="lazy"></figure>
+      <div class="itx"><small>STEP 05 <i>/ 05</i></small><p>"앱 설치" 창에서 <span class="chip lblue">설치</span> 를 선택합니다.</p>
+        <span class="end">✓ 끝!</span><p class="sub">홈 화면에 생긴 <b>슛도리</b> 아이콘으로 열면 돼요.</p></div></article>
+  </div><div class="inav"><button type="button" class="pv">‹ 이전<span class="w"> 단계</span></button><div class="dots"></div><button type="button" class="nx">다음<span class="w"> 단계</span> ›</button></div></div>
+</section>
+
+<section class="card" aria-labelledby="h-help">
+  <h2 id="h-help">설치가 잘 안 되면</h2>
+  <div class="tips">
+    <div class="tip info"><span>💬</span><div><b>카톡에서 링크를 열었다면</b><p>카톡 안의 화면에서는 설치가 안 돼요. 오른쪽 위 메뉴에서 <b>다른 브라우저로 열기</b>를 누른 뒤 따라 해 주세요.</p></div></div>
+    <div class="tip"><span>🔁</span><div><b>설치 메뉴가 안 보여요</b><p>이미 설치돼 있으면 메뉴가 안 나와요. 홈 화면이나 앱스 화면에서 <b>슛도리</b> 아이콘을 찾아보세요.</p></div></div>
+    <div class="tip"><span>🌐</span><div><b>브라우저마다 메뉴가 달라요</b><p>위에서 내가 쓰는 브라우저 탭을 골라 따라 해 주세요. 아이폰은 꼭 <b>사파리</b>에서 해야 해요.</p></div></div>
+    <div class="tip warn"><span>🛡️</span><div><b>"안전하지 않은 앱" 경고가 떠요</b><p>갤럭시에서 플레이 스토어를 거치지 않은 앱이라 뜨는 안내예요. <b>세부정보 더보기 → 무시하고 설치하기</b>를 누르면 돼요.</p></div></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="after"><img src="assets/icon-192.png" alt=""><p><b>설치했으면 아이콘으로 열고 로그인하세요.</b><br>카페 닉네임을 고르고 비밀번호를 정하면, 다음부터는 자동으로 로그인돼요.</p></div>
+  <a class="go" href="./">슛도리 앱 열기</a>
+</section>
+<footer>SHOOTDORI · 12th · SINCE 2006</footer>
+</main>
+
+<script>
+(() => {
+  const tabs = [...document.querySelectorAll('[role=tab]')], panels = [...document.querySelectorAll('.ipanel')];
+  const pick = (os) => {
+    tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.os === os)));
+    panels.forEach((p) => { p.hidden = p.dataset.os !== os; });
+    try { localStorage.setItem('sd:inst-os', os); } catch {}
+  };
+  tabs.forEach((t) => t.addEventListener('click', () => pick(t.dataset.os)));
+  // 처음 열 때: 내 폰에 맞는 탭 (아이폰 → 사파리, 삼성인터넷 → 갤럭시, 그 밖의 안드로이드 → 크롬)
+  let saved = null; try { saved = localStorage.getItem('sd:inst-os'); } catch {}
+  const ua = navigator.userAgent;
+  pick(saved || (/iPhone|iPad|iPod/.test(ua) ? 'ios' : /SamsungBrowser/.test(ua) ? 'sam' : /Android/.test(ua) ? 'chr' : 'ios'));
+  // 단계 넘기기
+  panels.forEach((p) => {
+    const track = p.querySelector('.track'), cards = [...track.children], dots = p.querySelector('.dots');
+    const pv = p.querySelector('.pv'), nx = p.querySelector('.nx');
+    dots.innerHTML = cards.map(() => '<i></i>').join('');
+    const at = () => Math.round(track.scrollLeft / track.clientWidth);
+    const sync = () => { const i = at(); [...dots.children].forEach((d, k) => d.classList.toggle('on', k === i)); pv.disabled = i === 0; nx.disabled = i === cards.length - 1; };
+    const go = (i) => track.scrollTo({ left: i * track.clientWidth });
+    pv.addEventListener('click', () => go(at() - 1)); nx.addEventListener('click', () => go(at() + 1));
+    track.addEventListener('scroll', () => requestAnimationFrame(sync), { passive: true });
+    new ResizeObserver(sync).observe(track); sync();
+  });
+  // 주소 복사
+  document.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = '✓ 복사했어요'; }
+    catch { b.textContent = b.dataset.copy; }
+    setTimeout(() => { b.textContent = '📋 주소 복사'; }, 2200);
+  }));
+})();
+</script>
+</body>
+</html>
