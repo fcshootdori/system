@@ -2,14 +2,14 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.60';
-import { db, newId } from '../store.js?v=0.1.60';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.60';
-import { TEAM_COLORS } from '../config.js?v=0.1.60';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.60';
-import { icon } from '../icons.js?v=0.1.60';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.60';
-import { figHTML } from './draft.js?v=0.1.60';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.61';
+import { db, newId } from '../store.js?v=0.1.61';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.61';
+import { TEAM_COLORS } from '../config.js?v=0.1.61';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.61';
+import { icon } from '../icons.js?v=0.1.61';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.61';
+import { figHTML } from './draft.js?v=0.1.61';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -194,10 +194,10 @@ function lineupCard(md, capOf, op) {
         <div class="lp-forms">${Object.keys(FORMS).map((k) => `<button type="button" data-form="${k}" class="${k === f ? 'on' : ''}">${k}</button>`).join('')}</div>
         <p class="tiny muted">${capOf.includes(ti) ? '주장 화면 · ' : '운영진 · '}아래 선수 유니폼을 끌어다 자리에 놓아요 (선수를 누르고 자리를 눌러도 돼요). 자리에 있는 선수를 아래 명단으로 끌면 빠져요.</p>
       </div>` : ''}
-    ${!lu && !edit ? `<p class="muted small lp-none">${esc(teamLabel(md, ti))} 주장이 아직 ${R}라운드 포지션을 정하지 않았어요.</p>` : ''}
-    ${lu || edit ? pitchHTML(md, ti, lu, edit) : ''}
+    ${!lu && !edit ? `<p class="lp-wait">${esc(teamLabel(md, ti))} 주장이 아직 ${R}라운드 포지션을 정하지 않았어요</p>` : ''}
+    ${pitchHTML(md, ti, lu, edit)}
     <div class="lp-bench ${edit ? 'edit' : ''}" ${edit ? 'data-bench' : ''}>
-      <div class="lp-bh"><b>${lu || edit ? '대기 · 교체' : '팀 명단'}</b><small>${bench.length}명</small></div>
+      <div class="lp-bh"><b>${lu || edit ? '대기 · 교체' : '팀 명단 · 자리 정하기 전'}</b><small>${bench.length}명</small></div>
       <div class="lp-bl">${bench.map((id) => `<span class="jf vest lp-j ${edit && ui.sel?.id === id ? 'sel' : ''}" style="--tc:${hexOf(md, ti).hex};--ti:${hexOf(md, ti).text}" ${edit ? `data-drag="${id}" data-from="bench"` : ''}>${figHTML(nameOf(id, md), '', 4)}</span>`).join('') || '<span class="muted small">모두 자리에 있어요</span>'}</div>
     </div>
     ${edit ? `<div class="row wrap lp-act">

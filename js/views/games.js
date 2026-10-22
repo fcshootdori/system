@@ -1,11 +1,11 @@
-import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.60';
-import { db } from '../store.js?v=0.1.60';
-import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.60';
-import { TEAM_COLORS } from '../config.js?v=0.1.60';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.60';
-import { empty, teamChip, teamLabel } from '../ui.js?v=0.1.60';
-import { fmtSummary } from './home.js?v=0.1.60';
-import { momCard, bindMom } from './mom.js?v=0.1.60';
+import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.61';
+import { db } from '../store.js?v=0.1.61';
+import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.61';
+import { TEAM_COLORS } from '../config.js?v=0.1.61';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.61';
+import { empty, teamChip, teamLabel } from '../ui.js?v=0.1.61';
+import { fmtSummary } from './home.js?v=0.1.61';
+import { momCard, bindMom } from './mom.js?v=0.1.61';
 
 export function render(root, ctx = {}) {
   const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || currentMatchday();

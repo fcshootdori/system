@@ -1739,3 +1739,6 @@ body.gate .ver::before { background-image: var(--emb-w); opacity: .4; }
   .sp-badge, .sp-ring, .sp-shine, .sp-bar i, .sp-lights, .sp-half, .sp-circle, .sp-foot { animation: none !important; }
   .sp-bar i { left: 0; width: 100%; opacity: .6; }
 }
+/* 0.1.61 포지션 미정이어도 빈 축구장 */
+.lp-wait { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: #fff8e6; color: #8a5a00; font-size: 13px; font-weight: 600; }
+.lp-wait::before { content: '⏳'; }
