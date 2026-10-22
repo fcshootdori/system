@@ -2,14 +2,14 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.62';
-import { db, newId } from '../store.js?v=0.1.62';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.62';
-import { TEAM_COLORS } from '../config.js?v=0.1.62';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.62';
-import { icon } from '../icons.js?v=0.1.62';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.62';
-import { figHTML } from './draft.js?v=0.1.62';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.63';
+import { db, newId } from '../store.js?v=0.1.63';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.63';
+import { TEAM_COLORS } from '../config.js?v=0.1.63';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.63';
+import { icon } from '../icons.js?v=0.1.63';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.63';
+import { figHTML } from './draft.js?v=0.1.63';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -26,7 +26,7 @@ const POS = { GK: 'GK', LB: 'LB', RB: 'RB', LCB: 'CB', RCB: 'CB', CB: 'CB', LM: 
   LAM: 'LW', RAM: 'RW', CAM: 'AM', LW: 'LW', RW: 'RW', ST: 'ST', LS: 'ST', RS: 'ST', LWB: 'LWB', RWB: 'RWB' };
 const DEF_FORM = '4-4-2';
 
-const ui = { md: null, round: null, view: null, sel: null, ogMode: false, roundFor: null };
+const ui = { md: null, round: null, view: null, sel: null, ogMode: false, roundFor: null, tab: 'rec' };   // tab: 운영진 화면 기록 / 포지션
 const inkOf = (md, i) => { const h = hexOf(md, i); return /^#?fff/i.test(h.text.replace('#', '')) ? h.hex : '#121633'; };
 const hexOf = (md, i) => TEAM_COLORS.find((c) => c.key === teamColor(md, i)) || { hex: '#64748b', text: '#fff' };
 const gamesOf = (md) => S.games.filter((g) => g.matchdayId === md.id).sort((a, b) => (a.round || 0) - (b.round || 0) || (a.order || 0) - (b.order || 0));
@@ -76,8 +76,10 @@ export function render(root, ctx = {}) {
     <nav class="mm-rounds" aria-label="라운드">${[...Array(R)].map((_, k) => { const r = k + 1, x = games.find((q) => q.round === r);
       return `<button type="button" data-round="${r}" class="${r === ui.round ? 'on' : ''} ${x?.done ? 'done' : x && x === liveG ? 'live' : ''}">
         <span>${r}R${x && x === liveG && !x.done ? ' 진행' : ''}</span><b>${x && (x.done || x.sa || x.sb) ? `<em style="--sc:${inkOf(md, x.a ?? 0)}">${x.sa}</em><i>:</i><em style="--sc:${inkOf(md, x.b ?? 1)}">${x.sb}</em>` : x === liveG && x ? '0<i>:</i>0' : '–'}</b></button>`; }).join('')}</nav>
-    ${op ? recorder(md, games, g) : roundCard(md, g)}
-    ${md.status !== 'played' || capOf.length ? lineupCard(md, capOf, op) : lineupCard(md, [], false)}
+    ${op ? `<div class="seg mm-tabs" role="tablist" aria-label="기록 · 포지션">${[['rec', 'ball', '기록'], ['pos', 'field', '포지션']].map(([k, ic, l]) =>
+      `<button type="button" role="tab" aria-selected="${ui.tab === k}" data-mmtab="${k}" class="${ui.tab === k ? 'on' : ''}">${icon(ic, 'sm')}${l}</button>`).join('')}</div>` : ''}
+    ${op ? (ui.tab === 'pos' ? lineupCard(md, capOf, op) : recorder(md, games, g)) : roundCard(md, g)}
+    ${op ? '' : md.status !== 'played' || capOf.length ? lineupCard(md, capOf, op) : lineupCard(md, [], false)}
     ${!op && !played ? scorersCard(md, games) : ''}
     ${!ctx.embedded && !S.operator && localStorage.getItem('teamapp:opdev') === '1' ? '<p class="muted small center">운영진은 운영모드 › 경기 운영 › 경기 단계에서 점수를 기록해요.</p>' : ''}`;
   bind(root, md, ctx);
@@ -147,10 +149,10 @@ function recorder(md, games, g) {
           <span class="no">${n + 1}</span>${e.k === 'og' ? '<b>자책</b>' : icon('ball', 'sm')}<span>${e.id ? esc(nameOf(e.id, md)) : '득점자 모름'}</span>${icon('x', 'sm')}</button>`; }).join('')
       : '<p class="muted small">아직 득점이 없어요.</p>'}
     </div>
-    <div class="row wrap rec-act">
-      <button class="btn ${g.done ? 'ghost' : ''}" data-rdone>${g.done ? '라운드 종료 취소' : `${ui.round}라운드 종료`}</button>
-      ${ui.round === games[games.length - 1].round ? '<button class="btn ghost" data-addround>라운드 추가</button>' : ''}
-      ${games.every((x) => x.done) ? '<button class="btn" data-finish>경기 종료 · 기록 반영</button>' : ''}
+    <div class="rec-act">
+      ${games.every((x) => x.done) ? '<button class="btn full big go" data-finish>경기 종료 · 기록 반영</button>' : ''}
+      <button class="btn full ${g.done ? 'ghost' : 'big'}" data-rdone>${g.done ? `${ui.round}라운드 종료 취소` : `${ui.round}라운드 종료`}</button>
+      ${ui.round === games[games.length - 1].round ? '<button class="btn ghost full" data-addround>＋ 라운드 추가</button>' : ''}
     </div>
   </section>`;
 }
@@ -242,6 +244,7 @@ function bind(root, md, ctx) {
   const q = (s) => root.querySelector(s);
   root.querySelectorAll('[data-round]').forEach((b) => b.addEventListener('click', () => { ui.round = +b.dataset.round; ui.sel = null; rerender(); }));
   root.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => { ui.view = +b.dataset.view; ui.sel = null; rerender(); }));
+  root.querySelectorAll('[data-mmtab]').forEach((b) => b.addEventListener('click', () => { ui.tab = b.dataset.mmtab; ui.sel = null; rerender(); }));
   // 기록
   const games = gamesOf(md), g = games.find((x) => x.round === ui.round);
   const upd = (fn) => db.tx('games/' + g.id, (cur) => { if (!cur) return null; cur.goals = cur.goals || {}; cur.og = cur.og || {}; fn(cur); return cur; });

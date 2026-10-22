@@ -7,7 +7,7 @@
 //  비밀번호를 바꾸거나 운영진이 초기화하면 버전이 올라가서 예전 비밀번호 열쇠는 더 이상 맞지 않음.
 //
 //  자동 로그인: 켜면 이 기기(localStorage)에 로그인 정보를 남기고, 끄면 이번 접속(sessionStorage)에만.
-import { db } from './store.js?v=0.1.62';
+import { db } from './store.js?v=0.1.63';
 
 const SALT = 'shootdori-v1';
 const LS = 'teamapp:auth';
