@@ -1,13 +1,13 @@
 // 경기 신청 — 참석 · 불참 · 운영진 협의
 //  · 일반 경기: 신청 마감 전에는 참석·협의·불참 명단, 팀이 정해지면(주장·드래프트) 팀별로 좌우 칸
 //  · 이벤트 경기: 처음부터 미리 정한 두 팀 칸 — 회원은 팀을 골라(또는 운영진이 넣어 둔 팀에서) 참석·불참
-import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js?v=0.1.55';
-import { db, newId } from '../store.js?v=0.1.55';
-import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent } from '../domain.js?v=0.1.55';
-import { TEAM_COLORS } from '../config.js?v=0.1.55';
-import { parseCafeComments, norm } from '../cafe-parser.js?v=0.1.55';
-import { esc, fmtDate, fmtTime, toast, byName } from '../util.js?v=0.1.55';
-import { modal, empty, colorChip, teamLabel } from '../ui.js?v=0.1.55';
+import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js?v=0.1.56';
+import { db, newId } from '../store.js?v=0.1.56';
+import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent } from '../domain.js?v=0.1.56';
+import { TEAM_COLORS } from '../config.js?v=0.1.56';
+import { parseCafeComments, norm } from '../cafe-parser.js?v=0.1.56';
+import { esc, fmtDate, fmtTime, toast, byName } from '../util.js?v=0.1.56';
+import { modal, empty, colorChip, teamLabel } from '../ui.js?v=0.1.56';
 
 const SRC = { app: '앱', cafe: '카페', manual: '운영진', sheet: '시트' };
 const colorHex = (k) => TEAM_COLORS.find((c) => c.key === k)?.hex || '#94a3b8';
@@ -35,7 +35,7 @@ export function render(root, ctx = {}) {
       ${myBox(md, v, open)}
     </section>
     ${op ? `<section class="card op"><h2>운영</h2><div class="row wrap">
-      ${S.team.cafeImport !== false && md.source !== 'sheet' ? '<button class="btn" data-cafe>카페 댓글로 참석자 가져오기</button>' : ''}
+      ${S.team.cafeImport !== false && md.source !== 'sheet' ? '<button class="btn" data-cafe>카페 댓글로 명단 가져오기</button>' : ''}
       <button class="btn ghost" data-add>＋ 인원 추가</button>
       ${md.source !== 'sheet' ? `<button class="btn ghost" data-close>${open ? '신청 마감' : '신청 다시 열기'}</button>` : ''}
     </div></section>` : ''}
@@ -43,8 +43,10 @@ export function render(root, ctx = {}) {
     ${v.wait.length ? `<section class="card"><h2>대기 ${v.wait.length}명</h2>${listHtml(v.wait, md, op)}</section>` : ''}
     ${v.pend.length ? `<section class="card"><h2>운영진 협의 ${v.pend.length}명 <small>승인하면 참석 명단에 들어가요</small></h2>
       <ol class="apps">${v.pend.map((a) => `<li><span class="no">·</span><span class="nm">${esc(nameOf(a.id, md))}</span>
-        ${op ? `<button class="btn sm" data-approve="${a.id}">승인</button><button class="icon-btn" data-rm="${a.id}" aria-label="빼기">✕</button>` : '<span class="tag">협의 중</span>'}</li>`).join('')}</ol></section>` : ''}
-    ${(v.ev || teamsSet) && v.outs.length ? `<section class="card"><details><summary>불참 ${v.outs.length}명</summary><p class="small muted">${v.outs.map((d) => esc(memberById(d.id)?.name || d.name || nameOf(d.id, md))).join(', ')}</p></details></section>` : ''}`;
+        ${op ? `<button class="btn sm" data-approve="${a.id}">승인</button><button class="btn ghost sm" data-toout="${a.id}">불참으로</button><button class="icon-btn" data-rm="${a.id}" aria-label="빼기">✕</button>` : '<span class="tag">협의 중</span>'}</li>`).join('')}</ol></section>` : ''}
+    ${(v.ev || teamsSet) && (v.outs.length || op) ? `<section class="card"><details ${op ? 'open' : ''}><summary>불참 ${v.outs.length}명</summary>
+      ${op ? `<div class="ap-hd"><span></span><button class="btn ghost sm" data-addcat="out">＋ 불참 추가</button></div>${outList(v.outs, md, op)}`
+        : `<p class="small muted">${v.outs.map((d) => esc(memberById(d.id)?.name || d.name || nameOf(d.id, md))).join(', ')}</p>`}</details></section>` : ''}`;
 
   bind(root, md, v);
 }
@@ -79,9 +81,12 @@ export function myBox(md, v, open) {
 // 일반 경기(팀 정해지기 전): 참석 · 불참 명단 (협의는 아래 따로)
 function categoryLists(md, v) {
   const op = S.operator && !md.cancelled;
-  return `<section class="card"><h2>참석 ${v.ins.length}명</h2>${v.ins.length ? listHtml(v.ins, md, op) : empty('아직 참석자가 없어요.')}</section>
-    <section class="card"><h2>불참 ${v.outs.length}명</h2>${v.outs.length ? `<ol class="apps tight">${v.outs.map((d, k) => `<li><span class="no">${k + 1}</span>
-      <span class="nm">${esc(memberById(d.id)?.name || d.name || nameOf(d.id, md))}</span>${op ? `<button class="btn ghost sm" data-toin="${d.id}">참석으로</button><button class="icon-btn sm" data-rmout="${d.id}" aria-label="빼기">✕</button>` : ''}</li>`).join('')}</ol>` : empty('불참 표시한 사람이 없어요.')}</section>`;
+  return `<section class="card"><div class="ap-hd"><h2>참석 ${v.ins.length}명</h2>${op ? '<button class="btn ghost sm" data-addcat="in">＋ 참석 추가</button>' : ''}</div>${v.ins.length ? listHtml(v.ins, md, op) : empty('아직 참석자가 없어요.')}</section>
+    <section class="card"><div class="ap-hd"><h2>불참 ${v.outs.length}명</h2>${op ? '<button class="btn ghost sm" data-addcat="out">＋ 불참 추가</button>' : ''}</div>${outList(v.outs, md, op)}</section>`;
+}
+function outList(outs, md, op) {
+  return outs.length ? `<ol class="apps tight">${outs.map((d, k) => `<li><span class="no">${k + 1}</span>
+      <span class="nm">${esc(memberById(d.id)?.name || d.name || nameOf(d.id, md))}</span>${op ? `<button class="btn ghost sm" data-toin="${d.id}">참석으로</button><button class="icon-btn sm" data-rmout="${d.id}" aria-label="빼기">✕</button>` : ''}</li>`).join('')}</ol>` : empty('불참 표시한 사람이 없어요.');
 }
 
 function listHtml(list, md, op) {
@@ -90,7 +95,7 @@ function listHtml(list, md, op) {
     ${a.tentative ? '<span class="tag">미정</span>' : ''}
     <span class="src src-${a.source}">${SRC[a.source] || ''}</span>
     <span class="tm">${a.at > 1e12 ? fmtTime(a.at) : ''}</span>
-    ${op ? `<button class="icon-btn" data-rm="${a.id}" aria-label="빼기">✕</button>` : ''}</li>`).join('')}</ol>`;
+    ${op ? `<button class="btn ghost sm" data-toout="${a.id}">불참으로</button><button class="icon-btn" data-rm="${a.id}" aria-label="빼기">✕</button>` : ''}</li>`).join('')}</ol>`;
 }
 
 // 팀별 좌우 칸 — 팀이 확정됐으면 확정된 팀, 이벤트 경기면 미리 정한 팀
@@ -110,16 +115,17 @@ function teamColumns(md, v) {
   const op = S.operator && !md.cancelled;
   const info = new Map(applicants(md).map((a) => [a.id, a]));
   const total = tc.cols.reduce((n, c) => n + c.ids.length, 0) + tc.rest.length;
-  const moveBtn = (id, from) => {
-    if (!op) return '';
-    const others = tc.cols.filter((c) => c.key !== from);
-    if (others.length === 1) return `<button class="icon-btn sm swap" data-sw="${id}" data-to="${others[0].key}" title="${esc(others[0].label)}(으)로 이동" aria-label="${esc(nameOf(id, md))} ${esc(others[0].label)}(으)로 이동">⇄</button>`;
-    return `<select class="move" data-mv="${id}"><option value="">이동</option>${others.map((c) => `<option value="${c.key}">${esc(c.label)}</option>`).join('')}</select>`;
-  };
   const row = (id, k, from) => { const a = info.get(id) || {};
     return `<li class="${id === me.id ? 'me' : ''}"><span class="no">${k + 1}</span><span class="nm">${esc(nameOf(id, md))}</span>${a.tentative ? '<span class="tag">미정</span>' : ''}
-      ${moveBtn(id, from)}${op ? `<button class="icon-btn sm" data-rm="${id}" aria-label="${esc(nameOf(id, md))} 빼기">✕</button>` : ''}</li>`; };
-  const small = (label, ids, cls) => ids.length ? `<p class="col-sub ${cls}"><b>${label} ${ids.length}</b> ${ids.map((id) => esc(memberById(id)?.name || md.declines?.[id]?.name || nameOf(id, md))).join(', ')}</p>` : '';
+      ${op ? actSel(id, from) : ''}</li>`; };
+  // 운영진 줄 메뉴 (⋯): 다른 팀으로 · 불참으로 · 명단에서 빼기 — 좁은 팀 칸에서도 이름이 잘리지 않게 한 칸으로
+  const actSel = (id, from) => `<select class="row-act" data-act="${id}" aria-label="${esc(nameOf(id, md))} 바꾸기"><option value="">⋯</option>
+    ${tc.cols.filter((c) => c.key !== from).map((c) => `<option value="mv:${c.key}">${esc(c.label)}(으)로 이동</option>`).join('')}
+    <option value="out">불참으로</option><option value="rm">명단에서 빼기</option></select>`;
+  const nm = (id) => esc(memberById(id)?.name || md.declines?.[id]?.name || nameOf(id, md));
+  const small = (label, ids, cls) => !ids.length ? '' : op && cls === 'out'
+    ? `<p class="col-sub ${cls}"><b>${label} ${ids.length}</b> ${ids.map((id) => `<button type="button" class="out-chip" data-toin="${id}" title="눌러서 참석으로">${nm(id)} <i>↩</i></button>`).join('')}</p>`
+    : `<p class="col-sub ${cls}"><b>${label} ${ids.length}</b> ${ids.map(nm).join(', ')}</p>`;
   return `<section class="card">
     <h2>참석 ${total}명 <small>${tc.mode === 'team' ? '확정된 팀' : '이벤트 팀별 신청'}</small></h2>
     <div class="tcols n${tc.cols.length}">${tc.cols.map((c) => `
@@ -162,8 +168,7 @@ function bind(root, md, v) {
     });
     toast(`${nameOf(id, md)} 님을 참석 명단에 넣었어요${into ? ` (${into})` : ''}`);
   }));
-  root.querySelectorAll('[data-rm]').forEach((b) => b.addEventListener('click', async () => {
-    const id = b.dataset.rm;
+  const rmOne = async (id) => {
     if (!confirm(`${nameOf(id, md)} 님을 명단에서 뺄까요?`)) return;
     await db.tx(path, (cur) => {
       if (cur.apps) delete cur.apps[id];
@@ -172,12 +177,35 @@ function bind(root, md, v) {
       return cur;
     });
     toast(`${nameOf(id, md)} 님을 뺐어요`);
-  }));
+  };
+  root.querySelectorAll('[data-rm]').forEach((b) => b.addEventListener('click', () => rmOne(b.dataset.rm)));
   root.querySelectorAll('[data-rmout]').forEach((b) => b.addEventListener('click', () => db.tx(path, (cur) => { delete cur.declines[b.dataset.rmout]; return cur; })));
-  root.querySelectorAll('[data-toin]').forEach((b) => b.addEventListener('click', () => db.tx(path, (cur) => {
-    const id = b.dataset.toin; const d = cur.declines?.[id]; delete cur.declines[id];
-    cur.apps = cur.apps || {}; cur.apps[id] = { at: Date.now(), source: 'manual', ...(d?.team != null ? { team: d.team } : {}) }; return cur;
-  })));
+  root.querySelectorAll('[data-toin]').forEach((b) => b.addEventListener('click', async () => {
+    const id = b.dataset.toin;
+    await db.tx(path, (cur) => {
+      const d = cur.declines?.[id]; if (cur.declines) delete cur.declines[id];
+      cur.apps = cur.apps || {}; cur.apps[id] = { at: Date.now(), source: 'manual', ...(d?.team != null ? { team: d.team } : {}) };
+      if (cur.teams?.length && d?.team != null && cur.teams[d.team] && !cur.teams.some((t) => t.members.includes(id))) cur.teams[d.team].members.push(id);
+      return cur;
+    });
+    toast(`${nameOf(id, md)} 님 → 참석`);
+  }));
+  // 참석·협의 → 불참 (팀이 정해져 있으면 그 팀의 불참으로)
+  const toOut = async (id) => {
+    await db.tx(path, (cur) => {
+      const a = cur.apps?.[id];
+      const ti = (cur.teams || []).findIndex((t) => t.members.includes(id));
+      const team = ti >= 0 ? ti : a?.team ?? null;
+      if (cur.apps) delete cur.apps[id];
+      (cur.teams || []).forEach((t) => { t.members = t.members.filter((x) => x !== id); });
+      cur.declines = cur.declines || {};
+      cur.declines[id] = { at: Date.now(), name: memberById(id)?.name || cur.guests?.[id]?.name || '', source: 'manual', ...(team != null ? { team } : {}) };
+      return cur;
+    });
+    toast(`${nameOf(id, md)} 님 → 불참`);
+  };
+  root.querySelectorAll('[data-toout]').forEach((b) => b.addEventListener('click', () => toOut(b.dataset.toout)));
+  root.querySelectorAll('[data-addcat]').forEach((b) => b.addEventListener('click', () => addPeople(md, null, b.dataset.addcat)));
   // 팀 사이 이동
   const moveTo = async (id, to) => {
     await db.tx(path, (cur) => {
@@ -192,29 +220,39 @@ function bind(root, md, v) {
   };
   root.querySelectorAll('[data-mv]').forEach((x) => x.addEventListener('change', () => x.value !== '' && moveTo(x.dataset.mv, +x.value)));
   root.querySelectorAll('[data-sw]').forEach((x) => x.addEventListener('click', () => moveTo(x.dataset.sw, +x.dataset.to)));
+  root.querySelectorAll('[data-act]').forEach((x) => x.addEventListener('change', () => {
+    const id = x.dataset.act, v = x.value; x.value = '';
+    if (v.startsWith('mv:')) moveTo(id, +v.slice(3));
+    else if (v === 'out') toOut(id);
+    else if (v === 'rm') rmOne(id);
+  }));
 }
 
 // 인원 추가 (운영진): 참석 · 불참 · 협의 · (이벤트 경기) 팀 지정만
-function addPeople(md, teamIdx) {
+function addPeople(md, teamIdx, cat0 = 'in') {
   const ev = teamEvent(md), teamsSet = md.teams?.length > 0;
   const teamList = teamsSet ? md.teams.map((t, i) => ({ i, name: teamLabel(md, i) })) : ev ? ev.map((t, i) => ({ i, name: t.name })) : [];
-  const inMd = new Set([...Object.keys(md.apps || {}), ...Object.keys(md.declines || {}), ...rosters(md).flat()]);
-  const list = S.members.filter((m) => m.active !== false && !inMd.has(m.id)).sort(byName);
+  // 지금 상태 (이미 명단에 있는 사람도 골라서 참석↔불참↔협의로 바꿀 수 있음)
+  const now0 = (id) => md.declines?.[id] ? '불참' : md.apps?.[id] ? (md.apps[id].pending ? '협의' : '참석') : rosters(md).flat().includes(id) ? '참석' : '';
+  const list = S.members.filter((m) => m.active !== false || now0(m.id)).sort((a, b) => !!now0(a.id) - !!now0(b.id) || byName(a, b));
   const cats = [['in', '참석'], ['out', '불참'], ['pending', '운영진 협의'], ...(ev && !teamsSet ? [['assign', '팀만 지정 (본인이 참석·불참)']] : [])];
-  const { el, close } = modal(teamIdx != null && teamList[teamIdx] ? `${teamList[teamIdx].name}에 추가` : '인원 추가', `
-    <div class="seg cat-seg">${cats.map(([k, l], i) => `<button type="button" data-cat="${k}" class="${i ? '' : 'on'}">${l}</button>`).join('')}</div>
-    ${teamList.length ? `<label>팀<select name="team">${teamList.map((t) => `<option value="${t.i}" ${t.i === teamIdx ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}${teamsSet ? '' : '<option value="">팀 없음</option>'}</select></label>` : ''}
+  if (!cats.some((c) => c[0] === cat0)) cat0 = 'in';
+  const { el, close } = modal(teamIdx != null && teamList[teamIdx] ? `${teamList[teamIdx].name}에 추가` : cat0 === 'out' ? '불참 추가·변경' : '인원 추가·변경', `
+    <div class="seg cat-seg">${cats.map(([k, l]) => `<button type="button" data-cat="${k}" class="${k === cat0 ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <p class="tiny muted">이미 명단에 있는 사람(이름 옆 표시)을 고르면 위에서 고른 상태로 바뀌어요.</p>
+    ${teamList.length ? `<label>팀<select name="team">${teamList.map((t) => `<option value="${t.i}" ${t.i === teamIdx ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}${teamsSet ? '' : `<option value="" ${teamIdx == null ? 'selected' : ''}>팀 없음</option>`}</select></label>` : ''}
     <input class="search" placeholder="닉네임 검색" data-q autocomplete="off">
     <div class="name-grid" data-list></div>
     <label>게스트 <span class="muted small">(회원 목록에 없는 사람)</span><input name="guest" placeholder="게스트 이름"></label>
     <button class="btn full" data-ok>추가</button>`);
-  let cat = 'in';
+  let cat = cat0;
   el.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { cat = b.dataset.cat; el.querySelectorAll('[data-cat]').forEach((x) => x.classList.toggle('on', x === b)); }));
   const box = el.querySelector('[data-list]'), picked = new Set();
   const draw = (q = '') => {
     const k = q.trim().toLowerCase();
     const hit = list.filter((m) => !k || m.name.toLowerCase().includes(k) || (m.aliases || []).some((a) => a.toLowerCase().includes(k)) || (m.realName || '').includes(k));
-    box.innerHTML = hit.length ? hit.map((m) => `<button type="button" class="name-btn ${picked.has(m.id) ? 'on' : ''}" data-id="${m.id}">${esc(m.name)}</button>`).join('') : empty('추가할 회원이 없어요.');
+    box.innerHTML = hit.length ? hit.map((m) => { const st = now0(m.id);
+      return `<button type="button" class="name-btn ${picked.has(m.id) ? 'on' : ''} ${st ? 'has-st' : ''}" data-id="${m.id}">${esc(m.name)}${st ? `<small class="st st-${st}">${st}</small>` : ''}</button>`; }).join('') : empty('추가할 회원이 없어요.');
   };
   draw();
   el.querySelector('[data-q]').addEventListener('input', (e) => draw(e.target.value));
@@ -233,14 +271,20 @@ function addPeople(md, teamIdx) {
           if (!t) { cur.event = true; cur.eventTeams = eventTeams(cur).map((x) => ({ ...x, members: [...(x.members || [])] })); cur.teamNames = cur.eventTeams.map((x) => x.name); }
           cur.eventTeams.forEach((x, k) => { x.members = (x.members || []).filter((y) => y !== id); if (k === (team ?? 0)) x.members.push(id); });
           return; }
-        if (cat === 'out') { delete cur.apps[id]; cur.declines[id] = { at: now, name: memberById(id)?.name || gname, ...(team != null ? { team } : {}) }; return; }
-        if (md.source !== 'sheet') cur.apps[id] = { at: now + i, source: 'manual', pending: cat === 'pending', ...(team != null ? { team } : {}) };
+        if (cat === 'out') {
+          const ti = (cur.teams || []).findIndex((t) => t.members.includes(id));
+          const tm = ti >= 0 ? ti : cur.apps[id]?.team ?? cur.declines[id]?.team ?? team;
+          delete cur.apps[id]; (cur.teams || []).forEach((t) => { t.members = t.members.filter((x) => x !== id); });
+          cur.declines[id] = { at: now, name: memberById(id)?.name || gname, source: 'manual', ...(tm != null ? { team: tm } : {}) }; return;
+        }
+        const prev = cur.apps[id];
+        if (md.source !== 'sheet') cur.apps[id] = { ...(prev || {}), at: prev?.at ?? now + i, source: prev?.source || 'manual', pending: cat === 'pending', ...(team != null ? { team } : {}) };
         delete cur.declines[id];
         if (cur.teams?.length && cat === 'in' && team != null) { cur.teams.forEach((t) => { t.members = t.members.filter((x) => x !== id); }); cur.teams[team].members.push(id); }
       });
       return cur;
     });
-    toast(`${ids.length}명 추가 (${cats.find((c) => c[0] === cat)[1]})`); close();
+    toast(`${ids.length}명 → ${cats.find((c) => c[0] === cat)[1]}`); close();
   });
 }
 
@@ -249,12 +293,13 @@ function addPeople(md, teamIdx) {
 //  회원 목록과 일치하지 않는 닉네임은 게스트로 참석 (원하면 회원을 골라 별칭으로 저장)
 const KIND_OPTS = [['in', '참석'], ['tentative', '참석(미정)'], ['pending', '협의 대기'], ['out', '불참'], ['skip', '제외']];
 function cafeImport(md) {
-  const { el, close } = modal('카페 댓글로 참석자 가져오기', `
+  const { el, close } = modal('카페 댓글로 명단 가져오기', `
     <ol class="howto small">
       <li>카페 신청 글에서 댓글 전체를 선택해 복사 (PC·모바일 어느 쪽에서 복사해도 돼요)</li>
       <li>아래에 붙여넣고 <b>분석하기</b> (댓글이 여러 페이지면 이어서 붙여넣기)</li>
       <li>회원 일치 여부를 확인하고 <b>참석자 확정</b></li>
     </ol>
+    ${Object.keys(md.apps || {}).length + Object.keys(md.declines || {}).length ? `<p class="cafe-warn">⚠️ 확정하면 지금 명단(참석·협의 ${Object.keys(md.apps || {}).length}명 · 불참 ${Object.keys(md.declines || {}).length}명)을 <b>모두 지우고</b> 붙여넣은 댓글로 새로 만들어요. 앱에서 직접 신청한 사람·운영진이 추가한 사람도 지워져요.</p>` : ''}
     <textarea rows="7" data-src placeholder="여기에 댓글 붙여넣기"></textarea>
     <button class="btn full" data-parse>분석하기</button>
     <div data-out></div>`, { wide: true });
@@ -314,6 +359,10 @@ function cafeImport(md) {
     sync();
 
     out.querySelector('[data-apply]').addEventListener('click', async (ev) => {
+      // 기존 명단을 모두 지우고 댓글로 다시 만들기 — 확정 전에 한 번 더 확인
+      const cur0 = S.matchdays.find((m) => m.id === md.id) || md;
+      const nA = Object.keys(cur0.apps || {}).length, nD = Object.keys(cur0.declines || {}).length;
+      if (nA + nD && !confirm(`기존 신청 명단을 모두 지우고 카페 댓글로 다시 가져올까요?\n\n지금 명단: 참석·협의 ${nA}명 · 불참 ${nD}명\n앱에서 직접 신청한 사람과 운영진이 추가한 사람도 지워지고, 붙여넣은 댓글에 있는 사람만 남아요.${cur0.teams?.length ? '\n(이미 정해진 팀 구성은 그대로예요)' : ''}`)) return;
       ev.target.disabled = true;
       const picked = [...out.querySelectorAll('tr[data-i]')].map((tr) => ({
         r: rows[+tr.dataset.i], mem: tr.querySelector('[data-mem]').value, kind: tr.querySelector('[data-kind]').value,
@@ -335,7 +384,8 @@ function cafeImport(md) {
         secSel.forEach(({ sec }, k) => { secIdx[sec] = k; });
       }
       await db.tx(mdPath(md.id), (cur) => {
-        cur.apps = cur.apps || {}; cur.guests = cur.guests || {}; cur.declines = cur.declines || {};
+        const prevApps = cur.apps || {};   // 승인해 둔 협의 인원은 다시 가져와도 승인 상태 유지
+        cur.apps = {}; cur.declines = {}; cur.guests = cur.guests || {};
         if (newEvent) { cur.event = true; cur.eventTeams = newEvent; cur.teamNames = newEvent.map((t) => t.name); }
         // 머리 댓글 순서 기억 (구역대로 팀 나눌 때 이 순서 = 1번·2번 팀)
         const order = sections.filter((x) => x.kind === 'in').map((x) => x.title);
@@ -349,11 +399,11 @@ function cafeImport(md) {
             n.out++; return;
           }
           if (!mem) { cur.guests[id] = { name: r.nick, cafe: true }; n.guest++; }
-          const prev = cur.apps[id];
+          const prev = prevApps[id];
           const t = r.firstAt ?? r.at ?? now;
           const approved = prev && !prev.pending;            // 이미 승인·참가 중이면 다시 붙여넣어도 협의 대기로 돌리지 않음
-          cur.apps[id] = { ...(prev || {}), at: prev?.at ?? t, source: prev?.source || 'cafe', cafeName: r.nick,
-            group: kind === 'pending' ? (prev?.group || null) : (r.section || prev?.group || null),
+          cur.apps[id] = { at: t, source: 'cafe', cafeName: r.nick,
+            group: kind === 'pending' ? (prev?.group || null) : (r.section || null),
             tentative: kind === 'tentative', pending: kind === 'pending' && !approved,
             ...(secIdx[r.section] != null ? { team: secIdx[r.section] } : {}) };
           delete cur.declines[id];

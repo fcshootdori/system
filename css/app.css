@@ -1679,3 +1679,18 @@ body.gate .ver::before { background-image: var(--emb-w); opacity: .4; }
 .medit-box legend { padding: 0 6px; font-size: 12px; font-weight: 800; color: var(--sub); }
 .medit-box.app { background: #fbfbfd; }
 .medit input:disabled, .medit select:disabled { background: var(--soft); color: var(--sub); }
+/* 0.1.56 신청 명단: 참석↔불참 바꾸기 · 카페 댓글로 다시 만들기 */
+.ap-hd { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.ap-hd h2 { margin: 0; }
+.apps li .btn.sm { min-height: 30px; padding: 4px 10px; font-size: 12px; flex: none; }
+.btn.xs { min-height: 24px; padding: 2px 8px; font-size: 11px; border-radius: 999px; flex: none; }
+.out-chip { border: 0; background: #fff1f2; color: #9f1239; border-radius: 999px; padding: 2px 8px; margin: 2px 2px 0 0; font: 600 12px var(--font); cursor: pointer; }
+.out-chip i { font-style: normal; opacity: .6; }
+.cafe-warn { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: #fff7ed; color: #9a3412; font-size: 13px; line-height: 1.5; box-shadow: inset 0 0 0 1px #fed7aa; }
+.name-btn.has-st { display: inline-flex; align-items: center; gap: 4px; }
+.name-btn small.st { font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 6px; background: #eef0f6; color: var(--sub); }
+.name-btn small.st-불참 { background: #fff1f2; color: #be123c; }
+.name-btn small.st-참석 { background: #e7f6ee; color: #0f7a4a; }
+.name-btn.on small.st { background: rgba(255,255,255,.2); color: #fff; }
+.row-act { flex: none; width: 30px; height: 28px; min-height: 0; padding: 0; border: 0; border-radius: 8px; background: var(--soft); color: var(--sub); font: 800 15px var(--font); text-align: center; text-align-last: center; appearance: none; -webkit-appearance: none; cursor: pointer; }
+.row-act:focus { box-shadow: 0 0 0 2px var(--navy); }
