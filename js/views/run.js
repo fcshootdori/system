@@ -1,17 +1,17 @@
 // 운영 > 경기 — 위쪽에 선택한 경기(날짜·장소·상태, 이전/이후)와 단계 막대를 고정하고
 //  신청 → 주장 → 드래프트 → 팀 확정 → 경기 → 결과 단계 화면을 보여 줌 (WD_FUTSAL 경기 메뉴와 같은 구성)
-import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state.js?v=0.1.64';
-import { db } from '../store.js?v=0.1.64';
-import { STATUS } from '../config.js?v=0.1.64';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.64';
-import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel, teamEvent, capEvent } from '../domain.js?v=0.1.64';
-import { colorChip } from '../ui.js?v=0.1.64';
-import { empty } from '../ui.js?v=0.1.64';
-import { fmtSummary, editMatchday, cancelMatchday } from './home.js?v=0.1.64';
-import * as apply from './apply.js?v=0.1.64';
-import * as draft from './draft.js?v=0.1.64';
-import * as games from './games.js?v=0.1.64';
-import * as matchmode from './matchmode.js?v=0.1.64';
+import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state.js?v=0.1.65';
+import { db } from '../store.js?v=0.1.65';
+import { STATUS } from '../config.js?v=0.1.65';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.65';
+import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel, teamEvent, capEvent } from '../domain.js?v=0.1.65';
+import { colorChip } from '../ui.js?v=0.1.65';
+import { empty } from '../ui.js?v=0.1.65';
+import { fmtSummary, editMatchday, cancelMatchday } from './home.js?v=0.1.65';
+import * as apply from './apply.js?v=0.1.65';
+import * as draft from './draft.js?v=0.1.65';
+import * as games from './games.js?v=0.1.65';
+import * as matchmode from './matchmode.js?v=0.1.65';
 
 const STAGES = [['apply', '신청'], ['captain', '주장'], ['draft', '드래프트'], ['teams', '팀 확정'], ['games', '경기'], ['result', '결과']];
 const idx = (k) => STAGES.findIndex(([s]) => s === k);
@@ -27,6 +27,39 @@ export function stageOf(md) {
     case 'played': return 'result';
     default: return 'apply';
   }
+}
+
+// ── 이전 단계로 되돌리기 (지금 단계 기준 한 단계씩) ──
+//  신청 ← 주장 ← 드래프트 ← 팀 확정 ← 경기 ← 결과  (이벤트 경기는 생략한 단계를 건너뜀)
+function prevStage(md) {
+  const auto = stageOf(md), P = mdPath(md.id);
+  const games = S.games.filter((g) => g.matchdayId === md.id);
+  const toApply = (extra = {}) => db.tx(P, (cur) => {
+    Object.assign(cur, extra);
+    cur.status = closePassed(cur) ? 'closed' : 'open'; cur.reopened = closePassed(cur); cur.earlyTeams = false;
+    return cur;
+  });
+  if (auto === 'captain') return { to: '신청', msg: '신청 단계로 되돌릴까요?\n회원이 다시 참석·불참을 바꿀 수 있어요. 정해 둔 주장은 그대로 남아요.', run: () => toApply({ draftStarted: false }) };
+  if (auto === 'draft') {
+    const n = (md.picks || []).length;
+    return { to: '주장', msg: `주장 단계로 되돌릴까요?\n지명 순서${n ? `와 지금까지 뽑은 선수 ${n}명` : ''}이 지워지고, 주장은 그대로 남아요.`,
+      run: () => db.tx(P, (cur) => { cur.status = 'captains'; cur.draftStarted = false; cur.picks = []; cur.order = null; cur.cards = null; cur.pending = null; cur.teams = []; return cur; }) };
+  }
+  if (auto === 'teams') {
+    if (teamEvent(md)) return { to: '신청', msg: '신청 단계로 되돌릴까요?\n팀 확정이 풀리고, 마감 뒤 참석자로 다시 팀을 확정해요. 미리 정한 팀원은 그대로예요.', run: () => toApply({ teams: [] }) };
+    if ((md.picks || []).length || (md.captains || []).length) return { to: '드래프트', msg: '드래프트 단계로 되돌릴까요?\n팀 확정 뒤에 옮긴 선수 내역은 지워지고, 지명 결과는 그대로라 마지막 지명부터 취소할 수 있어요.',
+      run: () => db.tx(P, (cur) => { cur.teams = []; cur.status = 'drafting'; return cur; }) };
+    return { to: '주장', msg: '주장 단계로 되돌릴까요?\n지금 팀 구성이 풀려요. 주장을 정하고 드래프트하거나, 다시 구역대로 팀을 만들 수 있어요.',
+      run: () => db.tx(P, (cur) => { cur.teams = []; cur.status = 'captains'; cur.draftStarted = false; return cur; }) };
+  }
+  if (auto === 'games') {
+    const rec = games.filter((g) => g.done || g.sa || g.sb || Object.keys(g.goals || {}).length).length;
+    return { to: '팀 확정', msg: `팀 확정 단계로 되돌릴까요?\n만들어 둔 라운드 ${games.length}개${rec ? `와 기록(점수·득점자가 있는 라운드 ${rec}개)` : ''}가 모두 지워져요. 포지션은 그대로 남아요.`,
+      run: () => Promise.all(games.map((g) => db.del('games/' + g.id))) };
+  }
+  if (auto === 'result') return { to: '경기', msg: '경기 단계로 되돌릴까요?\n점수·득점자를 다시 고칠 수 있어요. 고친 뒤 다시 [경기 종료 · 기록 반영]을 눌러 주세요. MOM 선정은 그대로예요.',
+    run: () => db.set(P, { status: 'teams' }, { merge: true }) };
+  return null;
 }
 
 export function render(root) {
@@ -58,7 +91,7 @@ export function render(root) {
       <ol class="stages">${STAGES.map(([k, l], n) => skip.includes(k)
         ? `<li><button class="off" disabled title="이벤트 경기 — 미리 정해져 있어 생략">${l}<small>생략</small></button></li>`
         : `<li><button data-step="${k}" class="${n < idx(auto) ? 'done' : ''} ${k === auto ? 'now' : ''} ${k === step ? 'sel' : ''}">${l}</button></li>`).join('')}</ol>
-      <div class="rb-tools"><button class="link" data-edit>경기일·경기 방식 수정</button><button class="link" data-notice>공지 이미지</button>${md.status === 'played' ? '' : `<button class="link danger" data-cancelmd>${md.cancelled ? '취소 철회' : '경기 취소'}</button>`}</div>
+      <div class="rb-tools">${!md.cancelled && prevStage(md) ? `<button class="link rb-back" data-prevstage>‹ ${prevStage(md).to} 단계로 되돌리기</button>` : ''}<span class="rb-links"><button class="link" data-edit>경기일·경기 방식 수정</button><button class="link" data-notice>공지 이미지</button>${md.status === 'played' ? '' : `<button class="link danger" data-cancelmd>${md.cancelled ? '취소 철회' : '경기 취소'}</button>`}</span></div>
     </div>
     <div data-body></div>`;
 
@@ -123,6 +156,10 @@ export function render(root) {
   root.querySelectorAll('[data-to]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.to) { S.sel = b.dataset.to; S.step = null; render(root); } }));
   root.querySelectorAll('[data-step]').forEach((b) => b.addEventListener('click', () => { S.step = b.dataset.step === auto ? null : b.dataset.step; render(root); window.scrollTo(0, 0); }));
   root.querySelector('[data-edit]').addEventListener('click', () => editMatchday(md));
+  root.querySelector('[data-prevstage]')?.addEventListener('click', async () => {
+    const p = prevStage(md); if (!p || !confirm(p.msg)) return;
+    await p.run(); S.step = null; toast(`${p.to} 단계로 되돌렸어요`); window.scrollTo(0, 0);
+  });
   root.querySelectorAll('[data-notice],[data-notice2]').forEach((b) => b.addEventListener('click', () => { window.__noticeMd = md.id; go('notice'); }));
   root.querySelector('[data-gogames]')?.addEventListener('click', () => { S.step = 'games'; render(root); window.scrollTo(0, 0); });
   root.querySelector('[data-tocap]')?.addEventListener('click', async () => {
