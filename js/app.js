@@ -3,35 +3,35 @@
 //   · 일반 회원: 홈 · 일정 · ⚽경기모드 · 경기결과 · 내 정보
 //   · 운영모드: 일정 · 경기 · 공지 · 회원 · 설정
 //   · 주장: 오른쪽 위 👑 드래프트 버튼으로 입장
-import { APP_NAME, APP_VERSION } from './config.js?v=0.1.59';
-import { initStore, db } from './store.js?v=0.1.59';
-import { initPullRefresh } from './ptr.js?v=0.1.59';
-import { startUpdateCheck } from './update.js?v=0.1.59';
-import { lockZoom } from './nozoom.js?v=0.1.59';
-import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.59';
-import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go, today } from './state.js?v=0.1.59';
-import { esc, toast } from './util.js?v=0.1.59';
-import { modal, fitBoxes } from './ui.js?v=0.1.59';
-import { icon } from './icons.js?v=0.1.59';
+import { APP_NAME, APP_VERSION } from './config.js?v=0.1.60';
+import { initStore, db } from './store.js?v=0.1.60';
+import { initPullRefresh } from './ptr.js?v=0.1.60';
+import { startUpdateCheck } from './update.js?v=0.1.60';
+import { lockZoom } from './nozoom.js?v=0.1.60';
+import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.60';
+import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go, today } from './state.js?v=0.1.60';
+import { esc, toast } from './util.js?v=0.1.60';
+import { modal, fitBoxes } from './ui.js?v=0.1.60';
+import { icon } from './icons.js?v=0.1.60';
 
-import * as home from './views/home.js?v=0.1.59';
-import * as schedule from './views/schedule.js?v=0.1.59';
-import * as matchmode from './views/matchmode.js?v=0.1.59';
-import * as results from './views/results.js?v=0.1.59';
-import * as myinfo from './views/me.js?v=0.1.59';
-import * as apply from './views/apply.js?v=0.1.59';
-import * as draft from './views/draft.js?v=0.1.59';
-import * as games from './views/games.js?v=0.1.59';
-import * as run from './views/run.js?v=0.1.59';
-import * as notice from './views/notice.js?v=0.1.59';
-import * as admin from './views/admin.js?v=0.1.59';
-import * as membersView from './views/members.js?v=0.1.59';
-import * as loginView from './views/login.js?v=0.1.59';
-import { loadSession, saveSession, verify } from './auth.js?v=0.1.59';
-import { startAutoSync } from './member-sync.js?v=0.1.59';
-import { startRecordSync } from './record-sheet.js?v=0.1.59';
-import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.59';
-import { applyEmblemMarks } from './emblem-mark.js?v=0.1.59';
+import * as home from './views/home.js?v=0.1.60';
+import * as schedule from './views/schedule.js?v=0.1.60';
+import * as matchmode from './views/matchmode.js?v=0.1.60';
+import * as results from './views/results.js?v=0.1.60';
+import * as myinfo from './views/me.js?v=0.1.60';
+import * as apply from './views/apply.js?v=0.1.60';
+import * as draft from './views/draft.js?v=0.1.60';
+import * as games from './views/games.js?v=0.1.60';
+import * as run from './views/run.js?v=0.1.60';
+import * as notice from './views/notice.js?v=0.1.60';
+import * as admin from './views/admin.js?v=0.1.60';
+import * as membersView from './views/members.js?v=0.1.60';
+import * as loginView from './views/login.js?v=0.1.60';
+import { loadSession, saveSession, verify } from './auth.js?v=0.1.60';
+import { startAutoSync } from './member-sync.js?v=0.1.60';
+import { startRecordSync } from './record-sheet.js?v=0.1.60';
+import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.60';
+import { applyEmblemMarks } from './emblem-mark.js?v=0.1.60';
 
 const MEMBER_TABS = [['home', '홈', 'home'], ['sched', '일정', 'calendar'], ['mm', '경기', 'ball'], ['results', '기록', 'board'], ['me', '내 정보', 'user']];
 const OP_TABS = [['plan', '일정', 'calendar'], ['run', '경기 운영', 'whistle'], ['notice', '공지', 'megaphone'], ['members', '회원', 'users'], ['settings', '설정', 'gear']];
@@ -165,9 +165,9 @@ window.addEventListener('unhandledrejection', (ev) => { console.error(ev.reason)
 window.addEventListener('error', (ev) => { if (ev?.error) { console.error(ev.error); toast(errMsg(ev.error)); } });
 
 // ── 경기 시간에 열면 첫 화면을 경기로 ──
-//  오늘 경기의 시작 30분 전부터 끝나고 30분 뒤까지 (끝 시간이 없으면 시작 + 2시간)
-//  앱을 처음 열 때(홈 화면으로 열릴 때)와, 30분 넘게 다른 앱에 있다가 돌아왔을 때 한 번씩만 — 그 뒤 홈을 누르면 홈 그대로
-const JUMP_PRE = 30, JUMP_POST = 30;
+//  오늘 경기의 시작 1시간 전부터 경기 종료 시간까지 (끝 시간이 없으면 시작 + 2시간)
+//  앱을 열 때(홈 화면으로 열릴 때)와, 5분 넘게 다른 앱에 있다가 돌아왔을 때 — 그 사이 홈을 누르면 홈 그대로
+const JUMP_PRE = 60, JUMP_POST = 0, JUMP_AWAY = 5 * 60e3;
 export function matchTimeNow(now = new Date()) {
   const t = today(), n = now.getHours() * 60 + now.getMinutes();
   return S.matchdays.find((m) => {
@@ -196,11 +196,11 @@ function startMatchJump() {
     off();
     if (Date.now() - t0 < 6000 && location.hash === h0) jumpToMatch();
   });
-  // 다른 앱에 30분 넘게 있다가 돌아왔을 때
+  // 다른 앱에 5분 넘게 있다가 돌아왔을 때
   let hiddenAt = 0;
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { hiddenAt = Date.now(); return; }
-    if (hiddenAt && Date.now() - hiddenAt > 30 * 60e3) jumpToMatch();
+    if (hiddenAt && Date.now() - hiddenAt > JUMP_AWAY) jumpToMatch();
     hiddenAt = 0;
   });
 }
