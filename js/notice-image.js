@@ -1,7 +1,7 @@
 // 카페 공지용 이미지 생성 (canvas → PNG)
-import { TEAM_COLORS } from './config.js?v=0.1.71';
-import { fmtDate } from './util.js?v=0.1.71';
-import { noLabel } from './domain.js?v=0.1.71';
+import { TEAM_COLORS } from './config.js?v=0.1.72';
+import { fmtDate } from './util.js?v=0.1.72';
+import { noLabel } from './domain.js?v=0.1.72';
 
 const FONT = '"Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 const W = 1080, PAD = 64;
@@ -342,6 +342,9 @@ export async function renderLineupImage({ team, md, lineup: L, stats, footer }) 
     });
     y += tblH;
   }
-  drawFooter(ctx, H, footer);
+  // 맨 아래: 슛도리 로고만 (남색 엠블럼)
+  const logo = await loadImg('assets/emblem-n.png');
+  if (logo) { ctx.globalAlpha = .9; ctx.drawImage(logo, W / 2 - 40, H - 100, 80, 80); ctx.globalAlpha = 1; }
+  else if (footer) drawFooter(ctx, H, footer);
   return c;
 }
