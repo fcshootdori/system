@@ -1,11 +1,12 @@
-import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.72';
-import { db } from '../store.js?v=0.1.72';
-import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.72';
-import { TEAM_COLORS } from '../config.js?v=0.1.72';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.72';
-import { empty, teamChip, teamLabel } from '../ui.js?v=0.1.72';
-import { fmtSummary } from './home.js?v=0.1.72';
-import { momCard, bindMom } from './mom.js?v=0.1.72';
+import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.73';
+import { db } from '../store.js?v=0.1.73';
+import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.73';
+import { TEAM_COLORS } from '../config.js?v=0.1.73';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.73';
+import { empty, teamChip, teamLabel } from '../ui.js?v=0.1.73';
+import { fmtSummary } from './home.js?v=0.1.73';
+import { momCard, bindMom } from './mom.js?v=0.1.73';
+import { statsCard } from '../lineup-stats.js?v=0.1.73';
 
 export function render(root, ctx = {}) {
   const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || currentMatchday();
@@ -36,6 +37,7 @@ export function render(root, ctx = {}) {
       ${scorersHtml(md, games)}
     </section>
     ${rosterCard(md, ros, games)}
+    ${statsCard(md)}
     ${momCard(md)}
     ${extrasCard(md, ros, editable, !!momCard(md))}
     ${editable ? `<section class="card op"><h2>운영</h2><p class="muted small">라운드 점수·득점자는 '경기' 단계(경기모드 기록 화면)에서 기록해요.</p>

@@ -1791,3 +1791,31 @@ body.gate .ver::before { background-image: var(--emb-w); opacity: .4; }
 .lps .off { font-size: 11px; color: #a3a9bf; font-weight: 600; }
 .lps .na { color: #c9cdd8; }
 .lp-img { margin-top: 10px; }
+/* 0.1.73 내 출전 현황 (팀원) · 경기 기록의 팀별 출전 현황 */
+.lp-mine { margin-top: 12px; border-radius: 14px; background: #f3f5f9; padding: 12px; }
+.lpm-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 14px; }
+.lpm-hd small { font-size: 12.5px; color: var(--sub); font-weight: 600; }
+.lpm-hd em { font-style: normal; font-weight: 800; font-size: 15px; color: var(--tc); }
+.lpm-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 6px; }
+.lpm-row span { display: grid; justify-items: center; gap: 4px; padding: 8px 2px; border-radius: 10px; background: #fff; }
+.lpm-row span.cur { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tc) 50%, #fff); }
+.lpm-row small { font-size: 11px; font-weight: 700; color: var(--sub); }
+.lp-mine i { display: inline-block; min-width: 30px; font-style: normal; font-size: 11px; font-weight: 800; padding: 2px 4px; border-radius: 6px; background: var(--tc); color: var(--ti); text-align: center; }
+.lp-mine i.gk { background: #facc15; color: #5c4300; }
+.lp-mine .off { font-size: 11px; color: #a3a9bf; font-weight: 600; }
+.lp-mine .na { color: #c9cdd8; }
+.lps-card .lp-stats { margin-top: 10px; }
+.lps-card .lp-stats summary b .chip { font-size: 13px; }
+/* 팀 전체 출전 현황: 버튼으로 펼쳐 보기 */
+.lp-all { margin-top: 10px; }
+.lp-all > summary { list-style: none; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1.5px #d6d9e4; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; }
+.lp-all > summary::-webkit-details-marker { display: none; }
+.lp-all > summary .ico { width: 16px; height: 16px; }
+.lp-all > summary .c, .lp-all[open] > summary .o { display: none; }
+.lp-all[open] > summary .c { display: inline; }
+.lp-all > .lp-stats { margin-top: 8px; }
+.lps-card .lp-stats summary { cursor: pointer; }
+.lps-card .lp-stats:not([open]) summary::after { content: '펼쳐 보기 ›'; margin-left: auto; font-size: 12px; font-weight: 700; color: var(--navy); }
+.lp-all, .lp-stats { border-top: 0; }
+.lp-all { padding: 0; }
+.lp-all > summary::before, .lp-stats > summary::before { content: none; }

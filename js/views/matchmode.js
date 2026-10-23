@@ -2,15 +2,16 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.72';
-import { db, newId } from '../store.js?v=0.1.72';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.72';
-import { TEAM_COLORS } from '../config.js?v=0.1.72';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.72';
-import { icon } from '../icons.js?v=0.1.72';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.72';
-import { figHTML } from './draft.js?v=0.1.72';
-import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.72';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.73';
+import { db, newId } from '../store.js?v=0.1.73';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.73';
+import { TEAM_COLORS } from '../config.js?v=0.1.73';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.73';
+import { icon } from '../icons.js?v=0.1.73';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.73';
+import { figHTML } from './draft.js?v=0.1.73';
+import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.73';
+import { statsTable, myStats } from '../lineup-stats.js?v=0.1.73';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -33,16 +34,6 @@ const hexOf = (md, i) => TEAM_COLORS.find((c) => c.key === teamColor(md, i)) || 
 const gamesOf = (md) => S.games.filter((g) => g.matchdayId === md.id).sort((a, b) => (a.round || 0) - (b.round || 0) || (a.order || 0) - (b.order || 0));
 const nRounds = (md) => Math.max(fmtOf(md).rounds, ...gamesOf(md).map((g) => g.round || 0));
 const lineupOf = (md, ti, r) => md.lineups?.[ti]?.[r] || null;
-// 그날 팀 선수별 라운드 출전 현황: 라운드마다 맡은 자리(없으면 대기), 몇 라운드 뛰는지
-function playStats(md, ti) {
-  const R = nRounds(md), ros = rosters(md)[ti] || [];
-  const set = [...Array(R)].map((_, k) => !!Object.keys(lineupOf(md, ti, k + 1)?.s || {}).length);
-  const rows = ros.map((id) => {
-    const cells = [...Array(R)].map((_, k) => { const s = lineupOf(md, ti, k + 1)?.s || {}; const key = Object.keys(s).find((x) => s[x] === id); return key ? POS[key] || key : null; });
-    return { id, name: nameOf(id, md), cells, n: cells.filter(Boolean).length };
-  }).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'ko'));
-  return { R, set, rows };
-}
 
 // 오늘(또는 다음) 경기 — 팀이 확정된 경기일
 export function liveMatchday() {
@@ -227,20 +218,11 @@ function lineupCard(md, capOf, op) {
       ${lu ? '<button type="button" class="btn ghost sm danger" data-clear>비우기</button>' : ''}
     </div>
     ${pub ? '' : '<button type="button" class="btn full big lp-pub" data-lppub>포지션 확정 · 팀원에게 공개</button>'}` : ''}
-    ${(edit || pub) && (ros[ti] || []).length ? statsHTML(md, ti) : ''}
+    ${!(ros[ti] || []).length ? '' : edit ? statsTable(md, ti, { cur: R })   // 주장: 팀 전체 표를 늘 펼쳐서
+      : pub ? `${(ros[ti] || []).includes(me.id) ? myStats(md, ti, me.id, R) : ''}
+        <details class="lp-all"><summary>${icon('users', 'sm')}<span class="o">팀 전체 출전 현황 펼쳐 보기</span><span class="c">팀 전체 출전 현황 접기</span></summary>${statsTable(md, ti, { cur: R })}</details>` : ''}
     ${(edit || pub) && lu ? `<button type="button" class="btn ghost full lp-img" data-lpimg>${icon('download', 'sm')} ${R}라운드 포지션 이미지로 저장</button>` : ''}
   </section>`;
-}
-
-// 출전 현황 표: 선수 × 라운드 (자리 · 대기), 출전 횟수
-function statsHTML(md, ti) {
-  const st = playStats(md, ti), R = ui.round, hx = hexOf(md, ti);
-  const ns = st.rows.map((r) => r.n), setN = st.set.filter(Boolean).length;
-  return `<details class="lp-stats" open style="--tc:${hx.hex};--ti:${hx.text}"><summary><b>라운드별 출전 현황</b>
-      <small>${setN ? `정한 라운드 ${setN}/${st.R} · 출전 ${Math.min(...ns)}~${Math.max(...ns)}회` : '아직 정한 라운드가 없어요'}</small></summary>
-    <div class="lps-wrap"><table class="lps"><thead><tr><th class="nm">선수</th>${st.set.map((ok, k) => `<th class="${k + 1 === R ? 'cur' : ''} ${ok ? '' : 'unset'}">${k + 1}R${ok ? '' : '<small>미정</small>'}</th>`).join('')}<th class="n">출전</th></tr></thead>
-    <tbody>${st.rows.map((r) => `<tr><td class="nm">${esc(r.name)}</td>${r.cells.map((p, k) => `<td class="${k + 1 === R ? 'cur' : ''}">${p ? `<i class="${p === 'GK' ? 'gk' : ''}">${p}</i>` : st.set[k] ? '<span class="off">대기</span>' : '<span class="na">–</span>'}</td>`).join('')}<td class="n"><b>${r.n}</b></td></tr>`).join('')}</tbody></table></div>
-  </details>`;
 }
 
 // 포지션 저장 (주장·운영진)
