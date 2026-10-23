@@ -2,15 +2,15 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.70';
-import { db, newId } from '../store.js?v=0.1.70';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.70';
-import { TEAM_COLORS } from '../config.js?v=0.1.70';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.70';
-import { icon } from '../icons.js?v=0.1.70';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.70';
-import { figHTML } from './draft.js?v=0.1.70';
-import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.70';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.71';
+import { db, newId } from '../store.js?v=0.1.71';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.71';
+import { TEAM_COLORS } from '../config.js?v=0.1.71';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.71';
+import { icon } from '../icons.js?v=0.1.71';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.71';
+import { figHTML } from './draft.js?v=0.1.71';
+import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.71';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -344,11 +344,10 @@ function bind(root, md, ctx) {
       const R = ui.round, lu = lineupOf(md, ti, R), ros = rosters(md)[ti] || [], { f, list, s } = slotsOf(lu), hx = hexOf(md, ti);
       const slots = list.map(([k, x, y]) => { const id = s[k] && ros.includes(s[k]) ? s[k] : null; return { x, y, pos: POS[k] || k, name: id ? nameOf(id, md) : '', gk: k === 'GK' }; });
       const placed = new Set(Object.values(s));
-      const st = playStats(md, ti);
       const c = await renderLineupImage({ team: S.team, md, footer: `${S.team.name} · ${location.host}${location.pathname.replace(/index\.html$/, '')}`,
         lineup: { teamLabel: teamLabel(md, ti), hex: hx.hex, text: hx.text, round: R, form: f, slots, bench: ros.filter((id) => !placed.has(id)).map((id) => nameOf(id, md)),
           captain: captainIds(md, ti).map((id) => nameOf(id, md)).join(' · ') },
-        stats: { rounds: st.R, rows: st.rows.map((r) => ({ name: r.name, cells: r.cells, n: r.n })) } });
+        stats: null });   // 이미지에는 포지션 + 대기자만 (출전 현황은 앱에서만)
       const name = `슛도리_${md.date}_${teamLabel(md, ti)}_${R}R_포지션.png`;
       if (!(await shareCanvas(c, name).catch(() => false))) { downloadCanvas(c, name); toast('포지션 이미지를 저장했어요'); }
     } finally { b.disabled = false; }

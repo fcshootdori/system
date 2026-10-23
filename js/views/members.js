@@ -1,17 +1,17 @@
 // 운영 > 회원 — [회원 관리 | 출석 관리]  (WD_FUTSAL 운영 회원 메뉴와 같은 구성)
 //  회원 관리: 검색 · 유형 필터 · 표에서 바로 고치기 · 명단 붙여넣기 · CSV 저장 · 여러 명 선택 처리
 //  출석 관리: 기간별 출석 횟수 · 출석률 · 최근 출석 · 연속 출석
-import { S, playedDays } from '../state.js?v=0.1.70';
-import { db, newId } from '../store.js?v=0.1.70';
-import { APP_NAME } from '../config.js?v=0.1.70';
-import { rosters } from '../domain.js?v=0.1.70';
-import { esc, toast, fmtDate, todayISO, koSort } from '../util.js?v=0.1.70';
-import { modal, empty, fitBoxes } from '../ui.js?v=0.1.70';
-import { norm } from '../cafe-parser.js?v=0.1.70';
-import { resetPin } from '../auth.js?v=0.1.70';
-import { sheetLink, setSheetLink, sheetUrl, preview, apply, needsReview, startAutoSync, autoSync, holdAuto } from '../member-sync.js?v=0.1.70';
-import { sheetApi, saveMemberRow } from '../record-sheet.js?v=0.1.70';
-import { FEE_KINDS, feeKind, isLeftGrade, nickParts, publicOf } from '../member-sheet.js?v=0.1.70';
+import { S, playedDays } from '../state.js?v=0.1.71';
+import { db, newId } from '../store.js?v=0.1.71';
+import { APP_NAME } from '../config.js?v=0.1.71';
+import { rosters } from '../domain.js?v=0.1.71';
+import { esc, toast, fmtDate, todayISO, koSort } from '../util.js?v=0.1.71';
+import { modal, empty, fitBoxes } from '../ui.js?v=0.1.71';
+import { norm } from '../cafe-parser.js?v=0.1.71';
+import { resetPin } from '../auth.js?v=0.1.71';
+import { sheetLink, setSheetLink, sheetUrl, preview, apply, needsReview, startAutoSync, autoSync, holdAuto } from '../member-sync.js?v=0.1.71';
+import { sheetApi, saveMemberRow } from '../record-sheet.js?v=0.1.71';
+import { FEE_KINDS, feeKind, isLeftGrade, nickParts, publicOf } from '../member-sheet.js?v=0.1.71';
 
 // 회원 구분 = 회원 시트 등급 (VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원), 운영진은 따로 체크
 export const isLeft = (m) => isLeftGrade(m.grade) || m.status === 'left';
