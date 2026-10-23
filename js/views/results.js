@@ -2,12 +2,13 @@
 //  · 경기 결과: 핑크 vs 블루 시즌 전적 · 시즌 흐름(막대를 누르면 그 경기) · 경기 카드(MOM·득점·라운드·출전 명단)
 //  · 전체 순위: 부문별 1위 · 기준별 순위(승점·승률·득점·MOM·출전) · 순위 산정 전 회원
 //  · 개인 기록: 선수 카드 · 시즌 출전 칸 · 팀 평균과 비교 · 전체 경기 기록
-import { S, me, matchdayById } from '../state.js?v=0.1.73';
-import { esc } from '../util.js?v=0.1.73';
-import { icon } from '../icons.js?v=0.1.73';
-import { noLabel } from '../domain.js?v=0.1.73';
-import { sheetState, loadRecords, sheetPending } from '../record-sheet.js?v=0.1.73';
-import { buildDB, fromSheet, seasons, METRIC, RANK_MIN, TEAM, RES, pctTxt, ko, sortedBy } from '../records-data.js?v=0.1.73';
+import { S, me, matchdayById } from '../state.js?v=0.1.74';
+import { esc } from '../util.js?v=0.1.74';
+import { icon } from '../icons.js?v=0.1.74';
+import { noLabel } from '../domain.js?v=0.1.74';
+import { sheetState, loadRecords, sheetPending } from '../record-sheet.js?v=0.1.74';
+import { buildDB, fromSheet, seasons, METRIC, RANK_MIN, TEAM, RES, pctTxt, ko, sortedBy } from '../records-data.js?v=0.1.74';
+import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.74';
 
 const st = { tab: 'games', season: null, sort: 'pts', q: '', rankLimit: 10, selGame: null, showAll: false, who: null, meSel: null, meSelFor: null, meAll: false };
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
@@ -60,6 +61,14 @@ export function render(root) {
   };
   draw();
   bind(root, DB, draw);
+  // 좌우로 넘기면 경기 결과 · 전체 순위 · 개인 기록 (끝에서는 옆 메뉴로)
+  const TABS = ['games', 'rank', 'me'];
+  onPageSwipe((dir) => {
+    const n = TABS.indexOf(st.tab) + dir;
+    if (n < 0 || n >= TABS.length || !DB.games.length) return false;
+    st.tab = TABS[n]; draw(); window.scrollTo({ top: 0 }); slideIn(box, dir);
+    return true;
+  });
 }
 
 // ───────── 경기 결과 ─────────

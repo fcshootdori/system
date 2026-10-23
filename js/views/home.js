@@ -1,18 +1,18 @@
 // 회원 홈 — 경기장 사진 첫 화면(다음 경기 한 줄) + 참석 카드(바로 참석·불참) + MOM 알림 + 지난 경기 카드
-import { sheetPending } from '../record-sheet.js?v=0.1.73';
-import { momAsks, momStrip } from './mom.js?v=0.1.73';
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.73';
-import { db, newId } from '../store.js?v=0.1.73';
-import { STATUS } from '../config.js?v=0.1.73';
-import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.73';
-import { icon } from '../icons.js?v=0.1.73';
-import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.73';
-import { myBox, bindMy } from './apply.js?v=0.1.73';
-import { TEAM_COLORS, DEFAULT_SLOT } from '../config.js?v=0.1.73';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.73';
-import { norm } from '../cafe-parser.js?v=0.1.73';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.73';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.73';
+import { sheetPending } from '../record-sheet.js?v=0.1.74';
+import { momAsks, momStrip } from './mom.js?v=0.1.74';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.74';
+import { db, newId } from '../store.js?v=0.1.74';
+import { STATUS } from '../config.js?v=0.1.74';
+import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps } from '../domain.js?v=0.1.74';
+import { icon } from '../icons.js?v=0.1.74';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.74';
+import { myBox, bindMy } from './apply.js?v=0.1.74';
+import { TEAM_COLORS, DEFAULT_SLOT } from '../config.js?v=0.1.74';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.74';
+import { norm } from '../cafe-parser.js?v=0.1.74';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.74';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.74';
 
 export function fmtSummary(md) {
   const f = fmtOf(md);

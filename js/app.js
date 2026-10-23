@@ -3,35 +3,36 @@
 //   · 일반 회원: 홈 · 일정 · ⚽경기모드 · 경기결과 · 내 정보
 //   · 운영모드: 일정 · 경기 · 공지 · 회원 · 설정
 //   · 주장: 오른쪽 위 👑 드래프트 버튼으로 입장
-import { APP_NAME, APP_VERSION } from './config.js?v=0.1.73';
-import { initStore, db } from './store.js?v=0.1.73';
-import { initPullRefresh } from './ptr.js?v=0.1.73';
-import { startUpdateCheck } from './update.js?v=0.1.73';
-import { lockZoom } from './nozoom.js?v=0.1.73';
-import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.73';
-import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go, today } from './state.js?v=0.1.73';
-import { esc, toast } from './util.js?v=0.1.73';
-import { modal, fitBoxes } from './ui.js?v=0.1.73';
-import { icon } from './icons.js?v=0.1.73';
+import { APP_NAME, APP_VERSION } from './config.js?v=0.1.74';
+import { initStore, db } from './store.js?v=0.1.74';
+import { initPullRefresh } from './ptr.js?v=0.1.74';
+import { startUpdateCheck } from './update.js?v=0.1.74';
+import { lockZoom } from './nozoom.js?v=0.1.74';
+import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.74';
+import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go, today } from './state.js?v=0.1.74';
+import { esc, toast } from './util.js?v=0.1.74';
+import { modal, fitBoxes } from './ui.js?v=0.1.74';
+import { icon } from './icons.js?v=0.1.74';
 
-import * as home from './views/home.js?v=0.1.73';
-import * as schedule from './views/schedule.js?v=0.1.73';
-import * as matchmode from './views/matchmode.js?v=0.1.73';
-import * as results from './views/results.js?v=0.1.73';
-import * as myinfo from './views/me.js?v=0.1.73';
-import * as apply from './views/apply.js?v=0.1.73';
-import * as draft from './views/draft.js?v=0.1.73';
-import * as games from './views/games.js?v=0.1.73';
-import * as run from './views/run.js?v=0.1.73';
-import * as notice from './views/notice.js?v=0.1.73';
-import * as admin from './views/admin.js?v=0.1.73';
-import * as membersView from './views/members.js?v=0.1.73';
-import * as loginView from './views/login.js?v=0.1.73';
-import { loadSession, saveSession, verify } from './auth.js?v=0.1.73';
-import { startAutoSync } from './member-sync.js?v=0.1.73';
-import { startRecordSync } from './record-sheet.js?v=0.1.73';
-import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.73';
-import { applyEmblemMarks } from './emblem-mark.js?v=0.1.73';
+import * as home from './views/home.js?v=0.1.74';
+import * as schedule from './views/schedule.js?v=0.1.74';
+import * as matchmode from './views/matchmode.js?v=0.1.74';
+import * as results from './views/results.js?v=0.1.74';
+import * as myinfo from './views/me.js?v=0.1.74';
+import * as apply from './views/apply.js?v=0.1.74';
+import * as draft from './views/draft.js?v=0.1.74';
+import * as games from './views/games.js?v=0.1.74';
+import * as run from './views/run.js?v=0.1.74';
+import * as notice from './views/notice.js?v=0.1.74';
+import * as admin from './views/admin.js?v=0.1.74';
+import * as membersView from './views/members.js?v=0.1.74';
+import * as loginView from './views/login.js?v=0.1.74';
+import { loadSession, saveSession, verify } from './auth.js?v=0.1.74';
+import { startAutoSync } from './member-sync.js?v=0.1.74';
+import { startRecordSync } from './record-sheet.js?v=0.1.74';
+import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.74';
+import { applyEmblemMarks } from './emblem-mark.js?v=0.1.74';
+import { startSwipe, clearPageSwipe, slideIn } from './swipe.js?v=0.1.74';
 
 const MEMBER_TABS = [['home', '홈', 'home'], ['sched', '일정', 'calendar'], ['mm', '경기', 'ball'], ['results', '기록', 'board'], ['me', '내 정보', 'user']];
 const OP_TABS = [['plan', '일정', 'calendar'], ['run', '경기 운영', 'whistle'], ['notice', '공지', 'megaphone'], ['members', '회원', 'users'], ['settings', '설정', 'gear']];
@@ -97,6 +98,7 @@ function render() {
     loginView.render(root, {}); return;
   }
   if (route.op && !S.operator) { go('home'); return; }
+  clearPageSwipe();   // 화면마다 좌우 넘기기를 새로 정함 (경기 · 기록 화면이 다시 등록)
   route.view.render(root, { params, sub: route.sub });
 }
 const typing = () => { const a = document.activeElement; return a && a.closest('#view') && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && !/checkbox|radio/.test(a.type); };
@@ -126,7 +128,18 @@ document.addEventListener('click', (e) => {
 document.addEventListener('focusout', () => setTimeout(() => {
   if (pending && !typing()) { pending = false; renderShell(); render(); }
 }, 0));
-window.addEventListener('hashchange', () => { renderShell(); render(); window.scrollTo(0, 0); });
+window.addEventListener('hashchange', () => { renderShell(); render(); window.scrollTo(0, 0); if (swDir) { slideIn(document.getElementById('view'), swDir); swDir = 0; } });
+// 좌우로 넘기기: 화면이 처리하지 않으면 하단 메뉴 옆 탭으로, 안쪽 화면에서 오른쪽으로 쓸면 뒤로
+let swDir = 0;
+function swipeNav(dir) {
+  if (!S.auth && !S.operator) return;
+  if (betaOn() && !inSandbox() && !S.operator) return;
+  const { name } = parseHash(), route = ROUTES[name];
+  if (route?.parent) { if (dir < 0) { swDir = dir; history.length > 1 ? history.back() : go(route.parent); } return; }
+  const tabs = S.operator ? OP_TABS : MEMBER_TABS, i = tabs.findIndex(([k]) => k === name), n = i + dir;
+  if (i < 0 || n < 0 || n >= tabs.length) return;
+  swDir = dir; go(tabs[n][0]);
+}
 // 표 상자(.vfit) 높이 맞춤: 화면이 다시 그려지거나 크기가 바뀔 때마다 (모든 화면 공통)
 let fitRaf = 0;
 const refit = () => { cancelAnimationFrame(fitRaf); fitRaf = requestAnimationFrame(() => fitBoxes()); };
@@ -229,6 +242,7 @@ function hideSplash() {
   if (!inSandbox()) startAutoSync();   // 통합 시트 연결 키가 있는 운영진 기기: 회원 정보 자동 반영
   startRecordSync();                  // 경기 기록: 통합 시트 읽기 (+ 운영진 기기는 끝난 경기 보내기)
   startMatchJump();
+  startSwipe(swipeNav);
   onChange(safeRender);
   onChange(autoClose); setInterval(autoClose, 60e3);   // 경기일 전 목요일 0시 신청 자동 마감
   renderShell(); render();

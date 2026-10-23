@@ -1819,3 +1819,9 @@ body.gate .ver::before { background-image: var(--emb-w); opacity: .4; }
 .lp-all, .lp-stats { border-top: 0; }
 .lp-all { padding: 0; }
 .lp-all > summary::before, .lp-stats > summary::before { content: none; }
+/* 0.1.74 좌우로 넘기기: 살짝 밀려 들어오는 움직임 */
+.sw-l { animation: swL .28s cubic-bezier(.2,.8,.3,1); }
+.sw-r { animation: swR .28s cubic-bezier(.2,.8,.3,1); }
+@keyframes swL { from { transform: translateX(36px); opacity: .25; } }
+@keyframes swR { from { transform: translateX(-36px); opacity: .25; } }
+body { overflow-x: clip; }
