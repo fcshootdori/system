@@ -1,7 +1,7 @@
 // 카페 공지용 이미지 생성 (canvas → PNG)
-import { TEAM_COLORS } from './config.js?v=0.1.69';
-import { fmtDate } from './util.js?v=0.1.69';
-import { noLabel } from './domain.js?v=0.1.69';
+import { TEAM_COLORS } from './config.js?v=0.1.70';
+import { fmtDate } from './util.js?v=0.1.70';
+import { noLabel } from './domain.js?v=0.1.70';
 
 const FONT = '"Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 const W = 1080, PAD = 64;
@@ -235,6 +235,112 @@ export async function renderMatchImage({ team, md, sides, rounds, scorers, moms,
     ctx.fillStyle = '#fef3c7'; rr(ctx, PAD, y, W - PAD * 2, 80, 20); ctx.fill();
     ctx.fillStyle = '#92400e'; ctx.font = f(800, 32); ctx.fillText('MOM', PAD + 30, y + 52);
     ctx.fillStyle = '#0f172a'; ctx.font = f(700, 32); ctx.fillText(fit(ctx, moms.join(', '), W - PAD * 2 - 170), PAD + 140, y + 52);
+  }
+  drawFooter(ctx, H, footer);
+  return c;
+}
+
+// ── 팀 포지션 (주장이 정한 라운드 포지션 + 라운드별 출전 현황) ──
+//  lineup: { teamLabel, hex, text, round, form, slots:[{x, y, pos, name, gk}], bench:[name], captain }
+//  stats: { rounds, rows:[{ name, cells:[pos|null], n }] }
+const SHIRT = {
+  body: new Path2D('M15.5 2.5 8 6.2 3 14.4l6 3.8.5-.5V36h25V17.7l.5.5 6-3.8-5-8.2-7.5-3.7c-1.3 2.6-3.7 4-6.5 4s-5.2-1.4-6.5-4Z'),
+  shade: new Path2D('M28.5 2.5 36 6.2l5 8.2-6 3.8-.5-.5V36H28.6V7.6c0-1.7 0-3.4-.1-5.1Z'),
+  cuff: new Path2D('m3 14.4 6 3.8.9-1.5-6-3.8Zm38 0-6 3.8-.9-1.5 6-3.8Z'),
+  col: new Path2D('M15.5 2.5c1.3 2.6 3.7 4 6.5 4s5.2-1.4 6.5-4l-2-.7c-1 2-2.6 3-4.5 3s-3.5-1-4.5-3Z'),
+};
+const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16), c = (s) => Math.round(((n >> s) & 255) * k); return `rgb(${c(16)},${c(8)},${c(0)})`; };
+function shirt(ctx, cx, cy, w, fill, ink, label) {
+  const s = w / 44;
+  ctx.save(); ctx.translate(cx - w / 2, cy - 20 * s); ctx.scale(s, s);
+  ctx.shadowColor = 'rgba(0,0,0,.28)'; ctx.shadowBlur = 6 / s; ctx.shadowOffsetY = 3 / s;
+  ctx.fillStyle = fill; ctx.fill(SHIRT.body); ctx.shadowColor = 'transparent';
+  ctx.fillStyle = 'rgba(0,0,0,.1)'; ctx.fill(SHIRT.shade);
+  ctx.fillStyle = shade(fill, .68); ctx.fill(SHIRT.cuff);
+  ctx.fillStyle = '#fff'; ctx.fill(SHIRT.col);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.4; ctx.lineJoin = 'round'; ctx.stroke(SHIRT.body);
+  ctx.restore();
+  if (label) { ctx.fillStyle = ink; ctx.font = f(800, Math.round(w * .22)); ctx.textAlign = 'center'; ctx.fillText(label, cx, cy + w * .14); ctx.textAlign = 'left'; }
+}
+export async function renderLineupImage({ team, md, lineup: L, stats, footer }) {
+  await fontsReady();
+  const PW = W - PAD * 2, PH = Math.round(PW * 64 / 68);
+  const R = stats?.rounds || 0, rows = stats?.rows || [];
+  const benchRows = Math.ceil((L.bench.length || 0) / 4);
+  const tblH = rows.length ? 120 + 58 + rows.length * 54 + 30 : 0;
+  const H = 270 + 40 + PH + (L.bench.length ? 70 + benchRows * 64 : 0) + 40 + tblH + 110;
+  const [c, ctx] = canvas(H);
+  // 머리: 밤 남색 + 팀 색 띠 + 엠블럼
+  const g = ctx.createLinearGradient(0, 0, 0, 270); g.addColorStop(0, '#171c61'); g.addColorStop(1, '#0f1442');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, 270);
+  ctx.fillStyle = L.hex; ctx.fillRect(0, 262, W, 8);
+  const emblem = await loadImg(team.emblem);
+  let x = PAD;
+  if (emblem) { ctx.save(); ctx.beginPath(); ctx.arc(PAD + 70, 132, 70, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.clip(); ctx.drawImage(emblem, PAD + 12, 74, 116, 116); ctx.restore(); x = PAD + 172; }
+  ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = f(600, 30); ctx.fillText(fit(ctx, [noLabel(md), fmtDate(md?.date), md?.time?.split('~')[0]].filter(Boolean).join('  ·  '), W - x - PAD), x, 98);
+  ctx.fillStyle = '#fff'; ctx.font = f(800, 64); ctx.fillText(fit(ctx, `${L.teamLabel} 포지션`, W - x - PAD), x, 172);
+  ctx.fillStyle = '#ffcf3d'; ctx.font = f(800, 34); ctx.fillText(`${L.round}라운드  ·  ${L.form}`, x, 226);
+  if (L.captain) { ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = f(600, 28); ctx.textAlign = 'right'; ctx.fillText(`주장 ${L.captain}`, W - PAD, 226); ctx.textAlign = 'left'; }
+  // 축구장
+  const px = PAD, py = 310;
+  ctx.save(); rr(ctx, px, py, PW, PH, 28); ctx.clip();
+  for (let k = 0; k < 10; k++) { ctx.fillStyle = k % 2 ? '#2a7f4b' : '#2f8a52'; ctx.fillRect(px, py + (PH * k) / 10, PW, PH / 10 + 1); }
+  const sx = PW / 68, sy = PH / 60, X = (v) => px + v * sx, Y = (v) => py + v * sy;
+  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 3;
+  ctx.strokeRect(X(1), Y(1), 66 * sx, 54 * sy);
+  ctx.strokeRect(X(13.85), Y(38.5), 40.3 * sx, 16.5 * sy); ctx.strokeRect(X(24.85), Y(49.5), 18.3 * sx, 5.5 * sy);
+  ctx.beginPath(); ctx.ellipse(X(34), Y(1), 8.15 * sx, 8.15 * sy, 0, 0, Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(X(34), Y(44), 9.15 * sx, 9.15 * sy, 0, Math.PI * 1.22, Math.PI * 1.78); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(X(30.34), Y(55), 7.32 * sx, 3 * sy); ctx.strokeRect(X(30.34), Y(55), 7.32 * sx, 3 * sy);
+  const mark = await loadImg('assets/emblem-w.png');   // 바탕 없는 흰 엠블럼 (센터 무늬)
+  if (mark) { ctx.globalAlpha = .13; ctx.drawImage(mark, px + PW / 2 - 140, py + PH * .27, 280, 280); ctx.globalAlpha = 1; }
+  ctx.restore();
+  L.slots.forEach((s) => {
+    const cx = px + (PW * s.x) / 100, cy = py + (PH * (1.7 + s.y * .9)) / 100;
+    if (!s.name) { ctx.setLineDash([8, 7]); ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#fff'; ctx.font = f(700, 24); ctx.textAlign = 'center'; ctx.fillText(s.pos, cx, cy + 8); ctx.textAlign = 'left'; return; }
+    shirt(ctx, cx, cy - 6, 104, s.gk ? '#facc15' : L.hex, s.gk ? '#5c4300' : L.text, s.pos);
+    ctx.font = f(800, 26); const tw = Math.min(ctx.measureText(s.name).width, 190) + 28;
+    ctx.fillStyle = '#fff'; rr(ctx, cx - tw / 2, cy + 52, tw, 40, 20); ctx.fill();
+    ctx.fillStyle = '#121633'; ctx.textAlign = 'center'; ctx.fillText(fit(ctx, s.name, 190), cx, cy + 81); ctx.textAlign = 'left';
+  });
+  let y = py + PH + 40;
+  // 대기 · 교체
+  if (L.bench.length) {
+    ctx.fillStyle = '#121633'; ctx.font = f(800, 32); ctx.fillText(`대기 · 교체  ${L.bench.length}명`, PAD, y + 30);
+    const cw = (PW - 3 * 14) / 4;
+    L.bench.forEach((nm, i) => {
+      const bx = PAD + (i % 4) * (cw + 14), by = y + 56 + Math.floor(i / 4) * 64;
+      ctx.fillStyle = '#fff'; rr(ctx, bx, by, cw, 50, 25); ctx.fill();
+      ctx.fillStyle = L.hex; ctx.beginPath(); ctx.arc(bx + 26, by + 25, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#121633'; ctx.font = f(700, 26); ctx.fillText(fit(ctx, nm, cw - 52), bx + 44, by + 34);
+    });
+    y += 70 + benchRows * 64;
+  }
+  // 라운드별 출전 현황
+  if (rows.length) {
+    y += 20;
+    ctx.fillStyle = '#fff'; rr(ctx, PAD, y, PW, tblH - 30, 28); ctx.fill();
+    ctx.fillStyle = '#121633'; ctx.font = f(800, 34); ctx.fillText('라운드별 출전 현황', PAD + 30, y + 60);
+    const nameW = 240, cntW = 110, colW = (PW - 60 - nameW - cntW) / Math.max(R, 1);
+    const hy = y + 120;
+    ctx.font = f(700, 24); ctx.fillStyle = '#5f6680'; ctx.textAlign = 'center';
+    for (let r = 0; r < R; r++) { ctx.fillStyle = r + 1 === L.round ? L.hex : '#5f6680'; ctx.fillText(`${r + 1}R`, PAD + 30 + nameW + colW * r + colW / 2, hy); }
+    ctx.fillStyle = '#5f6680'; ctx.fillText('출전', PAD + PW - 30 - cntW / 2, hy); ctx.textAlign = 'left';
+    rows.forEach((row, i) => {
+      const ry = hy + 22 + i * 54;
+      if (i % 2 === 0) { ctx.fillStyle = '#f3f4f8'; rr(ctx, PAD + 18, ry, PW - 36, 50, 12); ctx.fill(); }
+      ctx.fillStyle = '#121633'; ctx.font = f(700, 27); ctx.fillText(fit(ctx, row.name, nameW - 20), PAD + 34, ry + 35);
+      row.cells.forEach((p, r) => {
+        const cx = PAD + 30 + nameW + colW * r + colW / 2;
+        if (p) { ctx.fillStyle = p === 'GK' ? '#facc15' : L.hex; rr(ctx, cx - colW / 2 + 6, ry + 8, colW - 12, 34, 10); ctx.fill();
+          ctx.fillStyle = p === 'GK' ? '#5c4300' : L.text; ctx.font = f(800, 20); ctx.textAlign = 'center'; ctx.fillText(p, cx, ry + 32); }
+        else { ctx.fillStyle = '#b8bdcc'; ctx.font = f(700, 24); ctx.textAlign = 'center'; ctx.fillText('·', cx, ry + 33); }
+        ctx.textAlign = 'left';
+      });
+      ctx.fillStyle = '#121633'; ctx.font = f(800, 28); ctx.textAlign = 'center'; ctx.fillText(`${row.n}`, PAD + PW - 30 - cntW / 2, ry + 36); ctx.textAlign = 'left';
+    });
+    y += tblH;
   }
   drawFooter(ctx, H, footer);
   return c;

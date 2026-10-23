@@ -2,14 +2,15 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.69';
-import { db, newId } from '../store.js?v=0.1.69';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.69';
-import { TEAM_COLORS } from '../config.js?v=0.1.69';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.69';
-import { icon } from '../icons.js?v=0.1.69';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.69';
-import { figHTML } from './draft.js?v=0.1.69';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.70';
+import { db, newId } from '../store.js?v=0.1.70';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.70';
+import { TEAM_COLORS } from '../config.js?v=0.1.70';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.70';
+import { icon } from '../icons.js?v=0.1.70';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.70';
+import { figHTML } from './draft.js?v=0.1.70';
+import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.70';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -32,6 +33,16 @@ const hexOf = (md, i) => TEAM_COLORS.find((c) => c.key === teamColor(md, i)) || 
 const gamesOf = (md) => S.games.filter((g) => g.matchdayId === md.id).sort((a, b) => (a.round || 0) - (b.round || 0) || (a.order || 0) - (b.order || 0));
 const nRounds = (md) => Math.max(fmtOf(md).rounds, ...gamesOf(md).map((g) => g.round || 0));
 const lineupOf = (md, ti, r) => md.lineups?.[ti]?.[r] || null;
+// 그날 팀 선수별 라운드 출전 현황: 라운드마다 맡은 자리(없으면 대기), 몇 라운드 뛰는지
+function playStats(md, ti) {
+  const R = nRounds(md), ros = rosters(md)[ti] || [];
+  const set = [...Array(R)].map((_, k) => !!Object.keys(lineupOf(md, ti, k + 1)?.s || {}).length);
+  const rows = ros.map((id) => {
+    const cells = [...Array(R)].map((_, k) => { const s = lineupOf(md, ti, k + 1)?.s || {}; const key = Object.keys(s).find((x) => s[x] === id); return key ? POS[key] || key : null; });
+    return { id, name: nameOf(id, md), cells, n: cells.filter(Boolean).length };
+  }).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'ko'));
+  return { R, set, rows };
+}
 
 // 오늘(또는 다음) 경기 — 팀이 확정된 경기일
 export function liveMatchday() {
@@ -216,7 +227,20 @@ function lineupCard(md, capOf, op) {
       ${lu ? '<button type="button" class="btn ghost sm danger" data-clear>비우기</button>' : ''}
     </div>
     ${pub ? '' : '<button type="button" class="btn full big lp-pub" data-lppub>포지션 확정 · 팀원에게 공개</button>'}` : ''}
+    ${(edit || pub) && (ros[ti] || []).length ? statsHTML(md, ti) : ''}
+    ${(edit || pub) && lu ? `<button type="button" class="btn ghost full lp-img" data-lpimg>${icon('download', 'sm')} ${R}라운드 포지션 이미지로 저장</button>` : ''}
   </section>`;
+}
+
+// 출전 현황 표: 선수 × 라운드 (자리 · 대기), 출전 횟수
+function statsHTML(md, ti) {
+  const st = playStats(md, ti), R = ui.round, hx = hexOf(md, ti);
+  const ns = st.rows.map((r) => r.n), setN = st.set.filter(Boolean).length;
+  return `<details class="lp-stats" open style="--tc:${hx.hex};--ti:${hx.text}"><summary><b>라운드별 출전 현황</b>
+      <small>${setN ? `정한 라운드 ${setN}/${st.R} · 출전 ${Math.min(...ns)}~${Math.max(...ns)}회` : '아직 정한 라운드가 없어요'}</small></summary>
+    <div class="lps-wrap"><table class="lps"><thead><tr><th class="nm">선수</th>${st.set.map((ok, k) => `<th class="${k + 1 === R ? 'cur' : ''} ${ok ? '' : 'unset'}">${k + 1}R${ok ? '' : '<small>미정</small>'}</th>`).join('')}<th class="n">출전</th></tr></thead>
+    <tbody>${st.rows.map((r) => `<tr><td class="nm">${esc(r.name)}</td>${r.cells.map((p, k) => `<td class="${k + 1 === R ? 'cur' : ''}">${p ? `<i class="${p === 'GK' ? 'gk' : ''}">${p}</i>` : st.set[k] ? '<span class="off">대기</span>' : '<span class="na">–</span>'}</td>`).join('')}<td class="n"><b>${r.n}</b></td></tr>`).join('')}</tbody></table></div>
+  </details>`;
 }
 
 // 포지션 저장 (주장·운영진)
@@ -314,6 +338,21 @@ function bind(root, md, ctx) {
     if (!confirm(`${ui.round}라운드 포지션을 모든 라운드에 똑같이 넣을까요?`)) return;
     saveLineup(md, ti, [...Array(nRounds(md))].map((_, k) => k + 1), () => ({ f: cur.f, s: { ...cur.s } })).then(() => toast('모든 라운드에 적용했어요')); });
   q('[data-clear]')?.addEventListener('click', () => saveLineup(md, ti, [ui.round], () => null));
+  q('[data-lpimg]')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget; b.disabled = true;
+    try {
+      const R = ui.round, lu = lineupOf(md, ti, R), ros = rosters(md)[ti] || [], { f, list, s } = slotsOf(lu), hx = hexOf(md, ti);
+      const slots = list.map(([k, x, y]) => { const id = s[k] && ros.includes(s[k]) ? s[k] : null; return { x, y, pos: POS[k] || k, name: id ? nameOf(id, md) : '', gk: k === 'GK' }; });
+      const placed = new Set(Object.values(s));
+      const st = playStats(md, ti);
+      const c = await renderLineupImage({ team: S.team, md, footer: `${S.team.name} · ${location.host}${location.pathname.replace(/index\.html$/, '')}`,
+        lineup: { teamLabel: teamLabel(md, ti), hex: hx.hex, text: hx.text, round: R, form: f, slots, bench: ros.filter((id) => !placed.has(id)).map((id) => nameOf(id, md)),
+          captain: captainIds(md, ti).map((id) => nameOf(id, md)).join(' · ') },
+        stats: { rounds: st.R, rows: st.rows.map((r) => ({ name: r.name, cells: r.cells, n: r.n })) } });
+      const name = `슛도리_${md.date}_${teamLabel(md, ti)}_${R}R_포지션.png`;
+      if (!(await shareCanvas(c, name).catch(() => false))) { downloadCanvas(c, name); toast('포지션 이미지를 저장했어요'); }
+    } finally { b.disabled = false; }
+  });
   q('[data-lppub]')?.addEventListener('click', async () => {
     const cnt = Object.keys(lineupOf(md, ti, ui.round)?.s || {}).length;
     if (!cnt && !confirm('아직 자리에 놓은 선수가 없어요. 그래도 공개할까요?')) return;
