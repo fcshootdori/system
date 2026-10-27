@@ -1,6 +1,13 @@
-import { esc } from './util.js?v=0.1.75';
-import { TEAM_COLORS, STATUS } from './config.js?v=0.1.75';
-import { teamColor, teamName } from './domain.js?v=0.1.75';
+import { esc } from './util.js?v=0.1.76';
+import { TEAM_COLORS, STATUS } from './config.js?v=0.1.76';
+import { teamColor, teamName } from './domain.js?v=0.1.76';
+
+// 입력칸에 바로 커서 — 버튼을 누른 그 순간에 맞춰야 휴대폰 키패드도 같이 올라옴
+export function focusNow(inp) {
+  if (!inp) return;
+  try { inp.focus({ preventScroll: true }); } catch { inp.focus(); }
+  requestAnimationFrame(() => { if (document.activeElement !== inp && inp.isConnected) inp.focus(); });
+}
 
 export function modal(title, bodyHtml, { wide = false } = {}) {
   const wrap = document.createElement('div');
