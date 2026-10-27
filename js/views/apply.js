@@ -1,13 +1,13 @@
 // 경기 신청 — 참석 · 불참 · 운영진 협의
 //  · 일반 경기: 신청 마감 전에는 참석·협의·불참 명단, 팀이 정해지면(주장·드래프트) 팀별로 좌우 칸
 //  · 이벤트 경기: 처음부터 미리 정한 두 팀 칸 — 회원은 팀을 골라(또는 운영진이 넣어 둔 팀에서) 참석·불참
-import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js?v=0.1.74';
-import { db, newId } from '../store.js?v=0.1.74';
-import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent } from '../domain.js?v=0.1.74';
-import { TEAM_COLORS } from '../config.js?v=0.1.74';
-import { parseCafeComments, norm } from '../cafe-parser.js?v=0.1.74';
-import { esc, fmtDate, fmtTime, toast, byName } from '../util.js?v=0.1.74';
-import { modal, empty, colorChip, teamLabel } from '../ui.js?v=0.1.74';
+import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js?v=0.1.75';
+import { db, newId } from '../store.js?v=0.1.75';
+import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent } from '../domain.js?v=0.1.75';
+import { TEAM_COLORS } from '../config.js?v=0.1.75';
+import { parseCafeComments, norm } from '../cafe-parser.js?v=0.1.75';
+import { esc, fmtDate, fmtTime, toast, byName } from '../util.js?v=0.1.75';
+import { modal, empty, colorChip, teamLabel } from '../ui.js?v=0.1.75';
 
 const SRC = { app: '앱', cafe: '카페', manual: '운영진', sheet: '시트' };
 const colorHex = (k) => TEAM_COLORS.find((c) => c.key === k)?.hex || '#94a3b8';
@@ -331,13 +331,14 @@ function cafeImport(md) {
         </tr>`).join('')}</tbody></table></div>`).join('')}
       ${evNow || teamSecs.length >= 2 ? `<div class="teamopt">
         ${evNow ? `<p class="small"><b>이벤트 경기</b> · 댓글 구역을 팀으로 연결해요</p>`
-          : `<label class="inline"><input type="checkbox" data-mkevent checked> <b>이벤트 경기로 등록 (댓글 구역 = 팀)</b></label>`}
+          : `<label class="inline"><input type="checkbox" data-mkevent> <b>이벤트 경기로 등록 (댓글 구역 = 팀)</b> <small class="muted">가끔 있는 경기만 — 보통은 그대로 두세요</small></label>`}
+        <div class="ev-opts" ${evNow ? '' : 'hidden'}>
         <div class="row wrap">${teamSecs.map((t, i) => `<label>${esc(t)}<select data-secc="${esc(t)}">${
           evNow ? evNow.map((x, k) => `<option value="${k}" ${k === secTeam(t, i) ? 'selected' : ''}>${esc(x.name)}</option>`).join('') + '<option value="">팀 없음</option>'
             : TEAM_COLORS.map((c) => `<option value="${c.key}" ${c.key === secColors[i] ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label>`).join('')}</div>
         <label class="inline"><input type="checkbox" data-mkteams ${closed && !early ? 'checked' : ''}> 참석자로 팀까지 확정 <small class="muted">${early ? `(신청 ${esc(closeLabel(md))} 전이라 꺼 뒀어요)` : closed ? '("마감" 댓글이 있어 켜 뒀어요)' : ''}</small></label>
         <p class="tiny muted">협의 인원은 승인할 때 인원이 적은 팀에 들어가요.</p>
-      </div>` : ''}
+      </div></div>` : ''}
       <p class="muted small">게스트로 참석하는 사람은 개인 기록에 남지 않아요. 회원을 고르면 그 닉네임이 별칭으로 저장돼서 다음부터 자동으로 일치해요.</p>
       <button class="btn full" data-apply>참석자 확정</button>`;
 
@@ -355,6 +356,8 @@ function cafeImport(md) {
       out.querySelector('[data-sum]').innerHTML = `<span><b>${c.in + c.tentative}</b>참석${c.tentative ? ` (미정 ${c.tentative})` : ''}</span><span><b>${c.guest}</b>게스트</span><span><b>${c.pending}</b>협의</span><span><b>${c.out}</b>불참</span>`;
     };
     out.addEventListener('change', sync);
+    // 이벤트 경기로 등록할 때만 팀 색 · 팀 확정 옵션을 보여 줌 (기본은 일반 경기)
+    out.querySelector('[data-mkevent]')?.addEventListener('change', (e) => { const o = out.querySelector('.ev-opts'); if (o) o.hidden = !e.target.checked; });
     out.querySelectorAll('[data-sug]').forEach((b) => b.addEventListener('click', () => { b.closest('tr').querySelector('[data-mem]').value = b.dataset.sug; b.remove(); sync(); }));
     sync();
 
