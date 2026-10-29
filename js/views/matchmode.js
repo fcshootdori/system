@@ -2,17 +2,17 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.84';
-import { db, newId } from '../store.js?v=0.1.84';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.84';
-import { TEAM_COLORS } from '../config.js?v=0.1.84';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.84';
-import { icon } from '../icons.js?v=0.1.84';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.84';
-import { figHTML } from './draft.js?v=0.1.84';
-import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.84';
-import { statsTable, myStats } from '../lineup-stats.js?v=0.1.84';
-import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.84';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.85';
+import { db, newId } from '../store.js?v=0.1.85';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.85';
+import { TEAM_COLORS } from '../config.js?v=0.1.85';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.85';
+import { icon } from '../icons.js?v=0.1.85';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.85';
+import { figHTML } from './draft.js?v=0.1.85';
+import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.85';
+import { statsTable, myStats, REF_KEYS, refStartOf, mainTeam, refOf, refRole } from '../lineup-stats.js?v=0.1.85';
+import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.85';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -35,30 +35,6 @@ const hexOf = (md, i) => TEAM_COLORS.find((c) => c.key === teamColor(md, i)) || 
 const gamesOf = (md) => S.games.filter((g) => g.matchdayId === md.id).sort((a, b) => (a.round || 0) - (b.round || 0) || (a.order || 0) - (b.order || 0));
 const nRounds = (md) => Math.max(fmtOf(md).rounds, ...gamesOf(md).map((g) => g.round || 0));
 const lineupOf = (md, ti, r) => md.lineups?.[ti]?.[r] || null;
-// 라운드 심판 — 라운드당 주심 1 · 부심 2
-//  · 주심: 두 팀이 라운드마다 번갈아 1명 (md.refStart = 1라운드 주심을 내는 팀, 기본 왼쪽 팀)
-//  · 부심: 라운드마다 두 팀이 1명씩
-//  각 팀 주장이 그 라운드 대기 선수 중에서 고름 (lineups[팀][라운드].ref = { m: 주심, a1: 부심 })
-const REF_KEYS = [['m', '주심'], ['a1', '부심']];
-// 주심 순서: 운영진·주장이 [순서 바꾸기]로 정한 값 → 없으면 이미 주심을 정한 라운드에서 거꾸로 맞춤
-//  (예: 오른쪽 팀 순서 기본값과 달리 왼쪽 팀 주장이 2·4라운드 주심을 먼저 정했으면 왼쪽 팀 = 짝수 라운드)
-function refStartOf(md) {
-  if (md.refStart === 0 || md.refStart === 1) return md.refStart;
-  const rs = Object.keys({ ...(md.lineups?.[0] || {}), ...(md.lineups?.[1] || {}) }).map(Number).filter((r) => r > 0).sort((a, b) => a - b);
-  for (const r of rs) {
-    const has = [0, 1].filter((ti) => md.lineups?.[ti]?.[r]?.ref?.m);
-    if (has.length === 1) return ((has[0] - (r - 1)) % 2 + 2) % 2;
-  }
-  return 0;
-}
-const mainTeam = (md, r) => (refStartOf(md) + r - 1) % 2;   // 이 라운드 주심을 내는 팀
-function refOf(md, ti, r) {
-  const lu = lineupOf(md, ti, r), ros = rosters(md)[ti] || [], placed = new Set(Object.values(lu?.s || {}));
-  const out = {};
-  REF_KEYS.forEach(([k]) => { if (k === 'm' && mainTeam(md, r) !== ti) return; const id = lu?.ref?.[k]; if (id && ros.includes(id) && !placed.has(id)) out[k] = id; });
-  return out;
-}
-const refRole = (ref, id) => (ref.m === id ? '주심' : ref.a1 === id ? '부심' : '');
 // 두 팀 심판을 한 줄로 (공개된 팀만, 운영진은 모두)
 function refsLine(md, r, all) {
   const main = [], asst = [];

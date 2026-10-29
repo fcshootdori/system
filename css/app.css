@@ -1930,3 +1930,11 @@ body { overflow-x: clip; }
   .mm-top:not(.emb) > .mm-rounds { margin: 0; }
   .mm-top.emb { padding-top: 6px; }
 }
+
+/* ── 0.1.85 출전 현황에 주심 · 부심 ── */
+.lps .rf { display: inline-block; min-width: 30px; font-size: 10.5px; font-weight: 800; padding: 1px 4px; border-radius: 6px; border: 1.5px dashed #94a3b8; color: #475569; background: #f8fafc; }
+.lps .rf.m { border: 1.5px solid #e0a800; background: #fff7d1; color: #6b4f00; }
+.lps td.n.mid { border-radius: 0; }
+.lps td.rfn { font-size: 13px; color: #475569; }
+.lpm-row .rf { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 1px 4px; border-radius: 6px; border: 1.5px dashed #94a3b8; color: #475569; }
+.lpm-row .rf.m { border: 1.5px solid #e0a800; background: #fff7d1; color: #6b4f00; }

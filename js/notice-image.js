@@ -1,7 +1,7 @@
 // 카페 공지용 이미지 생성 (canvas → PNG)
-import { TEAM_COLORS } from './config.js?v=0.1.84';
-import { fmtDate } from './util.js?v=0.1.84';
-import { noLabel } from './domain.js?v=0.1.84';
+import { TEAM_COLORS } from './config.js?v=0.1.85';
+import { fmtDate } from './util.js?v=0.1.85';
+import { noLabel } from './domain.js?v=0.1.85';
 
 const FONT = '"Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 const W = 1080, PAD = 64;
@@ -333,7 +333,9 @@ export async function renderLineupImage({ team, md, lineup: L, stats, footer }) 
       ctx.fillStyle = '#121633'; ctx.font = f(700, 27); ctx.fillText(fit(ctx, row.name, nameW - 20), PAD + 34, ry + 35);
       row.cells.forEach((p, r) => {
         const cx = PAD + 30 + nameW + colW * r + colW / 2;
-        if (p) { ctx.fillStyle = p === 'GK' ? '#facc15' : L.hex; rr(ctx, cx - colW / 2 + 6, ry + 8, colW - 12, 34, 10); ctx.fill();
+        if (p?.ref) { ctx.strokeStyle = p.ref === '주심' ? '#e0a800' : '#94a3b8'; ctx.lineWidth = 3; rr(ctx, cx - colW / 2 + 7, ry + 9, colW - 14, 32, 10); ctx.stroke();
+          ctx.fillStyle = '#475569'; ctx.font = f(800, 18); ctx.textAlign = 'center'; ctx.fillText(p.ref, cx, ry + 31); }
+        else if (p) { ctx.fillStyle = p === 'GK' ? '#facc15' : L.hex; rr(ctx, cx - colW / 2 + 6, ry + 8, colW - 12, 34, 10); ctx.fill();
           ctx.fillStyle = p === 'GK' ? '#5c4300' : L.text; ctx.font = f(800, 20); ctx.textAlign = 'center'; ctx.fillText(p, cx, ry + 32); }
         else { ctx.fillStyle = '#b8bdcc'; ctx.font = f(700, 24); ctx.textAlign = 'center'; ctx.fillText('·', cx, ry + 33); }
         ctx.textAlign = 'left';
