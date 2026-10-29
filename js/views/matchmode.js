@@ -2,17 +2,17 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.86';
-import { db, newId } from '../store.js?v=0.1.86';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.86';
-import { TEAM_COLORS } from '../config.js?v=0.1.86';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.86';
-import { icon } from '../icons.js?v=0.1.86';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.86';
-import { figHTML } from './draft.js?v=0.1.86';
-import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.86';
-import { statsTable, myStats, REF_KEYS, refStartOf, mainTeam, refOf, refRole } from '../lineup-stats.js?v=0.1.86';
-import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.86';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.87';
+import { db, newId } from '../store.js?v=0.1.87';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.87';
+import { TEAM_COLORS } from '../config.js?v=0.1.87';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.87';
+import { icon } from '../icons.js?v=0.1.87';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.87';
+import { figHTML } from './draft.js?v=0.1.87';
+import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.87';
+import { statsTable, myStats, REF_KEYS, refStartOf, mainTeam, refOf, refRole } from '../lineup-stats.js?v=0.1.87';
+import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.87';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -70,8 +70,8 @@ export function render(root, ctx = {}) {
   }
   if (ui.md !== md.id) { ui.md = md.id; ui.round = null; ui.view = null; ui.sel = null; ui.ogMode = false; }
   const games = gamesOf(md), R = nRounds(md);
-  const liveG = games.find((g) => !g.done);
-  if (ui.round == null || ui.round > R) ui.round = liveG?.round || games[games.length - 1]?.round || 1;
+  const liveG = games.find(isLive), nextG = games.find((g) => !g.done && !g.startedAt);
+  if (ui.round == null || ui.round > R) ui.round = liveG?.round || nextG?.round || games[games.length - 1]?.round || 1;
   const op = S.operator && md.status !== 'played';
   // 주장: 로그인한 회원이 그 팀 주장이거나, 주장 링크로 들어온 기기
   const linkCap = (md.captains || []).filter((c) => S.captainToken && c.token === S.captainToken).map((c) => c.id);
@@ -85,16 +85,16 @@ export function render(root, ctx = {}) {
   root.innerHTML = `
     <div class="mm-top ${ctx.embedded ? 'emb' : ''}">
     <section class="mm-hero ${ctx.embedded ? 'emb' : ''}">
-      ${ctx.embedded ? '' : `<div class="mm-hh"><span class="mm-tag ${played ? 'end' : ''}">${played ? '경기 종료' : '<i></i>LIVE'}</span>
+      ${ctx.embedded ? '' : `<div class="mm-hh"><span class="mm-tag ${played ? 'end' : liveG ? '' : 'wait'}">${played ? '경기 종료' : liveG ? '<i></i>LIVE' : games.some((g) => g.done) ? '쉬는 시간' : '경기 전'}</span>
         <h1>${noLabel(md) ? noLabel(md) + ' · ' : ''}${fmtDate(md.date)}</h1>${md.time || md.venue ? `<small>${esc([md.time, md.venue].filter(Boolean).join(' · '))}</small>` : ''}</div>`}
       <div class="mm-split">
         ${[0, 1].map((i) => `<div class="mm-t ${i ? 'b' : 'a'}" style="--tc:${hexOf(md, i).hex};--ti:${hexOf(md, i).text}"><span>${esc(teamLabel(md, i))}</span><b>${t[i] ?? 0}</b></div>`).join('')}
-        <div class="mm-mid"><b>${played ? '종료' : liveG ? `${liveG.round}R` : '경기 전'}</b><small>${played ? '라운드 합산' : liveG ? '<i></i>LIVE' : '곧 시작'}</small></div>
+        <div class="mm-mid ${liveG ? 'live' : ''}"><b>${played ? '종료' : liveG ? `${liveG.round}R` : nextG && games.some((g) => g.done || g.startedAt) ? `${nextG.round}R` : '경기 전'}</b><small>${played ? '라운드 합산' : liveG ? clockEl(liveG) : nextG && games.some((g) => g.done || g.startedAt) ? '시작 전' : '곧 시작'}</small></div>
       </div>
     </section>
     <nav class="mm-rounds" aria-label="라운드">${[...Array(R)].map((_, k) => { const r = k + 1, x = games.find((q) => q.round === r);
-      return `<button type="button" data-round="${r}" class="${r === ui.round ? 'on' : ''} ${x?.done ? 'done' : x && x === liveG ? 'live' : ''}">
-        <span>${r}R${x && x === liveG && !x.done ? ' 진행' : ''}</span><b>${x && (x.done || x.sa || x.sb) ? `<em style="--sc:${inkOf(md, x.a ?? 0)}">${x.sa}</em><i>:</i><em style="--sc:${inkOf(md, x.b ?? 1)}">${x.sb}</em>` : x === liveG && x ? '0<i>:</i>0' : '–'}</b></button>`; }).join('')}</nav>
+      return `<button type="button" data-round="${r}" class="${r === ui.round ? 'on' : ''} ${x?.done ? 'done' : isLive(x) ? 'live' : ''}">
+        <span>${r}R${isLive(x) ? ' 진행' : ''}</span><b>${x && (x.done || x.sa || x.sb) ? `<em style="--sc:${inkOf(md, x.a ?? 0)}">${x.sa}</em><i>:</i><em style="--sc:${inkOf(md, x.b ?? 1)}">${x.sb}</em>` : isLive(x) ? '0<i>:</i>0' : '–'}</b></button>`; }).join('')}</nav>
     </div>
     ${op ? `<div class="seg mm-tabs" role="tablist" aria-label="기록 · 포지션">${[['rec', 'ball', '기록'], ['pos', 'field', '포지션']].map(([k, ic, l]) =>
       `<button type="button" role="tab" aria-selected="${ui.tab === k}" data-mmtab="${k}" class="${ui.tab === k ? 'on' : ''}">${icon(ic, 'sm')}${l}</button>`).join('')}</div>` : ''}
@@ -141,22 +141,35 @@ const onStickScroll = () => { if (!stickRaf) stickRaf = requestAnimationFrame(()
 addEventListener('scroll', onStickScroll, { passive: true });
 addEventListener('resize', () => { const el = document.querySelector('.mm-top'); if (el && !el.classList.contains('stuck')) stickNat = null; onStickScroll(); });
 
+// ── 라운드 시간 ──
+//  운영진이 [N라운드 시작]을 눌러야 진행 중(LIVE)이 되고 시간이 흐름 (g.startedAt) · [종료]를 누르면 g.done + g.endedAt
+//  골·자책골·득점자 모름을 기록하면 그 라운드 시작부터 지난 초(t)를 함께 남김 → 축구식 분(3')으로 표시
+const isLive = (g) => !!g && !!g.startedAt && !g.done;
+const two = (n) => String(n).padStart(2, '0');
+const fmtClock = (ms) => { const t = Math.max(0, Math.floor(ms / 1000)); return `${two(Math.floor(t / 60))}:${two(t % 60)}`; };
+const minOf = (t) => (t == null ? '' : `${Math.floor(t / 60) + 1}'`);
+const clockEl = (g, cls = '') => isLive(g) ? `<span class="mm-clock ${cls}" data-clock="${g.startedAt}">${fmtClock(Date.now() - g.startedAt)}</span>` : '';
+setInterval(() => document.querySelectorAll('[data-clock]').forEach((el) => { el.textContent = fmtClock(Date.now() - +el.dataset.clock); }), 1000);
+
 // ── 라운드 득점 (회원 보기) ──
 function goalsOf(md, g) {
   const ros = rosters(md), out = [[], []];
   if (!g) return out;
   Object.entries(g.goals || {}).forEach(([id, n]) => { const ti = ros.findIndex((x) => x.includes(id)); if (ti >= 0) out[ti].push({ id, n }); });
   Object.entries(g.og || {}).forEach(([id, n]) => { const ti = ros.findIndex((x) => x.includes(id)); if (ti >= 0) out[1 - ti].push({ id, n, og: true }); });
+  // 골 시각 (기록된 것만)
+  const log = Array.isArray(g.log) ? g.log : [];
+  out.forEach((l) => l.forEach((x) => { x.ts = log.filter((e) => e.id === x.id && e.k === (x.og ? 'og' : 'g') && e.t != null).map((e) => e.t).sort((a, b) => a - b); }));
   return out;
 }
 function roundCard(md, g) {
   const gl = goalsOf(md, g);
-  return `<section class="card mm-round"><h2>${ui.round}라운드 ${g ? `<small>${g.done ? '종료' : '진행 중'}</small>` : '<small>시작 전</small>'}</h2>
+  return `<section class="card mm-round"><h2>${ui.round}라운드 <small>${g?.done ? '종료' : isLive(g) ? `<span class="live-t"><i></i>진행 중</span> ${clockEl(g)}` : '시작 전'}</small></h2>
     ${refsLine(md, ui.round, false)}
     ${g ? `<div class="mm-rscore">${[0, 1].map((i) => `<div class="mm-side" style="--tc:${hexOf(md, i).hex}">
       <header>${teamChip(md, i)}<b class="n">${i ? g.sb : g.sa}</b></header>
-      ${gl[i].length ? `<ul>${gl[i].map((x) => `<li>${icon('ball', 'sm')}${esc(nameOf(x.id, md))}${x.n > 1 ? ` <b>${x.n}</b>` : ''}${x.og ? ' <small class="muted">자책</small>' : ''}</li>`).join('')}</ul>` : '<p class="muted small">득점 없음</p>'}
-    </div>`).join('')}</div>` : '<p class="muted small">운영진이 라운드를 시작하면 점수가 올라와요.</p>'}
+      ${gl[i].length ? `<ul>${gl[i].map((x) => `<li>${icon('ball', 'sm')}${esc(nameOf(x.id, md))}${x.n > 1 ? ` <b>${x.n}</b>` : ''}${x.og ? ' <small class="muted">자책</small>' : ''}${x.ts.length ? ` <small class="g-min">${x.ts.map(minOf).join(' ')}</small>` : ''}</li>`).join('')}</ul>` : '<p class="muted small">득점 없음</p>'}
+    </div>`).join('')}</div>${!g.startedAt && !g.done ? '<p class="muted small">운영진이 라운드를 시작하면 시간이 흐르고 점수가 올라와요.</p>' : ''}` : '<p class="muted small">운영진이 라운드를 시작하면 점수가 올라와요.</p>'}
   </section>`;
 }
 function scorersCard(md, games) {
@@ -196,20 +209,22 @@ function recorder(md, games, g) {
     </div>`; };
   const list = entries(md, g);
   return `<section class="card op mm-rec">
-    <h2>${ui.round}라운드 기록 ${g.done ? '<small class="ok-t">종료</small>' : ''}</h2>
+    <h2>${ui.round}라운드 기록 ${g.done ? '<small class="ok-t">종료</small>' : isLive(g) ? `<small class="live-t"><i></i>진행 중 ${clockEl(g, 'big')}</small>` : '<small class="muted">시작 전</small>'}</h2>
     ${refsLine(md, ui.round, true)}
     <div class="seg rec-mode"><button type="button" data-ogm="0" class="${ui.ogMode ? '' : 'on'}">${icon('ball', 'sm')} 골</button><button type="button" data-ogm="1" class="${ui.ogMode ? 'on og' : ''}">자책골</button></div>
     <p class="tiny muted">${ui.ogMode ? '<b class="warn-t">자책골</b>: 자책골을 넣은 선수를 누르면 상대 팀 점수가 1점 올라가요. 한 번 기록하면 다시 골 기록으로 돌아와요.' : '골을 넣은 선수를 누르면 그 팀 점수가 1점 올라가요.'}</p>
-    <div class="rec-grid ${ui.ogMode ? 'og' : ''}">${side(0)}${side(1)}</div>
+    ${!g.startedAt && !g.done ? `<button class="btn full big go rec-start" data-rstart>▶ ${ui.round}라운드 시작</button><p class="tiny muted center">시작을 누르면 시간이 흐르고, 골을 기록하면 그 시각이 함께 남아요.</p>` : ''}
+    <div class="rec-grid ${ui.ogMode ? 'og' : ''} ${!g.startedAt && !g.done ? 'idle' : ''}">${side(0)}${side(1)}</div>
     <div class="rec-log"><b>득점자 <small class="muted">${list.length ? '· 잘못 넣었으면 눌러서 취소' : ''}</small></b>
       ${list.length ? list.map((e, n) => { const ti = e.s === 'sb' ? 1 : 0;
         return `<button type="button" class="rec-ev ${e.k}" style="--tc:${hexOf(md, ti).hex}" data-un="${n}" title="눌러서 취소">
-          <span class="no">${n + 1}</span>${e.k === 'og' ? '<b>자책</b>' : icon('ball', 'sm')}<span>${e.id ? esc(nameOf(e.id, md)) : '득점자 모름'}</span>${icon('x', 'sm')}</button>`; }).join('')
+          <span class="no">${n + 1}</span>${e.t != null ? `<em class="ev-min">${minOf(e.t)}</em>` : ''}${e.k === 'og' ? '<b>자책</b>' : icon('ball', 'sm')}<span>${e.id ? esc(nameOf(e.id, md)) : '득점자 모름'}</span>${icon('x', 'sm')}</button>`; }).join('')
       : '<p class="muted small">아직 득점이 없어요.</p>'}
     </div>
     <div class="rec-act">
       ${games.every((x) => x.done) ? '<button class="btn full big go" data-finish>경기 종료 · 기록 반영</button>' : ''}
-      <button class="btn full ${g.done ? 'ghost' : 'big'}" data-rdone>${g.done ? `${ui.round}라운드 종료 취소` : `${ui.round}라운드 종료`}</button>
+      ${g.done ? `<button class="btn full ghost" data-rdone>${ui.round}라운드 종료 취소</button>`
+        : isLive(g) ? `<button class="btn full big stop" data-rdone>■ ${ui.round}라운드 종료</button><button class="link small rec-undo" data-rstartundo>시작 취소 (아직 시작 안 함으로)</button>` : ''}
       ${ui.round === games[games.length - 1].round ? '<button class="btn ghost full" data-addround>＋ 라운드 추가</button>' : ''}
     </div>
   </section>`;
@@ -333,20 +348,26 @@ function bind(root, md, ctx) {
     ui.round = r; toast(`${r}라운드를 추가했어요`);
   });
   root.querySelectorAll('[data-ogm]').forEach((b) => b.addEventListener('click', () => { ui.ogMode = b.dataset.ogm === '1'; rerender(); }));
+  // 시작 전에는 기록하지 않음 · 진행 중이면 골 시각(시작부터 지난 초)도 남김
+  const notStarted = () => { if (g && !g.startedAt && !g.done) { toast(`먼저 [${g.round}라운드 시작]을 눌러 주세요`); return true; } return false; };
+  const tNow = (c) => (c.startedAt && !c.done ? Math.max(0, Math.round((Date.now() - c.startedAt) / 1000)) : undefined);
+  const ev = (c, o) => { const t = tNow(c); return t == null ? o : { ...o, t }; };
   root.querySelectorAll('[data-goal]').forEach((b) => b.addEventListener('click', () => {
+    if (notStarted()) return;
     const [id, k] = b.dataset.goal.split(':'), opp = k === 'sa' ? 'sb' : 'sa';
     const og = ui.ogMode;
     upd((c) => {
       c.log = Array.isArray(c.log) ? c.log : [];
-      if (og) { c.og[id] = (c.og[id] || 0) + 1; c[opp] = (c[opp] || 0) + 1; c.log.push({ id, k: 'og', s: opp, at: Date.now() }); }
-      else { c.goals[id] = (c.goals[id] || 0) + 1; c[k] = (c[k] || 0) + 1; c.log.push({ id, k: 'g', s: k, at: Date.now() }); }
+      if (og) { c.og[id] = (c.og[id] || 0) + 1; c[opp] = (c[opp] || 0) + 1; c.log.push(ev(c, { id, k: 'og', s: opp, at: Date.now() })); }
+      else { c.goals[id] = (c.goals[id] || 0) + 1; c[k] = (c[k] || 0) + 1; c.log.push(ev(c, { id, k: 'g', s: k, at: Date.now() })); }
     });
     if (og) { ui.ogMode = false; toast(`${nameOf(id, md)} 자책골 — 상대 팀 +1`); }
     b.classList.add('pop'); setTimeout(() => b.classList.remove('pop'), 300);
   }));
   root.querySelectorAll('[data-unk]').forEach((b) => b.addEventListener('click', () => {
+    if (notStarted()) return;
     const k = b.dataset.unk;
-    upd((c) => { c.log = Array.isArray(c.log) ? c.log : []; c[k] = (c[k] || 0) + 1; c.log.push({ id: null, k: 'u', s: k, at: Date.now() }); });
+    upd((c) => { c.log = Array.isArray(c.log) ? c.log : []; c[k] = (c[k] || 0) + 1; c.log.push(ev(c, { id: null, k: 'u', s: k, at: Date.now() })); });
   }));
   // 득점자 목록의 버튼을 누르면 그 골 취소
   root.querySelectorAll('[data-un]').forEach((b) => b.addEventListener('click', () => {
@@ -360,8 +381,22 @@ function bind(root, md, ctx) {
     });
     toast(`${e.id ? nameOf(e.id, md) : '득점자 모름'} ${e.k === 'og' ? '자책골' : '골'}을 취소했어요`);
   }));
+  q('[data-rstart]')?.addEventListener('click', async () => {
+    const other = games.find((x) => x.id !== g.id && isLive(x));
+    if (other) {
+      if (!confirm(`${other.round}라운드가 아직 진행 중이에요. ${other.round}라운드를 종료하고 ${g.round}라운드를 시작할까요?`)) return;
+      await db.tx('games/' + other.id, (c) => { if (!c) return null; c.done = true; c.endedAt = Date.now(); return c; });
+    }
+    await upd((c) => { c.startedAt = Date.now(); delete c.endedAt; });
+    toast(`${g.round}라운드 시작!`);
+  });
+  q('[data-rstartundo]')?.addEventListener('click', async () => {
+    if (!confirm(`${g.round}라운드를 '시작 전'으로 되돌릴까요? 시간이 지워져요 (기록한 골은 그대로).`)) return;
+    await upd((c) => { delete c.startedAt; delete c.endedAt; });
+  });
   q('[data-rdone]')?.addEventListener('click', async () => {
-    const was = g.done; await upd((c) => { c.done = !c.done; });
+    const was = g.done;
+    await upd((c) => { c.done = !c.done; if (c.done) c.endedAt = Date.now(); else delete c.endedAt; });
     if (!was) { const nx = games.find((x) => x.round > g.round && !x.done); if (nx) ui.round = nx.round; toast(`${g.round}라운드를 마쳤어요`); }
   });
   q('[data-finish]')?.addEventListener('click', async () => { await db.set(mdPath(md.id), { status: 'played' }, { merge: true }); toast('경기를 마쳤어요 — 이제 승리 팀 주장이 MOM을 뽑아요'); });

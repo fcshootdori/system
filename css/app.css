@@ -1938,3 +1938,20 @@ body { overflow-x: clip; }
 .lps td.rfn { font-size: 13px; color: #475569; }
 .lpm-row .rf { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 1px 4px; border-radius: 6px; border: 1.5px dashed #94a3b8; color: #475569; }
 .lpm-row .rf.m { border: 1.5px solid #e0a800; background: #fff7d1; color: #6b4f00; }
+
+/* ── 0.1.87 라운드 시작 · 종료 · 경기 시간 · 골 시각 ── */
+.mm-tag.wait { background: rgba(255,255,255,.14); color: #d6d9f5; }
+.mm-mid small .mm-clock { font: 800 11px/1 var(--font); font-variant-numeric: tabular-nums; color: var(--pink, #e11d48); letter-spacing: 0; }
+.mm-mid.live small::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--pink, #e11d48); animation: blink 1.2s infinite; }
+.mm-clock { font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: .01em; }
+.mm-clock.big { font-size: 15px; margin-left: 2px; color: var(--ink); }
+.live-t { display: inline-flex; align-items: center; gap: 4px; color: var(--pink, #e11d48); font-weight: 700; }
+.live-t i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: blink 1.2s infinite; }
+.mm-round h2 .mm-clock { color: var(--ink); margin-left: 4px; }
+.g-min { color: var(--sub); font-weight: 700; font-variant-numeric: tabular-nums; }
+.ev-min { font-style: normal; font-weight: 800; font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; min-width: 26px; }
+.rec-start { margin: 6px 0 2px; font-size: 18px; }
+.rec-grid.idle { opacity: .45; }
+.btn.stop { background: var(--ink); color: #fff; }
+.rec-undo { display: block; margin: 2px auto 0; color: var(--sub); }
+@media (prefers-reduced-motion: reduce) { .mm-mid.live small::before, .live-t i { animation: none; } }
