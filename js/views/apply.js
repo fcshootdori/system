@@ -1,13 +1,14 @@
 // 경기 신청 — 참석 · 불참 · 운영진 협의
 //  · 일반 경기: 신청 마감 전에는 참석·협의·불참 명단, 팀이 정해지면(주장·드래프트) 팀별로 좌우 칸
 //  · 이벤트 경기: 처음부터 미리 정한 두 팀 칸 — 회원은 팀을 골라(또는 운영진이 넣어 둔 팀에서) 참석·불참
-import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js?v=0.1.82';
-import { db, newId } from '../store.js?v=0.1.82';
-import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent } from '../domain.js?v=0.1.82';
-import { TEAM_COLORS } from '../config.js?v=0.1.82';
-import { parseCafeComments, norm } from '../cafe-parser.js?v=0.1.82';
-import { esc, fmtDate, fmtTime, toast, byName } from '../util.js?v=0.1.82';
-import { modal, empty, colorChip, teamLabel, memoI } from '../ui.js?v=0.1.82';
+import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf } from '../state.js?v=0.1.83';
+import { db, newId } from '../store.js?v=0.1.83';
+import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent } from '../domain.js?v=0.1.83';
+import { TEAM_COLORS } from '../config.js?v=0.1.83';
+import { parseCafeComments, norm } from '../cafe-parser.js?v=0.1.83';
+import { esc, fmtDate, fmtTime, toast, byName } from '../util.js?v=0.1.83';
+import { icon } from '../icons.js?v=0.1.83';
+import { modal, empty, colorChip, teamLabel, memoI, focusNow } from '../ui.js?v=0.1.83';
 
 const SRC = { app: '앱', cafe: '카페', manual: '운영진', sheet: '시트' };
 const colorHex = (k) => TEAM_COLORS.find((c) => c.key === k)?.hex || '#94a3b8';
@@ -42,7 +43,7 @@ export function render(root, ctx = {}) {
     ${v.ev || teamsSet ? teamColumns(md, v) : categoryLists(md, v)}
     ${v.wait.length ? `<section class="card"><h2>대기 ${v.wait.length}명</h2>${listHtml(v.wait, md, op)}</section>` : ''}
     ${v.pend.length ? `<section class="card"><h2>운영진 협의 ${v.pend.length}명 <small>승인하면 참석 명단에 들어가요</small></h2>
-      <ol class="apps">${v.pend.map((a) => `<li><span class="no">·</span><span class="nm">${esc(nameOf(a.id, md))}${memoI(a.id, md)}</span>
+      <ol class="apps">${v.pend.map((a) => `<li><span class="no">·</span><span class="nm">${esc(nameOf(a.id, md))}${memoI(a.id, md)}${gEdit(a.id, md, op)}</span>
         ${op ? `<button class="btn sm" data-approve="${a.id}">승인</button><button class="btn ghost sm" data-toout="${a.id}">불참으로</button><button class="icon-btn" data-rm="${a.id}" aria-label="빼기">✕</button>` : '<span class="tag">협의 중</span>'}</li>`).join('')}</ol></section>` : ''}
     ${(v.ev || teamsSet) && (v.outs.length || op) ? `<section class="card"><details ${op ? 'open' : ''}><summary>불참 ${v.outs.length}명</summary>
       ${op ? `<div class="ap-hd"><span></span><button class="btn ghost sm" data-addcat="out">＋ 불참 추가</button></div>${outList(v.outs, md, op)}`
@@ -84,14 +85,43 @@ function categoryLists(md, v) {
   return `<section class="card"><div class="ap-hd"><h2>참석 ${v.ins.length}명</h2>${op ? '<button class="btn ghost sm" data-addcat="in">＋ 참석 추가</button>' : ''}</div>${v.ins.length ? listHtml(v.ins, md, op) : empty('아직 참석자가 없어요.')}</section>
     <section class="card"><div class="ap-hd"><h2>불참 ${v.outs.length}명</h2>${op ? '<button class="btn ghost sm" data-addcat="out">＋ 불참 추가</button>' : ''}</div>${outList(v.outs, md, op)}</section>`;
 }
+// 게스트 이름 바꾸기 (운영진) — 회원이 아닌 사람만
+const gEdit = (id, md, op) => op && !memberById(id) && md.guests?.[id] ? `<button type="button" class="g-edit" data-gedit="${id}" aria-label="${esc(md.guests[id].name)} 이름 바꾸기" title="게스트 이름 바꾸기">${icon('pen', 'sm')}</button>` : '';
+function editGuest(md, id) {
+  const g = md.guests?.[id]; if (!g) return;
+  const memo0 = md.apps?.[id]?.memo || g.memo || '';
+  const { el, close } = modal('게스트 정보 바꾸기', `<form class="stack">
+    <label>이름<input name="gname" value="${esc(g.name)}" maxlength="20" autocomplete="off" enterkeyhint="done" required></label>
+    <label>메모 <small class="muted">실력 · 늦참 등 (이름 옆 ⓘ)</small><input name="gmemo" value="${esc(memo0)}" maxlength="40" autocomplete="off" placeholder="예: 3점/1쿼늦참"></label>
+    ${g.host ? `<p class="tiny muted">${esc(memberById(g.hostId)?.name || g.host)} 님이 데려온 게스트</p>` : ''}
+    <p class="tiny muted">게스트는 개인 기록에 남지 않아요. 바꾼 이름은 신청 명단·드래프트·팀·경기 화면에 바로 보여요.</p>
+    <button class="btn">저장</button></form>`);
+  const inp = el.querySelector('[name=gname]'); focusNow(inp); inp.select();
+  el.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = inp.value.trim().slice(0, 20), memo = el.querySelector('[name=gmemo]').value.trim().slice(0, 40);
+    if (!name) return toast('이름을 입력해 주세요');
+    const dup = S.members.find((m) => norm(m.name) === norm(name));
+    if (dup && !confirm(`회원 '${dup.name}'와 이름이 같아요. 게스트로 그대로 둘까요?`)) return;
+    await db.tx(mdPath(md.id), (cur) => {
+      if (!cur.guests?.[id]) return null;
+      cur.guests[id].name = name;
+      if (memo) cur.guests[id].memo = memo; else delete cur.guests[id].memo;
+      if (cur.apps?.[id]) { if (memo) cur.apps[id].memo = memo; else delete cur.apps[id].memo; }
+      if (cur.declines?.[id]) cur.declines[id].name = name;
+      return cur;
+    });
+    close(); toast(`게스트 이름 → ${name}`);
+  });
+}
 function outList(outs, md, op) {
   return outs.length ? `<ol class="apps tight">${outs.map((d, k) => `<li><span class="no">${k + 1}</span>
-      <span class="nm">${esc(memberById(d.id)?.name || d.name || nameOf(d.id, md))}</span>${op ? `<button class="btn ghost sm" data-toin="${d.id}">참석으로</button><button class="icon-btn sm" data-rmout="${d.id}" aria-label="빼기">✕</button>` : ''}</li>`).join('')}</ol>` : empty('불참 표시한 사람이 없어요.');
+      <span class="nm">${esc(memberById(d.id)?.name || md.guests?.[d.id]?.name || d.name || nameOf(d.id, md))}${gEdit(d.id, md, op)}</span>${op ? `<button class="btn ghost sm" data-toin="${d.id}">참석으로</button><button class="icon-btn sm" data-rmout="${d.id}" aria-label="빼기">✕</button>` : ''}</li>`).join('')}</ol>` : empty('불참 표시한 사람이 없어요.');
 }
 
 function listHtml(list, md, op) {
   return `<ol class="apps">${list.map((a, k) => `<li class="${a.id === me.id ? 'me' : ''}">
-    <span class="no">${a.no ?? k + 1}</span><span class="nm">${esc(nameOf(a.id, md))}${memoI(a.id, md)}</span>
+    <span class="no">${a.no ?? k + 1}</span><span class="nm">${esc(nameOf(a.id, md))}${memoI(a.id, md)}${gEdit(a.id, md, op)}</span>
     ${a.tentative ? '<span class="tag">미정</span>' : ''}
     <span class="src src-${a.source}">${SRC[a.source] || ''}</span>
     <span class="tm">${a.at > 1e12 ? fmtTime(a.at) : ''}</span>
@@ -116,7 +146,7 @@ function teamColumns(md, v) {
   const info = new Map(applicants(md).map((a) => [a.id, a]));
   const total = tc.cols.reduce((n, c) => n + c.ids.length, 0) + tc.rest.length;
   const row = (id, k, from) => { const a = info.get(id) || {};
-    return `<li class="${id === me.id ? 'me' : ''}"><span class="no">${k + 1}</span><span class="nm">${esc(nameOf(id, md))}${memoI(id, md)}</span>${a.tentative ? '<span class="tag">미정</span>' : ''}
+    return `<li class="${id === me.id ? 'me' : ''}"><span class="no">${k + 1}</span><span class="nm">${esc(nameOf(id, md))}${memoI(id, md)}${gEdit(id, md, op)}</span>${a.tentative ? '<span class="tag">미정</span>' : ''}
       ${op ? actSel(id, from) : ''}</li>`; };
   // 운영진 줄 메뉴 (⋯): 다른 팀으로 · 불참으로 · 명단에서 빼기 — 좁은 팀 칸에서도 이름이 잘리지 않게 한 칸으로
   const actSel = (id, from) => `<select class="row-act" data-act="${id}" aria-label="${esc(nameOf(id, md))} 바꾸기"><option value="">⋯</option>
@@ -145,6 +175,7 @@ function bind(root, md, v) {
   // 내 참석·불참
   bindMy(root, md);
   root.querySelector('[data-cafe]')?.addEventListener('click', () => cafeImport(md));
+  root.querySelectorAll('[data-gedit]').forEach((b) => b.addEventListener('click', () => editGuest(md, b.dataset.gedit)));
   root.querySelector('[data-add]')?.addEventListener('click', () => addPeople(md, null));
   root.querySelectorAll('[data-addto]').forEach((b) => b.addEventListener('click', () => addPeople(md, +b.dataset.addto)));
   root.querySelector('[data-close]')?.addEventListener('click', async () => {

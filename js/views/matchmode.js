@@ -2,17 +2,17 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.82';
-import { db, newId } from '../store.js?v=0.1.82';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.82';
-import { TEAM_COLORS } from '../config.js?v=0.1.82';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.82';
-import { icon } from '../icons.js?v=0.1.82';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.82';
-import { figHTML } from './draft.js?v=0.1.82';
-import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.82';
-import { statsTable, myStats } from '../lineup-stats.js?v=0.1.82';
-import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.82';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.83';
+import { db, newId } from '../store.js?v=0.1.83';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.83';
+import { TEAM_COLORS } from '../config.js?v=0.1.83';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.83';
+import { icon } from '../icons.js?v=0.1.83';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.83';
+import { figHTML } from './draft.js?v=0.1.83';
+import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.83';
+import { statsTable, myStats } from '../lineup-stats.js?v=0.1.83';
+import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.83';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -40,7 +40,18 @@ const lineupOf = (md, ti, r) => md.lineups?.[ti]?.[r] || null;
 //  · 부심: 라운드마다 두 팀이 1명씩
 //  각 팀 주장이 그 라운드 대기 선수 중에서 고름 (lineups[팀][라운드].ref = { m: 주심, a1: 부심 })
 const REF_KEYS = [['m', '주심'], ['a1', '부심']];
-const mainTeam = (md, r) => ((md.refStart || 0) + r - 1) % 2;   // 이 라운드 주심을 내는 팀
+// 주심 순서: 운영진·주장이 [순서 바꾸기]로 정한 값 → 없으면 이미 주심을 정한 라운드에서 거꾸로 맞춤
+//  (예: 오른쪽 팀 순서 기본값과 달리 왼쪽 팀 주장이 2·4라운드 주심을 먼저 정했으면 왼쪽 팀 = 짝수 라운드)
+function refStartOf(md) {
+  if (md.refStart === 0 || md.refStart === 1) return md.refStart;
+  const rs = Object.keys({ ...(md.lineups?.[0] || {}), ...(md.lineups?.[1] || {}) }).map(Number).filter((r) => r > 0).sort((a, b) => a - b);
+  for (const r of rs) {
+    const has = [0, 1].filter((ti) => md.lineups?.[ti]?.[r]?.ref?.m);
+    if (has.length === 1) return ((has[0] - (r - 1)) % 2 + 2) % 2;
+  }
+  return 0;
+}
+const mainTeam = (md, r) => (refStartOf(md) + r - 1) % 2;   // 이 라운드 주심을 내는 팀
 function refOf(md, ti, r) {
   const lu = lineupOf(md, ti, r), ros = rosters(md)[ti] || [], placed = new Set(Object.values(lu?.s || {}));
   const out = {};
@@ -52,7 +63,6 @@ const refRole = (ref, id) => (ref.m === id ? '주심' : ref.a1 === id ? '부심'
 function refsLine(md, r, all) {
   const main = [], asst = [];
   [0, 1].forEach((ti) => {
-    if (!all && !md.lineupPub?.[ti] && md.status !== 'played') return;
     const ref = refOf(md, ti, r), dot = `<i style="background:${hexOf(md, ti).hex}"></i>`;
     if (ref.m) main.push(dot + esc(nameOf(ref.m, md)));
     if (ref.a1) asst.push(dot + esc(nameOf(ref.a1, md)));
@@ -171,7 +181,7 @@ function recorder(md, games, g) {
   const ros = rosters(md), f = fmtOf(md);
   if (!games.length) return `<section class="card op"><h2>경기 기록</h2><p class="small">라운드를 만들면 라운드별 점수와 득점자를 기록할 수 있어요.</p>
     <button class="btn" data-mkrounds>${f.rounds}라운드 만들기</button></section>`;
-  if (!g) return `<section class="card op"><p class="small">${ui.round}라운드가 아직 없어요.</p><button class="btn ghost" data-addround>라운드 추가</button></section>`;
+  if (!g) return `<section class="card op">${refsLine(md, ui.round, true)}<p class="small">${ui.round}라운드가 아직 없어요.</p><button class="btn ghost" data-addround>라운드 추가</button></section>`;
   const side = (i) => { const key = i ? 'sb' : 'sa', hx = hexOf(md, i);
     return `<div class="rec-side" style="--tc:${hx.hex};--ti:${hx.text}">
       <header>${teamChip(md, i)}<b class="rec-score n">${g[key] || 0}</b></header>
@@ -233,7 +243,7 @@ function lineupCard(md, capOf, op) {
   const lu = edit || pub ? lineupOf(md, ti, R) : null;
   const placed = new Set(Object.values(lu?.s || {}));
   const bench = (ros[ti] || []).filter((id) => !placed.has(id));
-  const ref = edit || pub ? refOf(md, ti, R) : {};
+  const ref = refOf(md, ti, R);   // 심판은 포지션 확정 전에도 보여 줌 (대기 선수라 포지션이 드러나지 않음)
   const { f } = slotsOf(lu);
   return `<section class="card mm-lineup">
     <h2>${icon('field')} 포지션 <small>${R}라운드</small></h2>
@@ -255,7 +265,7 @@ function lineupCard(md, capOf, op) {
         ? `<div class="lp-ref-off"><span>주심</span><b>${esc(teamLabel(md, 1 - ti))} 차례</b></div>`
         : `<label class="${k === 'm' ? 'm' : ''}"><span>${l}${k === 'm' ? ' · 우리 팀 차례' : ''}</span><select data-ref="${k}" aria-label="${R}라운드 ${l}"><option value="">없음</option>${bench.map((id) => `<option value="${id}" ${ref[k] === id ? 'selected' : ''}>${esc(nameOf(id, md))}</option>`).join('')}</select></label>`).join('')}</div>
       <p class="tiny muted lp-ref-rule">주심은 라운드마다 두 팀이 번갈아 1명, 부심은 팀마다 1명씩 · ${[1, 2].map((r) => `${r}라운드 주심 ${esc(teamLabel(md, mainTeam(md, r)))}`).join(', ')} … <button type="button" class="link tiny" data-refswap>순서 바꾸기</button></p>
-    </div>` : pub && Object.keys(ref).length ? `<p class="lp-refline">${icon('whistle', 'sm')} <b>${R}라운드 심판</b> ${REF_KEYS.filter(([k]) => ref[k]).map(([k, l]) => `<span><em>${l}</em>${esc(nameOf(ref[k], md))}</span>`).join('')}</p>` : ''}
+    </div>` : Object.keys(ref).length ? `<p class="lp-refline">${icon('whistle', 'sm')} <b>${R}라운드 심판</b> ${REF_KEYS.filter(([k]) => ref[k]).map(([k, l]) => `<span><em>${l}</em>${esc(nameOf(ref[k], md))}</span>`).join('')}</p>` : ''}
     ${edit ? `<div class="row wrap lp-act">
       ${R > 1 ? `<button type="button" class="btn ghost sm" data-copyprev>${icon('copy', 'sm')} ${R - 1}라운드 그대로</button>` : ''}
       <button type="button" class="btn ghost sm" data-copyall>${icon('copy', 'sm')} 모든 라운드에 적용</button>
@@ -365,8 +375,9 @@ function bind(root, md, ctx) {
     if (!confirm(`${ui.round}라운드 포지션을 모든 라운드에 똑같이 넣을까요?`)) return;
     saveLineup(md, ti, [...Array(nRounds(md))].map((_, k) => k + 1), () => ({ f: cur.f, s: { ...cur.s }, ...(cur.ref ? { ref: { ...cur.ref } } : {}) })).then(() => toast('모든 라운드에 적용했어요')); });
   q('[data-refswap]')?.addEventListener('click', async () => {
-    await db.tx(mdPath(md.id), (cur) => { cur.refStart = 1 - (cur.refStart || 0); return cur; });
-    toast(`1라운드 주심: ${teamLabel(md, 1 - (md.refStart || 0))}부터 번갈아`);
+    const nx = 1 - refStartOf(md);
+    await db.tx(mdPath(md.id), (cur) => { cur.refStart = nx; return cur; });
+    toast(`1라운드 주심: ${teamLabel(md, nx)}부터 번갈아`);
   });
   root.querySelectorAll('[data-ref]').forEach((sel) => sel.addEventListener('change', () => {
     const k = sel.dataset.ref, v = sel.value;

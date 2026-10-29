@@ -1897,3 +1897,11 @@ body { overflow-x: clip; }
 .mm-refs { margin: -2px 0 10px; padding: 7px 10px; border-radius: 10px; background: var(--soft, #f3f4f8); }
 .mm-refs-h { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; }
 .mm-refs span i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 0 3px 1px 0; vertical-align: middle; }
+
+/* ── 0.1.83 게스트 이름 바꾸기 ── */
+.g-edit { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-left: 4px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--sub); cursor: pointer; flex: none; vertical-align: -5px; }
+.g-edit .ico { width: 14px; height: 14px; }
+.g-edit:hover, .g-edit:focus-visible { color: var(--navy); border-color: var(--navy); }
+.apps .nm:has(.g-edit) { display: flex; align-items: center; min-width: 0; }
+.apps .nm:has(.g-edit) { flex-wrap: wrap; gap: 3px 4px; }
+.apps .nm:has(.g-edit) .memo-i, .apps .nm .g-edit { margin-left: 0; }
