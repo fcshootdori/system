@@ -69,7 +69,8 @@ function splitComments(text, baseDate) {
     last = { text: raw, afterBoundary, inBody };
   });
   push();
-  return out.map((c, i) => ({ ...c, order: i, body: c.body.join(' ').replace(/^첫댓글\s*/, '').trim() }));
+  return out.map((c, i) => ({ ...c, order: i, lines: c.body.map((l, k) => k ? l : l.replace(/^첫댓글\s*/, '')).filter(Boolean),
+    body: c.body.join(' ').replace(/^첫댓글\s*/, '').trim() }));
 }
 
 // 2) 머리 댓글 판별 · 구역 종류
@@ -102,6 +103,25 @@ export function suggest(name, members) {
   return hits.length === 1 ? hits[0].id : null;
 }
 
+// 3-1) 게스트 · 메모
+//   "게스트 +1" / "게스트 2명" → 댓글 쓴 사람이 게스트를 데려온다는 뜻 (그 사람의 중복 신청이 아님)
+//     → 게스트1, 게스트2 … 로 따로 추가하고 나머지 내용은 메모로 ("3점 (1쿼늦)" → "3점/1쿼늦참")
+//   회원 댓글의 늦참·조퇴 같은 내용도 메모로 ("참석 (1쿼늦)" → "1쿼늦참")
+export const GUEST_RE = /게스트\s*(?:\+\s*)?(\d+)?\s*(?:명|인)?/;
+const LATE_RE = /늦|지각|조퇴|일찍|먼저|쿼|도착|\d+\s*시/;
+export function memoFrom(lines, guest = false) {
+  const toks = [];
+  (lines || []).forEach((l) => {
+    const s = guest ? l.replace(GUEST_RE, ' ') : l;
+    s.split(/[()[\]/,|]+/).forEach((t) => {
+      const sym = /^[+\-~*.!·&]+|[+\-~*.!·&]+$/g;
+      t = t.trim().replace(sym, '').trim().replace(/^(참석|참가|참여|참)(합니다|할게요|이요|요)?(?=[\s+&]|$)/, '').trim().replace(sym, '').trim();
+      if (t) toks.push(/늦$/.test(t) ? t + '참' : t);
+    });
+  });
+  return (guest ? toks : toks.filter((t) => LATE_RE.test(t))).join('/').slice(0, 40);
+}
+
 // 4) 전체 해석 → 구역별 참석 의사 (같은 사람은 마지막 댓글 기준, 신청 시간은 첫 참석 댓글)
 export function parseCafeComments(text, members, { baseDate = new Date() } = {}) {
   const idx = buildAliasIndex(members);
@@ -112,7 +132,7 @@ export function parseCafeComments(text, members, { baseDate = new Date() } = {})
   const entries = [];
   let closed = false;
   comments.forEach((c) => {
-    if (c.author && !isHeader(c) && !/^(참|불|ㅊ|ㅂ)/.test(c.body.replace(/\s/g, ''))) {   // 운영진 공지 댓글
+    if (c.author && !isHeader(c) && !/^(참|불|ㅊ|ㅂ)/.test(c.body.replace(/\s/g, '')) && !GUEST_RE.test(c.body)) {   // 운영진 공지 댓글
       // 신청을 닫았다는 댓글만 "마감"으로 봄 (예: ————마감————, 신청 마감합니다). "목요일 0시 마감" 같은 안내는 제외
       const t = c.body.replace(/[\s\-—–_=~*·.!^]/g, '');
       if (/^(신청|참가|참석)?마감(합니다|되었습니다|됐습니다|완료|입니다|했습니다)?$/.test(t)) closed = true;
@@ -127,22 +147,41 @@ export function parseCafeComments(text, members, { baseDate = new Date() } = {})
     const b = c.body.replace(/\s/g, '');
     if (/^불|불참|못가|못갈|취소/.test(b)) kind = 'out';             // 팀 구역에 "불참"이라고 단 경우
     const tentative = kind === 'in' && /미정|아마|\?/.test(c.body);
+    const hostId = idx.get(norm(c.name)) || null;
+    const gm = c.body.match(GUEST_RE);
+    if (gm) {
+      // 게스트 데려오기 — 댓글 쓴 사람(host)과 따로, 게스트 수만큼 추가
+      const n = Math.min(10, Math.max(1, +(gm[1] || 1)));
+      const hk = hostId || norm(c.name) || 'x';
+      const mine = entries.filter((e) => e.guest && e.guest.hk === hk);
+      if (kind === 'out') { mine.slice(-n).forEach((e) => entries.splice(entries.indexOf(e), 1)); return; }   // "게스트 취소"
+      const memo = memoFrom(c.lines, true);
+      for (let k = 0; k < n; k++) {
+        if (sec) sec.count++;
+        entries.push({ nick: '게스트', at: c.at, order: c.order, body: c.body.slice(0, 60), section: sec?.title || '', kind, tentative,
+          memberId: null, memo, guest: { host: c.name, hostId, hk }, guestKey: `g_cg_${hk}_${mine.length + k + 1}` });
+      }
+      // "참석 + 게스트 1"처럼 본인 참석도 함께 쓴 경우만 본인도 신청
+      if (!ATTEND_WORD.test(b) || b.indexOf('게스트') === 0) return;
+    }
     if (sec) sec.count++;
     entries.push({
       nick: c.name, at: c.at, order: c.order, body: c.body.slice(0, 60),
       section: sec?.title || '', kind, tentative,
-      memberId: idx.get(norm(c.name)) || null,
+      memberId: hostId, memo: kind === 'out' ? '' : memoFrom(c.lines),
     });
   });
+  // 게스트 이름: 댓글 순서대로 게스트1, 게스트2 …
+  entries.filter((e) => e.guest).forEach((e, i) => { e.nick = '게스트' + (i + 1); });
 
   // 같은 사람 정리
   const final = new Map();
   entries.forEach((e) => {
-    const key = e.memberId || 'nick:' + norm(e.nick);
+    const key = e.guestKey ? 'guest:' + e.guestKey : e.memberId || 'nick:' + norm(e.nick);
     const prev = final.get(key);
     const firstIn = prev?.firstAt ?? (e.kind !== 'out' ? e.at : null);
-    final.set(key, { ...e, firstAt: e.kind !== 'out' ? (prev?.firstAt ?? e.at) : firstIn });
+    final.set(key, { ...e, memo: e.memo || (e.kind !== 'out' ? prev?.memo || '' : ''), firstAt: e.kind !== 'out' ? (prev?.firstAt ?? e.at) : firstIn });
   });
-  const rows = [...final.values()].map((e) => ({ ...e, suggestion: e.memberId ? null : suggest(e.nick, members) }));
+  const rows = [...final.values()].map((e) => ({ ...e, suggestion: e.memberId || e.guest ? null : suggest(e.nick, members) }));
   return { structured, sections, rows, closed, comments: comments.length };
 }

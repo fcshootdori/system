@@ -1,6 +1,7 @@
-import { esc } from './util.js?v=0.1.76';
-import { TEAM_COLORS, STATUS } from './config.js?v=0.1.76';
-import { teamColor, teamName } from './domain.js?v=0.1.76';
+import { esc } from './util.js?v=0.1.77';
+import { TEAM_COLORS, STATUS } from './config.js?v=0.1.77';
+import { teamColor, teamName } from './domain.js?v=0.1.77';
+import { memoOf, hostOf } from './state.js?v=0.1.77';
 
 // 입력칸에 바로 커서 — 버튼을 누른 그 순간에 맞춰야 휴대폰 키패드도 같이 올라옴
 export function focusNow(inp) {
@@ -8,6 +9,42 @@ export function focusNow(inp) {
   try { inp.focus({ preventScroll: true }); } catch { inp.focus(); }
   requestAnimationFrame(() => { if (document.activeElement !== inp && inp.isConnected) inp.focus(); });
 }
+
+// 이름 옆 ⓘ — 누르면 메모(실력·늦참 등)가 말풍선으로 보임. 버튼 안에도 넣을 수 있게 span
+export function memoI(id, md) {
+  const t = memoOf(id, md), h = hostOf(id, md);
+  if (!t && !h) return '';
+  return `<span class="memo-i" role="button" tabindex="0" data-memo="${esc(t)}" data-host="${esc(h)}" aria-label="메모 보기: ${esc([t, h && h + ' 님이 데려온 게스트'].filter(Boolean).join(' · '))}">i</span>`;
+}
+let tip = null;
+const hideTip = () => { tip?.remove(); tip = null; };
+function showTip(ic) {
+  hideTip();
+  const t = ic.dataset.memo, h = ic.dataset.host;
+  tip = document.createElement('div'); tip.className = 'memo-tip'; tip.setAttribute('role', 'tooltip');
+  tip.innerHTML = `${t ? `<b>${esc(t)}</b>` : ''}${h ? `<small>${esc(h)} 님이 데려온 게스트</small>` : ''}`;
+  document.body.appendChild(tip);
+  const r = ic.getBoundingClientRect(), w = tip.offsetWidth, hh = tip.offsetHeight;
+  const x = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+  const above = r.top - hh - 8 > 8;
+  tip.style.left = x + 'px'; tip.style.top = (above ? r.top - hh - 8 : r.bottom + 8) + 'px';
+  tip.style.setProperty('--ax', (r.left + r.width / 2 - x) + 'px'); tip.classList.add(above ? 'up' : 'down');
+}
+// 캡처 단계에서 먼저 받아서, 드래프트 선수 버튼 안의 ⓘ를 눌러도 선수가 골라지지 않게
+//  (잠긴 선수 버튼 안에서는 click이 안 올 수 있어서 pointerup으로 열고, click은 막기만)
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest?.('.memo-i')) hideTip(); }, true);
+document.addEventListener('pointerup', (e) => {
+  const ic = e.target.closest?.('.memo-i');
+  if (!ic) return;
+  if (tip && tip._for === ic) hideTip(); else { showTip(ic); tip._for = ic; }
+}, true);
+document.addEventListener('click', (e) => { if (e.target.closest?.('.memo-i')) { e.preventDefault(); e.stopPropagation(); } }, true);
+document.addEventListener('keydown', (e) => {
+  const ic = e.target.closest?.('.memo-i');
+  if (ic && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showTip(ic); tip._for = ic; }
+  else if (e.key === 'Escape') hideTip();
+});
+addEventListener('scroll', hideTip, true); addEventListener('hashchange', hideTip);
 
 export function modal(title, bodyHtml, { wide = false } = {}) {
   const wrap = document.createElement('div');

@@ -1,12 +1,12 @@
-import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.76';
-import { S, me, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.76';
-import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.76';
-import { db } from '../store.js?v=0.1.76';
-import { APP_NAME, APP_VERSION, DEFAULT_TEAM } from '../config.js?v=0.1.76';
-import { sheetApi, sheetKey, setSheetKey, okApiUrl, ping, readCheck, loadRecords, sheetState, pending, push, lastPush, archiveOn, archiveReady, cleanup, lastClean, ARCHIVE_DAYS } from '../record-sheet.js?v=0.1.76';
-import { esc, toast, fileToDataUrl, todayISO, fmtDate } from '../util.js?v=0.1.76';
-import { modal, empty } from '../ui.js?v=0.1.76';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.76';
+import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.77';
+import { S, me, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.77';
+import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.77';
+import { db } from '../store.js?v=0.1.77';
+import { APP_NAME, APP_VERSION, DEFAULT_TEAM } from '../config.js?v=0.1.77';
+import { sheetApi, sheetKey, setSheetKey, okApiUrl, ping, readCheck, loadRecords, sheetState, pending, push, lastPush, archiveOn, archiveReady, cleanup, lastClean, ARCHIVE_DAYS } from '../record-sheet.js?v=0.1.77';
+import { esc, toast, fileToDataUrl, todayISO, fmtDate } from '../util.js?v=0.1.77';
+import { modal, empty } from '../ui.js?v=0.1.77';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.77';
 
 export function render(root) { return settings(root); }
 

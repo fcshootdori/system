@@ -1,11 +1,12 @@
-import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.76';
-import { db } from '../store.js?v=0.1.76';
-import { TEAM_COLORS } from '../config.js?v=0.1.76';
-import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.76';
-import { TEAM_COLORS as TC } from '../config.js?v=0.1.76';
-import { modal } from '../ui.js?v=0.1.76';
-import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.76';
-import { empty, colorChip, teamLabel, teamChip } from '../ui.js?v=0.1.76';
+import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.77';
+import { db } from '../store.js?v=0.1.77';
+import { TEAM_COLORS } from '../config.js?v=0.1.77';
+import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.77';
+import { TEAM_COLORS as TC } from '../config.js?v=0.1.77';
+import { modal } from '../ui.js?v=0.1.77';
+import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.77';
+import { empty, colorChip, teamLabel, teamChip, memoI } from '../ui.js?v=0.1.77';
+import { memoOf } from '../state.js?v=0.1.77';
 
 let lastCtx = {};
 export function render(root, ctx = {}) {
@@ -60,7 +61,7 @@ function captainPicker(md) {
     </button>`).join('')}</div>
     <p class="muted small">팀 박스를 누른 뒤 아래 명단에서 주장을 눌러요. 기본 1명이고, 여러 명 고르면 공동 주장(첫 번째가 대표·팀 이름)이 돼요. 다시 누르면 빠져요.</p>
     ${list.length ? `<div class="name-grid cap-grid">${list.map((a) => { const t = teamOf(a.id);
-      return `<button class="name-btn ${t >= 0 ? `on t${t}` : ''}" data-cap="${a.id}">${t >= 0 ? `<b class="ctag">${LETTER(t)}</b> ` : ''}${esc(nameOf(a.id, md))}</button>`; }).join('')}</div>` : empty('확정된 참가자가 없어요.')}
+      return `<button class="name-btn ${t >= 0 ? `on t${t}` : ''}" data-cap="${a.id}">${t >= 0 ? `<b class="ctag">${LETTER(t)}</b> ` : ''}${esc(nameOf(a.id, md))}${memoI(a.id, md)}</button>`; }).join('')}</div>` : empty('확정된 참가자가 없어요.')}
     <button class="btn full" data-start ${ready ? '' : 'disabled'}>${ready ? '주장 확정 · 드래프트 시작' : `${capTeams.map((ids, i) => (ids.length ? '' : LETTER(i) + '팀')).filter(Boolean).join('·')} 주장을 골라 주세요`}</button>
   </section>`;
 }
@@ -235,9 +236,9 @@ function half(md, i, { ph, ds, myCap, final }) {
     const undo = !final && S.operator && last && last.id === id && last.team === i;
     const move = final && S.operator && md.status !== 'played';
     const nm = nameOf(id, md);
-    if (undo) return `<button class="jf mini vest undo ${nw ? 'new' : ''}" data-unpick data-pid="${id}" title="눌러서 선택 취소">${figHTML(nm, ' ✕', 4)}</button>`;
-    if (move) return `<button class="jf mini vest ${nw ? 'new' : ''}" data-swap="${i}:${id}" data-pid="${id}" title="눌러서 ${esc(teamLabel(md, (i + 1) % nTeams))}(으)로 옮기기">${figHTML(nm, '', 4)}</button>`;
-    return `<div class="jf mini vest ${nw ? 'new' : ''}" data-pid="${id}">${figHTML(nm, '', 4)}</div>`;
+    if (undo) return `<button class="jf mini vest undo ${nw ? 'new' : ''}" data-unpick data-pid="${id}" title="눌러서 선택 취소">${figHTML(nm, ' ✕', 4)}${memoI(id, md)}</button>`;
+    if (move) return `<button class="jf mini vest ${nw ? 'new' : ''}" data-swap="${i}:${id}" data-pid="${id}" title="눌러서 ${esc(teamLabel(md, (i + 1) % nTeams))}(으)로 옮기기">${figHTML(nm, '', 4)}${memoI(id, md)}</button>`;
+    return `<div class="jf mini vest ${nw ? 'new' : ''}" data-pid="${id}">${figHTML(nm, '', 4)}${memoI(id, md)}</div>`;
   };
   return `<div class="half h${i} ${turn ? 'turn' : ''} ${mine ? 'mine' : ''} ${col ? '' : 'nocolor'}" data-k="${i}" style="${col ? `--tc:${col.hex};--ti:${col.text}` : ''}">
     <div class="stk pfs-row">${others.map(player).join('')}${pend ? `<div class="jf mini vest pendstk" title="선택 중">${figHTML(nameOf(pend, md), '', 4)}</div>` : ''}</div>
@@ -313,13 +314,13 @@ function board(md, myCap) {
     ${pitch(md, { ph, ds, myCap, final: false })}
     ${ph === 'pick' ? `<section class="dpool"><div class="pool-hd">남은 선수 ${ds.remaining.length}명${canPick ? ' · 눌러서 고르기' : ''}</div>
       <div class="namegrid">${ds.remaining.map((id) => { const p = pend?.id === id;
-        return `<button class="jf pfb ${p ? 'pend vest' : ''}" ${p && pc ? `style="--tc:${pc.hex};--ti:${pc.text}"` : ''} data-pick="${id}" ${canPick ? '' : 'disabled'}>${figHTML(nameOf(id, md))}</button>`; }).join('')}</div>
+        return `<button class="jf pfb ${p ? 'pend vest' : ''}" ${p && pc ? `style="--tc:${pc.hex};--ti:${pc.text}"` : ''} data-pick="${id}" ${canPick ? '' : 'disabled'}>${figHTML(nameOf(id, md))}${memoI(id, md)}</button>`; }).join('')}</div>
     </section>` : ''}
   </div>
   ${pend && canPick ? `<div class="dpop-wrap"><div class="dpop" role="dialog" aria-modal="true" style="${pc ? `--tc:${pc.hex};--ti:${pc.text}` : ''}">
     <small>${esc(teamLabel(md, pend.team))} · ${ds.picks.length + 1}번째 지명</small>
     <span class="jf pfb vest dpop-j">${figHTML(nameOf(pend.id, md))}</span>
-    <b>${esc(nameOf(pend.id, md))}</b>
+    <b>${esc(nameOf(pend.id, md))}</b>${memoOf(pend.id, md) ? `<p class="dpop-memo">ⓘ ${esc(memoOf(pend.id, md))}</p>` : ''}
     <div class="dpop-btns"><button class="btn ghost" data-repick>다시 선택</button><button class="btn cta" data-confirm>선택 완료</button></div>
   </div></div>` : ''}`;
 }

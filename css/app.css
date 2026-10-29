@@ -1825,3 +1825,28 @@ body.gate .ver::before { background-image: var(--emb-w); opacity: .4; }
 @keyframes swL { from { transform: translateX(36px); opacity: .25; } }
 @keyframes swR { from { transform: translateX(-36px); opacity: .25; } }
 body { overflow-x: clip; }
+
+/* ── 0.1.77 신청 메모 ⓘ (실력·늦참) · 카페 게스트 ── */
+.memo-i { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; margin-left: 5px; border-radius: 50%; background: var(--navy, #171c61); color: #fff; font: italic 800 11px/1 Georgia, "Times New Roman", serif; vertical-align: 2px; cursor: pointer; flex: none; -webkit-tap-highlight-color: transparent; }
+.memo-i::after { content: ""; position: absolute; inset: -9px; }   /* 손가락으로 누르기 쉽게 */
+.memo-i { position: relative; }
+.memo-i:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.jf .memo-i { position: absolute; top: -2px; right: 2px; margin: 0; width: 18px; height: 18px; box-shadow: 0 0 0 2px #fff; z-index: 2; }
+.jf.mini .memo-i { width: 15px; height: 15px; font-size: 10px; top: -3px; right: 0; }
+.jf[disabled] .memo-i { pointer-events: auto; opacity: 1; }
+.memo-tip { position: fixed; z-index: 9999; max-width: min(260px, calc(100vw - 16px)); padding: 9px 12px; border-radius: 12px; background: var(--navy, #171c61); color: #fff; box-shadow: 0 10px 28px rgba(10,14,60,.35); display: grid; gap: 2px; animation: memoIn .14s ease-out; pointer-events: auto; }
+.memo-tip b { font-size: 14px; font-weight: 700; word-break: keep-all; }
+.memo-tip small { font-size: 12px; opacity: .78; }
+.memo-tip::after { content: ""; position: absolute; left: calc(var(--ax, 50%) - 6px); border: 6px solid transparent; }
+.memo-tip.up::after { top: 100%; border-top-color: var(--navy, #171c61); }
+.memo-tip.down::after { bottom: 100%; border-bottom-color: var(--navy, #171c61); }
+@keyframes memoIn { from { opacity: 0; transform: translateY(3px); } }
+@media (prefers-reduced-motion: reduce) { .memo-tip { animation: none; } }
+.dpop-memo { margin: 0; padding: 4px 10px; border-radius: 999px; background: #eef0fb; color: var(--navy, #171c61); font-size: 13px; font-weight: 700; }
+.parse .memo-in { margin-top: 4px; width: 100%; min-width: 0; padding: 4px 8px; font-size: 12.5px; border-radius: 8px; }
+.parse .host-t { color: var(--navy, #171c61); font-weight: 600; }
+.g-add { gap: 8px; align-items: flex-end; }
+.g-add label { flex: 1; min-width: 0; }
+.g-add label:last-child { flex: .8; }
+.apps .nm:has(.memo-i), .name-btn:has(.memo-i) { display: inline-flex; align-items: center; min-width: 0; }
+.apps .nm:has(.memo-i) { display: flex; }

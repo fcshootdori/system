@@ -1,7 +1,7 @@
 // 앱 전역 상태 — 저장소를 구독해 화면이 항상 최신 데이터를 보도록 함
-import { db } from './store.js?v=0.1.76';
-import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.76';
-import { byName } from './util.js?v=0.1.76';
+import { db } from './store.js?v=0.1.77';
+import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.77';
+import { byName } from './util.js?v=0.1.77';
 
 export const S = {
   team: { ...DEFAULT_TEAM },
@@ -100,8 +100,11 @@ export function nameOf(id, md) {
   const m = memberById(id);
   if (m) return m.name;
   const g = md?.guests?.[id];
-  return g ? `${g.name}(게)` : '(알 수 없음)';
+  return g ? (/^게스트/.test(g.name) ? g.name : `${g.name}(게)`) : '(알 수 없음)';
 }
+// 신청 메모 (카페 댓글의 실력·늦참 등) · 게스트를 데려온 회원
+export const memoOf = (id, md) => md?.apps?.[id]?.memo || md?.guests?.[id]?.memo || '';
+export const hostOf = (id, md) => { const g = md?.guests?.[id]; return g?.host ? (memberById(g.hostId)?.name || g.host) : ''; };
 // 진행 중인 경기일: 완료되지 않은 것 중 가장 이른 날짜, 없으면 가장 최근
 export function currentMatchday() {
   const live = S.matchdays.filter((m) => m.status !== 'played' && !m.cancelled).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
