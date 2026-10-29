@@ -3,36 +3,36 @@
 //   · 일반 회원: 홈 · 일정 · ⚽경기모드 · 경기결과 · 내 정보
 //   · 운영모드: 일정 · 경기 · 공지 · 회원 · 설정
 //   · 주장: 오른쪽 위 👑 드래프트 버튼으로 입장
-import { APP_NAME, APP_VERSION } from './config.js?v=0.1.79';
-import { initStore, db } from './store.js?v=0.1.79';
-import { initPullRefresh } from './ptr.js?v=0.1.79';
-import { startUpdateCheck } from './update.js?v=0.1.79';
-import { lockZoom } from './nozoom.js?v=0.1.79';
-import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.79';
-import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go, today } from './state.js?v=0.1.79';
-import { esc, toast } from './util.js?v=0.1.79';
-import { modal, fitBoxes, focusNow } from './ui.js?v=0.1.79';
-import { icon } from './icons.js?v=0.1.79';
+import { APP_NAME, APP_VERSION } from './config.js?v=0.1.80';
+import { initStore, db } from './store.js?v=0.1.80';
+import { initPullRefresh } from './ptr.js?v=0.1.80';
+import { startUpdateCheck } from './update.js?v=0.1.80';
+import { lockZoom } from './nozoom.js?v=0.1.80';
+import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.80';
+import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go, today } from './state.js?v=0.1.80';
+import { esc, toast } from './util.js?v=0.1.80';
+import { modal, fitBoxes, focusNow } from './ui.js?v=0.1.80';
+import { icon } from './icons.js?v=0.1.80';
 
-import * as home from './views/home.js?v=0.1.79';
-import * as schedule from './views/schedule.js?v=0.1.79';
-import * as matchmode from './views/matchmode.js?v=0.1.79';
-import * as results from './views/results.js?v=0.1.79';
-import * as myinfo from './views/me.js?v=0.1.79';
-import * as apply from './views/apply.js?v=0.1.79';
-import * as draft from './views/draft.js?v=0.1.79';
-import * as games from './views/games.js?v=0.1.79';
-import * as run from './views/run.js?v=0.1.79';
-import * as notice from './views/notice.js?v=0.1.79';
-import * as admin from './views/admin.js?v=0.1.79';
-import * as membersView from './views/members.js?v=0.1.79';
-import * as loginView from './views/login.js?v=0.1.79';
-import { loadSession, saveSession, verify } from './auth.js?v=0.1.79';
-import { startAutoSync } from './member-sync.js?v=0.1.79';
-import { startRecordSync } from './record-sheet.js?v=0.1.79';
-import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.79';
-import { applyEmblemMarks } from './emblem-mark.js?v=0.1.79';
-import { startSwipe, clearPageSwipe, slideIn } from './swipe.js?v=0.1.79';
+import * as home from './views/home.js?v=0.1.80';
+import * as schedule from './views/schedule.js?v=0.1.80';
+import * as matchmode from './views/matchmode.js?v=0.1.80';
+import * as results from './views/results.js?v=0.1.80';
+import * as myinfo from './views/me.js?v=0.1.80';
+import * as apply from './views/apply.js?v=0.1.80';
+import * as draft from './views/draft.js?v=0.1.80';
+import * as games from './views/games.js?v=0.1.80';
+import * as run from './views/run.js?v=0.1.80';
+import * as notice from './views/notice.js?v=0.1.80';
+import * as admin from './views/admin.js?v=0.1.80';
+import * as membersView from './views/members.js?v=0.1.80';
+import * as loginView from './views/login.js?v=0.1.80';
+import { loadSession, saveSession, verify } from './auth.js?v=0.1.80';
+import { startAutoSync } from './member-sync.js?v=0.1.80';
+import { startRecordSync } from './record-sheet.js?v=0.1.80';
+import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.80';
+import { applyEmblemMarks } from './emblem-mark.js?v=0.1.80';
+import { startSwipe, clearPageSwipe, slideIn } from './swipe.js?v=0.1.80';
 
 const MEMBER_TABS = [['home', '홈', 'home'], ['sched', '일정', 'calendar'], ['mm', '경기', 'ball'], ['results', '기록', 'board'], ['me', '내 정보', 'user']];
 const OP_TABS = [['plan', '일정', 'calendar'], ['run', '경기 운영', 'whistle'], ['notice', '공지', 'megaphone'], ['members', '회원', 'users'], ['settings', '설정', 'gear']];
@@ -67,6 +67,7 @@ function renderShell() {
       <span>${esc(S.team.name)}</span>${S.operator ? '<em class="op-tag">운영</em>' : ''}
     </a>
     <div class="top-actions">
+      <span class="top-ver" title="앱 버전">v${APP_VERSION}</span>
       ${capMd ? `<a class="pill cap" href="#/draft">${icon('crown')}<span>드래프트</span></a>` : ''}
       ${(inSandbox() ? sandboxRole() === 'op' : S.operator || opDevice()) ? `<button class="pill ${S.operator ? 'on' : 'ghost'}" data-op>${icon('whistle')}<span>${S.operator ? '운영 끄기' : '운영'}</span></button>` : ''}
     </div>`;

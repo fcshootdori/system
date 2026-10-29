@@ -1868,3 +1868,8 @@ body { overflow-x: clip; }
 .xtra-go { background: var(--tc, var(--navy)); color: var(--ti, #fff); border-radius: 12px; padding: 10px 10px; flex-direction: column; gap: 0; line-height: 1.25; font-size: 14.5px; box-shadow: 0 2px 6px rgba(0,0,0,.2), inset 0 0 0 2px rgba(255,255,255,.55); }
 .xtra-go small { font-weight: 600; opacity: .8; }
 .xtra-nm { color: #fff; font-size: 16px; }
+
+/* ── 0.1.80 오른쪽 위 버전 표시 ── */
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.top-ver { font: 600 10.5px/1 var(--font); letter-spacing: .01em; color: rgba(255,255,255,.62); font-variant-numeric: tabular-nums; white-space: nowrap; user-select: none; }
+@media (min-width: 1024px) and (hover: hover) { .top-ver { color: var(--sub); } }

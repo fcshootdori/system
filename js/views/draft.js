@@ -1,12 +1,12 @@
-import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.79';
-import { db } from '../store.js?v=0.1.79';
-import { TEAM_COLORS } from '../config.js?v=0.1.79';
-import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel, setTeamColor } from '../domain.js?v=0.1.79';
-import { TEAM_COLORS as TC } from '../config.js?v=0.1.79';
-import { modal } from '../ui.js?v=0.1.79';
-import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.79';
-import { empty, colorChip, teamLabel, teamChip, memoI } from '../ui.js?v=0.1.79';
-import { memoOf } from '../state.js?v=0.1.79';
+import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.80';
+import { db } from '../store.js?v=0.1.80';
+import { TEAM_COLORS } from '../config.js?v=0.1.80';
+import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel, setTeamColor } from '../domain.js?v=0.1.80';
+import { TEAM_COLORS as TC } from '../config.js?v=0.1.80';
+import { modal } from '../ui.js?v=0.1.80';
+import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.80';
+import { empty, colorChip, teamLabel, teamChip, memoI } from '../ui.js?v=0.1.80';
+import { memoOf } from '../state.js?v=0.1.80';
 
 let lastCtx = {};
 export function render(root, ctx = {}) {

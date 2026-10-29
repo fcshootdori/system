@@ -1,11 +1,11 @@
 // 라운드별 출전 현황 — 주장이 정한 라운드별 포지션으로 선수마다 맡은 자리 · 대기 · 출전 횟수
 //  · 경기 화면(포지션): 주장은 팀 전체 표, 그 밖에는 내 출전 현황 + [팀 전체 출전 현황 펼쳐 보기]
 //  · 경기 기록(경기 상세): 두 팀 표 — 팀 이름을 눌러 펼쳐 봄 (주장이 공개했거나 경기가 끝난 팀)
-import { S, nameOf } from './state.js?v=0.1.79';
-import { rosters, fmtOf, teamColor } from './domain.js?v=0.1.79';
-import { TEAM_COLORS } from './config.js?v=0.1.79';
-import { esc } from './util.js?v=0.1.79';
-import { teamLabel, colorChip } from './ui.js?v=0.1.79';
+import { S, nameOf } from './state.js?v=0.1.80';
+import { rosters, fmtOf, teamColor } from './domain.js?v=0.1.80';
+import { TEAM_COLORS } from './config.js?v=0.1.80';
+import { esc } from './util.js?v=0.1.80';
+import { teamLabel, colorChip } from './ui.js?v=0.1.80';
 
 export const POS = { GK: 'GK', LB: 'LB', RB: 'RB', LCB: 'CB', RCB: 'CB', CB: 'CB', LM: 'LM', RM: 'RM', LCM: 'CM', RCM: 'CM', CM: 'CM', LDM: 'DM', RDM: 'DM',
   LAM: 'LW', RAM: 'RW', CAM: 'AM', LW: 'LW', RW: 'RW', ST: 'ST', LS: 'ST', RS: 'ST', LWB: 'LWB', RWB: 'RWB' };
