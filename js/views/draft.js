@@ -1,12 +1,12 @@
-import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.78';
-import { db } from '../store.js?v=0.1.78';
-import { TEAM_COLORS } from '../config.js?v=0.1.78';
-import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel, setTeamColor } from '../domain.js?v=0.1.78';
-import { TEAM_COLORS as TC } from '../config.js?v=0.1.78';
-import { modal } from '../ui.js?v=0.1.78';
-import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.78';
-import { empty, colorChip, teamLabel, teamChip, memoI } from '../ui.js?v=0.1.78';
-import { memoOf } from '../state.js?v=0.1.78';
+import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.79';
+import { db } from '../store.js?v=0.1.79';
+import { TEAM_COLORS } from '../config.js?v=0.1.79';
+import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel, setTeamColor } from '../domain.js?v=0.1.79';
+import { TEAM_COLORS as TC } from '../config.js?v=0.1.79';
+import { modal } from '../ui.js?v=0.1.79';
+import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.79';
+import { empty, colorChip, teamLabel, teamChip, memoI } from '../ui.js?v=0.1.79';
+import { memoOf } from '../state.js?v=0.1.79';
 
 let lastCtx = {};
 export function render(root, ctx = {}) {
@@ -216,7 +216,7 @@ function capCard(md, i, { ph, ds, myCap }) {
         : `<span class="tn">${esc(teamLabel(md, i))}${col && md.teamNames?.[i] ? ` · ${col.label}` : ''}</span>`}
       <span class="cnt"><b>${ids.length}</b>명</span>
       ${mine ? '<span class="meb">내 팀</span>' : ''}
-      ${S.operator && md.status !== 'played' && ph !== 'color' && ph !== 'captains' ? `<button class="cc-recolor" data-recolor="${i}" title="팀 색 바꾸기" aria-label="${esc(teamLabel(md, i))} 팀 색 바꾸기"><i></i>색</button>` : ''}
+      ${S.operator && md.status !== 'played' && ph !== 'color' && ph !== 'captains' ? `<button class="cc-recolor" data-recolor="${i}" title="두 팀 색 서로 바꾸기" aria-label="두 팀 색 서로 바꾸기"><i></i>색 바꾸기</button>` : ''}
     </div>
     ${canColor ? `<div class="h-sw">${palette(md).map((c) => `<button class="csw ${caps[i]?.color === c.key ? 'on' : ''}" style="--c:${c.hex};--ct:${c.text}" data-color="${i}:${c.key}">${c.label}</button>`).join('')}</div>` : ''}
   </div>`;
@@ -343,6 +343,13 @@ function board(md, myCap) {
 // 팀 색 바꾸기 (운영진) — 다른 팀이 쓰던 색을 고르면 두 팀 색을 맞바꿔요
 function recolor(md, i) {
   const cur = teamColor(md, i);
+  // 2팀(블루·레드)이면 누르는 즉시 두 팀 색을 맞바꿈
+  if (rosters(md).length === 2) {
+    const other = teamColor(md, 1 - i);
+    if (!cur || !other || cur === other) return toast('팀 색이 아직 정해지지 않았어요');
+    return db.tx(mdPath(md.id), (x) => setTeamColor(x, i, other))
+      .then(() => toast(`팀 색을 바꿨어요 · ${teamLabel(md, i)} ${colorOf(other)?.label} · ${teamLabel(md, 1 - i)} ${colorOf(cur)?.label}`));
+  }
   const used = (k) => rosters(md).findIndex((_, j) => j !== i && teamColor(md, j) === k);
   const { el, close } = modal(`${teamLabel(md, i)} 팀 색 바꾸기`, `
     <div class="recolor-grid">${TEAM_COLORS.map((c) => { const u = used(c.key);

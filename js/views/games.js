@@ -1,12 +1,12 @@
-import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.78';
-import { db } from '../store.js?v=0.1.78';
-import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.78';
-import { TEAM_COLORS } from '../config.js?v=0.1.78';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.78';
-import { empty, teamChip, teamLabel } from '../ui.js?v=0.1.78';
-import { fmtSummary } from './home.js?v=0.1.78';
-import { momCard, bindMom } from './mom.js?v=0.1.78';
-import { statsCard } from '../lineup-stats.js?v=0.1.78';
+import { S, currentMatchday, matchdayById, mdPath, nameOf, me } from '../state.js?v=0.1.79';
+import { db } from '../store.js?v=0.1.79';
+import { rosters, dayStandings, fmtOf, totals, noLabel, teamColor } from '../domain.js?v=0.1.79';
+import { TEAM_COLORS } from '../config.js?v=0.1.79';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.79';
+import { empty, teamChip, teamLabel } from '../ui.js?v=0.1.79';
+import { fmtSummary } from './home.js?v=0.1.79';
+import { momCard, bindMom } from './mom.js?v=0.1.79';
+import { statsCard } from '../lineup-stats.js?v=0.1.79';
 
 export function render(root, ctx = {}) {
   const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || currentMatchday();
