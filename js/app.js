@@ -3,36 +3,36 @@
 //   · 일반 회원: 홈 · 일정 · ⚽경기모드 · 경기결과 · 내 정보
 //   · 운영모드: 일정 · 경기 · 공지 · 회원 · 설정
 //   · 주장: 오른쪽 위 👑 드래프트 버튼으로 입장
-import { APP_NAME, APP_VERSION } from './config.js?v=0.1.80';
-import { initStore, db } from './store.js?v=0.1.80';
-import { initPullRefresh } from './ptr.js?v=0.1.80';
-import { startUpdateCheck } from './update.js?v=0.1.80';
-import { lockZoom } from './nozoom.js?v=0.1.80';
-import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.80';
-import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go, today } from './state.js?v=0.1.80';
-import { esc, toast } from './util.js?v=0.1.80';
-import { modal, fitBoxes, focusNow } from './ui.js?v=0.1.80';
-import { icon } from './icons.js?v=0.1.80';
+import { APP_NAME, APP_VERSION } from './config.js?v=0.1.81';
+import { initStore, db } from './store.js?v=0.1.81';
+import { initPullRefresh } from './ptr.js?v=0.1.81';
+import { startUpdateCheck } from './update.js?v=0.1.81';
+import { lockZoom } from './nozoom.js?v=0.1.81';
+import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.81';
+import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go, today } from './state.js?v=0.1.81';
+import { esc, toast } from './util.js?v=0.1.81';
+import { modal, fitBoxes, focusNow } from './ui.js?v=0.1.81';
+import { icon } from './icons.js?v=0.1.81';
 
-import * as home from './views/home.js?v=0.1.80';
-import * as schedule from './views/schedule.js?v=0.1.80';
-import * as matchmode from './views/matchmode.js?v=0.1.80';
-import * as results from './views/results.js?v=0.1.80';
-import * as myinfo from './views/me.js?v=0.1.80';
-import * as apply from './views/apply.js?v=0.1.80';
-import * as draft from './views/draft.js?v=0.1.80';
-import * as games from './views/games.js?v=0.1.80';
-import * as run from './views/run.js?v=0.1.80';
-import * as notice from './views/notice.js?v=0.1.80';
-import * as admin from './views/admin.js?v=0.1.80';
-import * as membersView from './views/members.js?v=0.1.80';
-import * as loginView from './views/login.js?v=0.1.80';
-import { loadSession, saveSession, verify } from './auth.js?v=0.1.80';
-import { startAutoSync } from './member-sync.js?v=0.1.80';
-import { startRecordSync } from './record-sheet.js?v=0.1.80';
-import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.80';
-import { applyEmblemMarks } from './emblem-mark.js?v=0.1.80';
-import { startSwipe, clearPageSwipe, slideIn } from './swipe.js?v=0.1.80';
+import * as home from './views/home.js?v=0.1.81';
+import * as schedule from './views/schedule.js?v=0.1.81';
+import * as matchmode from './views/matchmode.js?v=0.1.81';
+import * as results from './views/results.js?v=0.1.81';
+import * as myinfo from './views/me.js?v=0.1.81';
+import * as apply from './views/apply.js?v=0.1.81';
+import * as draft from './views/draft.js?v=0.1.81';
+import * as games from './views/games.js?v=0.1.81';
+import * as run from './views/run.js?v=0.1.81';
+import * as notice from './views/notice.js?v=0.1.81';
+import * as admin from './views/admin.js?v=0.1.81';
+import * as membersView from './views/members.js?v=0.1.81';
+import * as loginView from './views/login.js?v=0.1.81';
+import { loadSession, saveSession, verify } from './auth.js?v=0.1.81';
+import { startAutoSync } from './member-sync.js?v=0.1.81';
+import { startRecordSync } from './record-sheet.js?v=0.1.81';
+import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.81';
+import { applyEmblemMarks } from './emblem-mark.js?v=0.1.81';
+import { startSwipe, clearPageSwipe, slideIn } from './swipe.js?v=0.1.81';
 
 const MEMBER_TABS = [['home', '홈', 'home'], ['sched', '일정', 'calendar'], ['mm', '경기', 'ball'], ['results', '기록', 'board'], ['me', '내 정보', 'user']];
 const OP_TABS = [['plan', '일정', 'calendar'], ['run', '경기 운영', 'whistle'], ['notice', '공지', 'megaphone'], ['members', '회원', 'users'], ['settings', '설정', 'gear']];

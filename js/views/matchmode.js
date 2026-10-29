@@ -2,17 +2,17 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.80';
-import { db, newId } from '../store.js?v=0.1.80';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.80';
-import { TEAM_COLORS } from '../config.js?v=0.1.80';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.80';
-import { icon } from '../icons.js?v=0.1.80';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.80';
-import { figHTML } from './draft.js?v=0.1.80';
-import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.80';
-import { statsTable, myStats } from '../lineup-stats.js?v=0.1.80';
-import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.80';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.81';
+import { db, newId } from '../store.js?v=0.1.81';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.81';
+import { TEAM_COLORS } from '../config.js?v=0.1.81';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.81';
+import { icon } from '../icons.js?v=0.1.81';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.81';
+import { figHTML } from './draft.js?v=0.1.81';
+import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.81';
+import { statsTable, myStats } from '../lineup-stats.js?v=0.1.81';
+import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.81';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -35,6 +35,27 @@ const hexOf = (md, i) => TEAM_COLORS.find((c) => c.key === teamColor(md, i)) || 
 const gamesOf = (md) => S.games.filter((g) => g.matchdayId === md.id).sort((a, b) => (a.round || 0) - (b.round || 0) || (a.order || 0) - (b.order || 0));
 const nRounds = (md) => Math.max(fmtOf(md).rounds, ...gamesOf(md).map((g) => g.round || 0));
 const lineupOf = (md, ti, r) => md.lineups?.[ti]?.[r] || null;
+// 라운드 심판: 주장이 그 라운드 대기 선수 중에서 주심 1 · 부심 2를 정함 (lineups[팀][라운드].ref = { m, a1, a2 })
+const REF_KEYS = [['m', '주심'], ['a1', '부심'], ['a2', '부심']];
+function refOf(md, ti, r) {
+  const lu = lineupOf(md, ti, r), ros = rosters(md)[ti] || [], placed = new Set(Object.values(lu?.s || {}));
+  const out = {};
+  REF_KEYS.forEach(([k]) => { const id = lu?.ref?.[k]; if (id && ros.includes(id) && !placed.has(id)) out[k] = id; });
+  return out;
+}
+const refRole = (ref, id) => (ref.m === id ? '주심' : ref.a1 === id || ref.a2 === id ? '부심' : '');
+// 두 팀 심판을 한 줄로 (공개된 팀만, 운영진은 모두)
+function refsLine(md, r, all) {
+  const main = [], asst = [];
+  [0, 1].forEach((ti) => {
+    if (!all && !md.lineupPub?.[ti] && md.status !== 'played') return;
+    const ref = refOf(md, ti, r), dot = `<i style="background:${hexOf(md, ti).hex}"></i>`;
+    if (ref.m) main.push(dot + esc(nameOf(ref.m, md)));
+    ['a1', 'a2'].forEach((k) => { if (ref[k]) asst.push(dot + esc(nameOf(ref[k], md))); });
+  });
+  if (!main.length && !asst.length) return '';
+  return `<p class="mm-refs"><span class="mm-refs-h">${icon('whistle', 'sm')}${r}라운드 심판</span>${main.length ? `<span><em>주심</em>${main.join(', ')}</span>` : ''}${asst.length ? `<span><em>부심</em>${asst.join(', ')}</span>` : ''}</p>`;
+}
 
 // 오늘(또는 다음) 경기 — 팀이 확정된 경기일
 export function liveMatchday() {
@@ -111,6 +132,7 @@ function goalsOf(md, g) {
 function roundCard(md, g) {
   const gl = goalsOf(md, g);
   return `<section class="card mm-round"><h2>${ui.round}라운드 ${g ? `<small>${g.done ? '종료' : '진행 중'}</small>` : '<small>시작 전</small>'}</h2>
+    ${refsLine(md, ui.round, false)}
     ${g ? `<div class="mm-rscore">${[0, 1].map((i) => `<div class="mm-side" style="--tc:${hexOf(md, i).hex}">
       <header>${teamChip(md, i)}<b class="n">${i ? g.sb : g.sa}</b></header>
       ${gl[i].length ? `<ul>${gl[i].map((x) => `<li>${icon('ball', 'sm')}${esc(nameOf(x.id, md))}${x.n > 1 ? ` <b>${x.n}</b>` : ''}${x.og ? ' <small class="muted">자책</small>' : ''}</li>`).join('')}</ul>` : '<p class="muted small">득점 없음</p>'}
@@ -155,6 +177,7 @@ function recorder(md, games, g) {
   const list = entries(md, g);
   return `<section class="card op mm-rec">
     <h2>${ui.round}라운드 기록 ${g.done ? '<small class="ok-t">종료</small>' : ''}</h2>
+    ${refsLine(md, ui.round, true)}
     <div class="seg rec-mode"><button type="button" data-ogm="0" class="${ui.ogMode ? '' : 'on'}">${icon('ball', 'sm')} 골</button><button type="button" data-ogm="1" class="${ui.ogMode ? 'on og' : ''}">자책골</button></div>
     <p class="tiny muted">${ui.ogMode ? '<b class="warn-t">자책골</b>: 자책골을 넣은 선수를 누르면 상대 팀 점수가 1점 올라가요. 한 번 기록하면 다시 골 기록으로 돌아와요.' : '골을 넣은 선수를 누르면 그 팀 점수가 1점 올라가요.'}</p>
     <div class="rec-grid ${ui.ogMode ? 'og' : ''}">${side(0)}${side(1)}</div>
@@ -206,6 +229,7 @@ function lineupCard(md, capOf, op) {
   const lu = edit || pub ? lineupOf(md, ti, R) : null;
   const placed = new Set(Object.values(lu?.s || {}));
   const bench = (ros[ti] || []).filter((id) => !placed.has(id));
+  const ref = edit || pub ? refOf(md, ti, R) : {};
   const { f } = slotsOf(lu);
   return `<section class="card mm-lineup">
     <h2>${icon('field')} 포지션 <small>${R}라운드</small></h2>
@@ -219,8 +243,12 @@ function lineupCard(md, capOf, op) {
       ? `<div class="lp-wait" role="status"><div><b>주장이 포지션 지정 중입니다</b><small>${esc(teamLabel(md, ti))} 주장이 확정하면 여기에 보여요</small></div></div>` : '')}
     <div class="lp-bench ${edit ? 'edit' : ''}" ${edit ? 'data-bench' : ''}>
       <div class="lp-bh"><b>${lu || edit ? '대기 · 교체' : '팀 명단 · 자리 정하기 전'}</b><small>${bench.length}명</small></div>
-      <div class="lp-bl">${bench.map((id) => `<span class="jf vest lp-j ${edit && ui.sel?.id === id ? 'sel' : ''}" style="--tc:${hexOf(md, ti).hex};--ti:${hexOf(md, ti).text}" ${edit ? `data-drag="${id}" data-from="bench"` : ''}>${figHTML(nameOf(id, md), '', 4)}</span>`).join('') || '<span class="muted small">모두 자리에 있어요</span>'}</div>
+      <div class="lp-bl">${bench.map((id) => `<span class="jf vest lp-j ${edit && ui.sel?.id === id ? 'sel' : ''}" style="--tc:${hexOf(md, ti).hex};--ti:${hexOf(md, ti).text}" ${edit ? `data-drag="${id}" data-from="bench"` : ''}>${figHTML(nameOf(id, md), '', 4)}${refRole(ref, id) ? `<em class="lp-reft ${ref.m === id ? 'm' : ''}">${refRole(ref, id)}</em>` : ''}</span>`).join('') || '<span class="muted small">모두 자리에 있어요</span>'}</div>
     </div>
+    ${edit ? `<div class="lp-ref">
+      <div class="lp-ref-h"><b>${icon('whistle', 'sm')} ${R}라운드 심판</b><small>대기 선수 중에서 골라요</small></div>
+      <div class="lp-ref-sel">${REF_KEYS.map(([k, l]) => `<label class="${k === 'm' ? 'm' : ''}"><span>${l}</span><select data-ref="${k}" aria-label="${R}라운드 ${l}"><option value="">없음</option>${bench.map((id) => `<option value="${id}" ${ref[k] === id ? 'selected' : ''}>${esc(nameOf(id, md))}</option>`).join('')}</select></label>`).join('')}</div>
+    </div>` : pub && Object.keys(ref).length ? `<p class="lp-refline">${icon('whistle', 'sm')} <b>${R}라운드 심판</b> ${REF_KEYS.filter(([k]) => ref[k]).map(([k, l]) => `<span><em>${l}</em>${esc(nameOf(ref[k], md))}</span>`).join('')}</p>` : ''}
     ${edit ? `<div class="row wrap lp-act">
       ${R > 1 ? `<button type="button" class="btn ghost sm" data-copyprev>${icon('copy', 'sm')} ${R - 1}라운드 그대로</button>` : ''}
       <button type="button" class="btn ghost sm" data-copyall>${icon('copy', 'sm')} 모든 라운드에 적용</button>
@@ -239,7 +267,7 @@ function saveLineup(md, ti, rounds, fn) {
   return db.tx(mdPath(md.id), (cur) => {
     cur.lineups = cur.lineups || {};
     const t = (cur.lineups[ti] = cur.lineups[ti] || {});
-    rounds.forEach((r) => { const prev = t[r] ? { f: t[r].f || DEF_FORM, s: { ...(t[r].s || {}) } } : { f: DEF_FORM, s: {} }; const nx = fn(prev, r); if (nx) t[r] = nx; else delete t[r]; });
+    rounds.forEach((r) => { const prev = t[r] ? { f: t[r].f || DEF_FORM, s: { ...(t[r].s || {}) }, ...(t[r].ref ? { ref: { ...t[r].ref } } : {}) } : { f: DEF_FORM, s: {} }; const nx = fn(prev, r); if (nx) t[r] = nx; else delete t[r]; });
     return cur;
   }).catch((e) => toast('저장하지 못했어요: ' + (e.message || e)));
 }
@@ -253,6 +281,7 @@ function place(md, id, from, to) {
     const occ = s[to];
     Object.keys(s).forEach((k) => { if (s[k] === id) delete s[k]; });
     s[to] = id;
+    if (lu.ref) Object.keys(lu.ref).forEach((k) => { if (lu.ref[k] === id) delete lu.ref[k]; });   // 심판이던 선수를 자리에 넣으면 심판에서 빠짐
     if (occ && occ !== id && from !== 'bench') s[from] = occ;   // 자리끼리 맞바꿈 (대기 선수가 들어오면 원래 선수는 대기로)
     return lu;
   });
@@ -324,10 +353,20 @@ function bind(root, md, ctx) {
     });
   }));
   q('[data-copyprev]')?.addEventListener('click', () => { const prev = lineupOf(md, ti, ui.round - 1); if (!prev) return toast(`${ui.round - 1}라운드 포지션이 없어요`);
-    saveLineup(md, ti, [ui.round], () => ({ f: prev.f, s: { ...prev.s } })).then(() => toast(`${ui.round - 1}라운드 포지션을 가져왔어요`)); });
+    saveLineup(md, ti, [ui.round], () => ({ f: prev.f, s: { ...prev.s }, ...(prev.ref ? { ref: { ...prev.ref } } : {}) })).then(() => toast(`${ui.round - 1}라운드 포지션을 가져왔어요`)); });
   q('[data-copyall]')?.addEventListener('click', () => { const cur = lineupOf(md, ti, ui.round); if (!cur) return toast('먼저 이 라운드 포지션을 정해 주세요');
     if (!confirm(`${ui.round}라운드 포지션을 모든 라운드에 똑같이 넣을까요?`)) return;
-    saveLineup(md, ti, [...Array(nRounds(md))].map((_, k) => k + 1), () => ({ f: cur.f, s: { ...cur.s } })).then(() => toast('모든 라운드에 적용했어요')); });
+    saveLineup(md, ti, [...Array(nRounds(md))].map((_, k) => k + 1), () => ({ f: cur.f, s: { ...cur.s }, ...(cur.ref ? { ref: { ...cur.ref } } : {}) })).then(() => toast('모든 라운드에 적용했어요')); });
+  root.querySelectorAll('[data-ref]').forEach((sel) => sel.addEventListener('change', () => {
+    const k = sel.dataset.ref, v = sel.value;
+    saveLineup(md, ti, [ui.round], (lu) => {
+      const ref = { ...(lu.ref || {}) };
+      if (v) Object.keys(ref).forEach((x) => { if (ref[x] === v) delete ref[x]; });   // 한 사람은 한 역할만
+      if (v) ref[k] = v; else delete ref[k];
+      lu.ref = ref; if (!Object.keys(ref).length) delete lu.ref;
+      return lu;
+    });
+  }));
   q('[data-clear]')?.addEventListener('click', () => saveLineup(md, ti, [ui.round], () => null));
   q('[data-lpimg]')?.addEventListener('click', async (e) => {
     const b = e.currentTarget; b.disabled = true;
@@ -336,7 +375,7 @@ function bind(root, md, ctx) {
       const slots = list.map(([k, x, y]) => { const id = s[k] && ros.includes(s[k]) ? s[k] : null; return { x, y, pos: POS[k] || k, name: id ? nameOf(id, md) : '', gk: k === 'GK' }; });
       const placed = new Set(Object.values(s));
       const c = await renderLineupImage({ team: S.team, md, footer: '',   // 맨 아래는 로고만
-        lineup: { teamLabel: teamLabel(md, ti), hex: hx.hex, text: hx.text, round: R, form: f, slots, bench: ros.filter((id) => !placed.has(id)).map((id) => nameOf(id, md)),
+        lineup: { teamLabel: teamLabel(md, ti), hex: hx.hex, text: hx.text, round: R, form: f, slots, bench: ros.filter((id) => !placed.has(id)).map((id) => { const rr = refRole(refOf(md, ti, R), id); return nameOf(id, md) + (rr ? ` (${rr})` : ''); }),
           captain: captainIds(md, ti).map((id) => nameOf(id, md)).join(' · ') },
         stats: null });   // 이미지에는 포지션 + 대기자만 (출전 현황은 앱에서만)
       const name = `슛도리_${md.date}_${teamLabel(md, ti)}_${R}R_포지션.png`;

@@ -1873,3 +1873,22 @@ body { overflow-x: clip; }
 .top-actions { display: flex; align-items: center; gap: 8px; }
 .top-ver { font: 600 10.5px/1 var(--font); letter-spacing: .01em; color: rgba(255,255,255,.62); font-variant-numeric: tabular-nums; white-space: nowrap; user-select: none; }
 @media (min-width: 1024px) and (hover: hover) { .top-ver { color: var(--sub); } }
+
+/* ── 0.1.81 라운드 심판 (주심 · 부심) ── */
+.lp-ref { margin-top: 10px; padding: 10px 12px 12px; border-radius: var(--r-sm, 12px); background: var(--soft, #f3f4f8); border: 1px solid var(--line); }
+.lp-ref-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.lp-ref-h b { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; }
+.lp-ref-h small { color: var(--sub); font-size: 11.5px; }
+.lp-ref-sel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.lp-ref-sel label { display: grid; gap: 3px; min-width: 0; }
+.lp-ref-sel label span { font-size: 11.5px; font-weight: 700; color: var(--sub); }
+.lp-ref-sel label.m span { color: var(--ink); }
+.lp-ref-sel select { width: 100%; min-width: 0; padding: 7px 6px; font-size: 13.5px; border-radius: 10px; }
+.lp-reft { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); padding: 1px 6px; border-radius: 999px; background: #fff; color: var(--ink); border: 1px solid var(--line); font: 800 10px/1.4 var(--font); font-style: normal; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.15); z-index: 2; }
+.lp-reft.m { background: #facc15; border-color: #e0a800; color: #3d2c00; }
+.lp-refline, .mm-refs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 8px 0 0; font-size: 13px; }
+.lp-refline > b { font-size: 13px; }
+.lp-refline em, .mm-refs em { font-style: normal; font-weight: 800; font-size: 11px; color: var(--sub); margin-right: 4px; }
+.mm-refs { margin: -2px 0 10px; padding: 7px 10px; border-radius: 10px; background: var(--soft, #f3f4f8); }
+.mm-refs-h { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; }
+.mm-refs span i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 0 3px 1px 0; vertical-align: middle; }
