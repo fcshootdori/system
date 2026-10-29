@@ -2,17 +2,17 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.83';
-import { db, newId } from '../store.js?v=0.1.83';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.83';
-import { TEAM_COLORS } from '../config.js?v=0.1.83';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.83';
-import { icon } from '../icons.js?v=0.1.83';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.83';
-import { figHTML } from './draft.js?v=0.1.83';
-import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.83';
-import { statsTable, myStats } from '../lineup-stats.js?v=0.1.83';
-import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.83';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.84';
+import { db, newId } from '../store.js?v=0.1.84';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.84';
+import { TEAM_COLORS } from '../config.js?v=0.1.84';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.84';
+import { icon } from '../icons.js?v=0.1.84';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.84';
+import { figHTML } from './draft.js?v=0.1.84';
+import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.84';
+import { statsTable, myStats } from '../lineup-stats.js?v=0.1.84';
+import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.84';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -107,6 +107,7 @@ export function render(root, ctx = {}) {
   const g = games.find((x) => x.round === ui.round);
 
   root.innerHTML = `
+    <div class="mm-top ${ctx.embedded ? 'emb' : ''}">
     <section class="mm-hero ${ctx.embedded ? 'emb' : ''}">
       ${ctx.embedded ? '' : `<div class="mm-hh"><span class="mm-tag ${played ? 'end' : ''}">${played ? '경기 종료' : '<i></i>LIVE'}</span>
         <h1>${noLabel(md) ? noLabel(md) + ' · ' : ''}${fmtDate(md.date)}</h1>${md.time || md.venue ? `<small>${esc([md.time, md.venue].filter(Boolean).join(' · '))}</small>` : ''}</div>`}
@@ -118,6 +119,7 @@ export function render(root, ctx = {}) {
     <nav class="mm-rounds" aria-label="라운드">${[...Array(R)].map((_, k) => { const r = k + 1, x = games.find((q) => q.round === r);
       return `<button type="button" data-round="${r}" class="${r === ui.round ? 'on' : ''} ${x?.done ? 'done' : x && x === liveG ? 'live' : ''}">
         <span>${r}R${x && x === liveG && !x.done ? ' 진행' : ''}</span><b>${x && (x.done || x.sa || x.sb) ? `<em style="--sc:${inkOf(md, x.a ?? 0)}">${x.sa}</em><i>:</i><em style="--sc:${inkOf(md, x.b ?? 1)}">${x.sb}</em>` : x === liveG && x ? '0<i>:</i>0' : '–'}</b></button>`; }).join('')}</nav>
+    </div>
     ${op ? `<div class="seg mm-tabs" role="tablist" aria-label="기록 · 포지션">${[['rec', 'ball', '기록'], ['pos', 'field', '포지션']].map(([k, ic, l]) =>
       `<button type="button" role="tab" aria-selected="${ui.tab === k}" data-mmtab="${k}" class="${ui.tab === k ? 'on' : ''}">${icon(ic, 'sm')}${l}</button>`).join('')}</div>` : ''}
     ${op ? (ui.tab === 'pos' ? lineupCard(md, capOf, op) : recorder(md, games, g)) : roundCard(md, g)}
@@ -125,6 +127,8 @@ export function render(root, ctx = {}) {
     ${!op && !played ? scorersCard(md, games) : ''}
     ${!ctx.embedded && !S.operator && localStorage.getItem('teamapp:opdev') === '1' ? '<p class="muted small center">운영진은 운영모드 › 경기 운영 › 경기 단계에서 점수를 기록해요.</p>' : ''}`;
   bind(root, md, ctx);
+  if (stickKey !== md.id + ':' + !!ctx.embedded) { stickKey = md.id + ':' + !!ctx.embedded; stickNat = null; }
+  updateStuck();
   // 좌우로 넘기면 라운드 이동 (첫·마지막 라운드에서는 그대로)
   onPageSwipe((dir) => {
     const nr = ui.round + dir;
@@ -134,6 +138,32 @@ export function render(root, ctx = {}) {
     return true;
   });
 }
+
+// ── 스코어보드 + 라운드 고정 ──
+//  스크롤을 내려도 위쪽에 붙어 있고, 붙으면 스코어보드를 작게 줄임 (아래 내용이 튀지 않게 줄어든 만큼 아래 여백으로 채움)
+let stickNat = null, stickKey = '';
+function stickyTop() {
+  const tb = document.getElementById('topbar');
+  if (!tb || getComputedStyle(tb).position !== 'sticky' || tb.hidden) return 0;
+  return Math.max(0, Math.round(tb.getBoundingClientRect().bottom));
+}
+function updateStuck() {
+  const el = document.querySelector('.mm-top'); if (!el) return;
+  const st = stickyTop(); el.style.top = st + 'px';
+  const on = el.classList.contains('stuck');
+  if (!on) { const r = el.getBoundingClientRect(); if (r.top > st + 1 || stickNat == null) stickNat = r.top + scrollY; }
+  const room = document.documentElement.scrollHeight - innerHeight > 220;   // 스크롤할 내용이 거의 없으면 줄이지 않음
+  const want = scrollY + st > stickNat + 6 && (on || room);
+  if (want && !on) {
+    const mb = parseFloat(getComputedStyle(el).marginBottom) || 0, h0 = el.offsetHeight;
+    el.classList.add('stuck');
+    el.style.marginBottom = mb + Math.max(0, h0 - el.offsetHeight) + 'px';
+  } else if (!want && on) { el.classList.remove('stuck'); el.style.marginBottom = ''; }
+}
+let stickRaf = 0;
+const onStickScroll = () => { if (!stickRaf) stickRaf = requestAnimationFrame(() => { stickRaf = 0; updateStuck(); }); };
+addEventListener('scroll', onStickScroll, { passive: true });
+addEventListener('resize', () => { const el = document.querySelector('.mm-top'); if (el && !el.classList.contains('stuck')) stickNat = null; onStickScroll(); });
 
 // ── 라운드 득점 (회원 보기) ──
 function goalsOf(md, g) {

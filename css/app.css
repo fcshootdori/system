@@ -1905,3 +1905,28 @@ body { overflow-x: clip; }
 .apps .nm:has(.g-edit) { display: flex; align-items: center; min-width: 0; }
 .apps .nm:has(.g-edit) { flex-wrap: wrap; gap: 3px 4px; }
 .apps .nm:has(.g-edit) .memo-i, .apps .nm .g-edit { margin-left: 0; }
+
+/* ── 0.1.84 경기 화면: 스코어보드 + 라운드 고정 (스크롤하면 작게) ── */
+.mm-top { position: sticky; top: 56px; z-index: 13; display: flex; flex-direction: column; gap: 12px; margin: -14px -16px 0; padding-bottom: 10px; background: var(--bg); }
+.mm-top > .mm-hero { margin: 0; }
+.mm-top:not(.emb) > .mm-rounds { margin: 0 16px; }
+.mm-top.emb { margin: 0 0 12px; padding: 0 0 10px; }
+.mm-top.stuck { box-shadow: 0 10px 14px -12px rgba(11,16,51,.45); }
+.mm-top.stuck .mm-hh { display: none; }
+.mm-top.stuck .mm-hero { padding-top: 8px; padding-bottom: 8px; }
+.mm-top.stuck .mm-hero::before { display: none; }
+.mm-top.stuck .mm-split { height: 58px; border-radius: 14px; }
+.mm-top.stuck .mm-t { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; padding: 0 44px 0 14px; }
+.mm-top.stuck .mm-t.b { flex-direction: row-reverse; padding: 0 14px 0 44px; }
+.mm-top.stuck .mm-t span { font-size: 13px; max-width: none; flex: 1; min-width: 0; }
+.mm-top.stuck .mm-t b { font-size: 34px; line-height: 1; }
+.mm-top.stuck .mm-mid { width: 46px; height: 46px; margin: -23px 0 0 -23px; }
+.mm-top.stuck .mm-mid b { font-size: 13px; }
+.mm-top.stuck .mm-mid small { font-size: 8.5px; }
+.mm-top.stuck .mm-rounds button { height: 40px; }
+.mm-top.stuck .mm-rounds b { font-size: 13px; }
+@media (min-width: 1024px) and (hover: hover) {
+  .mm-top { margin: 0; padding-top: 6px; }
+  .mm-top:not(.emb) > .mm-rounds { margin: 0; }
+  .mm-top.emb { padding-top: 6px; }
+}
