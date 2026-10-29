@@ -1,7 +1,7 @@
 // 앱 전역 상태 — 저장소를 구독해 화면이 항상 최신 데이터를 보도록 함
-import { db } from './store.js?v=0.1.77';
-import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.77';
-import { byName } from './util.js?v=0.1.77';
+import { db } from './store.js?v=0.1.78';
+import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.78';
+import { byName } from './util.js?v=0.1.78';
 
 export const S = {
   team: { ...DEFAULT_TEAM },

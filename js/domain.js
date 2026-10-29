@@ -1,7 +1,7 @@
 // 경기 운영 규칙 — 경기 방식, 신청 순서, 드래프트 순번, 대진, 결과, 개인 기록
 //  승률계산기 시트와 같은 규칙: 승률 = 승 ÷ (승+패), 승점 = 승×3 + 무
-import { S, memberById, matchdayById } from './state.js?v=0.1.77';
-import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.77';
+import { S, memberById, matchdayById } from './state.js?v=0.1.78';
+import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.78';
 
 // ── 경기 방식: 팀 기본값 + 경기일별 변경값 ──
 export function fmtOf(md) {
@@ -81,8 +81,10 @@ export function draftState(md) {
   const remaining = pool.filter((id) => !picked.has(id));
   const order = md.order?.length === n ? md.order : [...Array(n).keys()];
   const seq = pickSequence(n, pool.length, fmtOf(md).draft).map((p) => order[p]);
-  const turn = remaining.length && n ? seq[picks.length] : null;
-  return { n, pool, picks, remaining, seq, order, turn, done: n > 0 && remaining.length === 0 };
+  // 신청 인원이 팀 수로 나눠떨어지지 않으면 마지막에 남은 선수는 주장 차례가 아니라 운영진이 넣을 팀을 정함
+  const extra = n > 1 && remaining.length > 0 && remaining.length === pool.length % n;
+  const turn = remaining.length && n && !extra ? seq[picks.length] : null;
+  return { n, pool, picks, remaining, seq, order, turn, extra, done: n > 0 && remaining.length === 0 };
 }
 // 드래프트 단계: 주장 → 팀 색 선택 → 우선순위 추첨 → 선수 선택 → (모두 배치) → 팀 확정
 export function draftPhase(md) {
@@ -106,6 +108,22 @@ export function teamColor(md, i) {
   const f = fmtOf(md);
   if (f.teamMode === 'fixed') return f.fixedColors?.[i] || null;
   return md?.captains?.[i]?.color || null;
+}
+
+// 팀 색 바꾸기 — 그 색을 쓰던 다른 팀과는 색을 맞바꿈 (팀 확정 전·후, 이벤트 팀 모두)
+export function setTeamColor(cur, i, key) {
+  const n = Math.max(cur.teams?.length || 0, cur.captains?.length || 0, eventTeams(cur)?.length || 0);
+  const old = teamColor(cur, i);
+  const j = [...Array(n).keys()].find((k) => k !== i && teamColor(cur, k) === key);
+  const put = (k, c) => {
+    if (cur.teams?.[k]) cur.teams[k].color = c;
+    if (cur.captains?.[k]) cur.captains[k].color = c;
+    if (cur.event && cur.eventTeams?.[k]) cur.eventTeams[k].color = c;
+    if (cur.teamColors || fmtOf(cur).teamMode === 'fixed') { cur.teamColors = [...Array(n).keys()].map((x) => cur.teamColors?.[x] ?? teamColor(cur, x)); cur.teamColors[k] = c; }
+  };
+  put(i, key);
+  if (j != null && old) put(j, old);
+  return cur;
 }
 
 // ── 대진 (원형 방식, 홀수 팀은 쉬는 팀 포함) ──

@@ -1,12 +1,12 @@
-import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.77';
-import { db } from '../store.js?v=0.1.77';
-import { TEAM_COLORS } from '../config.js?v=0.1.77';
-import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel } from '../domain.js?v=0.1.77';
-import { TEAM_COLORS as TC } from '../config.js?v=0.1.77';
-import { modal } from '../ui.js?v=0.1.77';
-import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.77';
-import { empty, colorChip, teamLabel, teamChip, memoI } from '../ui.js?v=0.1.77';
-import { memoOf } from '../state.js?v=0.1.77';
+import { S, nextMatchday, matchdayById, captainMatchday, mdPath, nameOf, me } from '../state.js?v=0.1.78';
+import { db } from '../store.js?v=0.1.78';
+import { TEAM_COLORS } from '../config.js?v=0.1.78';
+import { confirmed, draftState, draftPhase, rosters, fmtOf, teamColor, appGroups, defaultSectionColors, capEvent, teamEvent, captainOf, captainIds, evCaps, closeTime, closePassed, closeLabel, setTeamColor } from '../domain.js?v=0.1.78';
+import { TEAM_COLORS as TC } from '../config.js?v=0.1.78';
+import { modal } from '../ui.js?v=0.1.78';
+import { esc, fmtDate, toast, randomToken, shuffle, copyText } from '../util.js?v=0.1.78';
+import { empty, colorChip, teamLabel, teamChip, memoI } from '../ui.js?v=0.1.78';
+import { memoOf } from '../state.js?v=0.1.78';
 
 let lastCtx = {};
 export function render(root, ctx = {}) {
@@ -216,6 +216,7 @@ function capCard(md, i, { ph, ds, myCap }) {
         : `<span class="tn">${esc(teamLabel(md, i))}${col && md.teamNames?.[i] ? ` · ${col.label}` : ''}</span>`}
       <span class="cnt"><b>${ids.length}</b>명</span>
       ${mine ? '<span class="meb">내 팀</span>' : ''}
+      ${S.operator && md.status !== 'played' && ph !== 'color' && ph !== 'captains' ? `<button class="cc-recolor" data-recolor="${i}" title="팀 색 바꾸기" aria-label="${esc(teamLabel(md, i))} 팀 색 바꾸기"><i></i>색</button>` : ''}
     </div>
     ${canColor ? `<div class="h-sw">${palette(md).map((c) => `<button class="csw ${caps[i]?.color === c.key ? 'on' : ''}" style="--c:${c.hex};--ct:${c.text}" data-color="${i}:${c.key}">${c.label}</button>`).join('')}</div>` : ''}
   </div>`;
@@ -285,6 +286,8 @@ function panel(md, ph, ds, myCap) {
           return `<button class="ocard back" data-draw="${ci}" ${mine || S.operator ? '' : 'disabled'} aria-label="${ci + 1}번째 카드"><span>SD</span></button>`; }).join('')}</div>
         ${S.operator ? `<div class="row center small">${caps.map((_, i) => g.picks?.[i] == null ? `<button class="btn ghost sm" data-drawfor="${i}">${nm(i)} 대신 뽑기</button>` : '').join('')}</div>` : ''}`}`;
   }
+  if (ph === 'pick' && ds.extra) return `<b>마지막 남은 선수 ${ds.remaining.length}명 · ${S.operator ? '넣을 팀을 골라 주세요' : '운영진이 넣을 팀을 정해요'}</b>
+    <p>신청 인원이 ${ds.n === 2 ? '홀수' : `${ds.n}팀으로 나눠떨어지지 않아`}라 ${S.operator ? '아래에서 원하는 팀에 넣어요' : '남은 선수는 운영진이 배정해요'}</p>`;
   if (ph === 'pick') {
     const i = ds.picks.length, tot = ds.pool.length, k = ds.turn;
     const from = Math.max(0, i - 3), to = Math.min(tot, from + 12);
@@ -296,6 +299,19 @@ function panel(md, ph, ds, myCap) {
   if (ph === 'allin') return `<b>🏁 모든 선수 배치 완료 · ${S.operator ? '팀을 확정해 주세요' : '운영진이 팀을 확정해요'}</b>
     ${S.operator ? '<button class="btn cta sm" data-final>✅ 팀 확정</button>' : ''}`;
   return '';
+}
+
+// 홀수로 남은 마지막 선수: 운영진이 팀 버튼으로 바로 넣기
+function extraPool(md, ds) {
+  const n = rosters(md).length;
+  return `<section class="dpool xtra"><div class="pool-hd">마지막 남은 선수 ${ds.remaining.length}명${S.operator ? ' · 넣을 팀을 눌러요' : ' · 운영진이 정해요'}</div>
+    ${ds.remaining.map((id) => `<div class="xtra-row">
+      <span class="jf pfb">${figHTML(nameOf(id, md))}${memoI(id, md)}</span>
+      ${S.operator ? `<div class="xtra-btns">${Array.from({ length: n }, (_, i) => { const c = colorOf(teamColor(md, i));
+        return `<button class="btn xtra-go" data-extra="${id}|${i}" style="${c ? `--tc:${c.hex};--ti:${c.text}` : ''}">${esc(teamLabel(md, i))}에 넣기 <small>${(rosters(md)[i] || []).length}명</small></button>`; }).join('')}</div>`
+        : `<b class="xtra-nm">${esc(nameOf(id, md))}</b>`}
+    </div>`).join('')}
+  </section>`;
 }
 
 function board(md, myCap) {
@@ -312,7 +328,7 @@ function board(md, myCap) {
     <section class="dhead">${stepper2(ph)}${S.operator ? '<button class="dh-op" data-opmenu aria-label="운영 메뉴">⚙ 운영</button>' : ''}
       <div class="dh-body">${panel(md, ph, ds, myCap)}</div></section>
     ${pitch(md, { ph, ds, myCap, final: false })}
-    ${ph === 'pick' ? `<section class="dpool"><div class="pool-hd">남은 선수 ${ds.remaining.length}명${canPick ? ' · 눌러서 고르기' : ''}</div>
+    ${ph === 'pick' && ds.extra ? extraPool(md, ds) : ph === 'pick' ? `<section class="dpool"><div class="pool-hd">남은 선수 ${ds.remaining.length}명${canPick ? ' · 눌러서 고르기' : ''}</div>
       <div class="namegrid">${ds.remaining.map((id) => { const p = pend?.id === id;
         return `<button class="jf pfb ${p ? 'pend vest' : ''}" ${p && pc ? `style="--tc:${pc.hex};--ti:${pc.text}"` : ''} data-pick="${id}" ${canPick ? '' : 'disabled'}>${figHTML(nameOf(id, md))}${memoI(id, md)}</button>`; }).join('')}</div>
     </section>` : ''}
@@ -323,6 +339,21 @@ function board(md, myCap) {
     <b>${esc(nameOf(pend.id, md))}</b>${memoOf(pend.id, md) ? `<p class="dpop-memo">ⓘ ${esc(memoOf(pend.id, md))}</p>` : ''}
     <div class="dpop-btns"><button class="btn ghost" data-repick>다시 선택</button><button class="btn cta" data-confirm>선택 완료</button></div>
   </div></div>` : ''}`;
+}
+// 팀 색 바꾸기 (운영진) — 다른 팀이 쓰던 색을 고르면 두 팀 색을 맞바꿔요
+function recolor(md, i) {
+  const cur = teamColor(md, i);
+  const used = (k) => rosters(md).findIndex((_, j) => j !== i && teamColor(md, j) === k);
+  const { el, close } = modal(`${teamLabel(md, i)} 팀 색 바꾸기`, `
+    <div class="recolor-grid">${TEAM_COLORS.map((c) => { const u = used(c.key);
+      return `<button class="rc-sw ${c.key === cur ? 'on' : ''}" data-rc="${c.key}" style="--c:${c.hex};--ct:${c.text}"><i></i><span>${c.label}</span>${u >= 0 ? `<small>${esc(teamLabel(md, u))}와 맞바꿈</small>` : ''}</button>`; }).join('')}</div>
+    <p class="tiny muted">다른 팀이 쓰는 색을 고르면 두 팀 색을 서로 바꿔요.</p>`);
+  el.querySelectorAll('[data-rc]').forEach((b) => b.addEventListener('click', async () => {
+    const key = b.dataset.rc; close();
+    if (key === cur) return;
+    await db.tx(mdPath(md.id), (x) => setTeamColor(x, i, key));
+    toast(`${teamLabel(md, i)} → ${colorOf(key)?.label || key}`);
+  }));
 }
 // 운영 메뉴 (드래프트 화면을 한 화면에 두려고 창으로)
 function opMenu(md) {
@@ -358,7 +389,8 @@ function fitDraft(root) {
   if (over > 0 && H - over >= minH) { H -= over; w.style.height = H + 'px'; }
   const head = w.querySelector('.dhead'), capbar = w.querySelector('.capbar'), pitchEl = w.querySelector('.pitch'), pool = w.querySelector('.dpool');
   let room = H - (head?.offsetHeight || 0) - (capbar?.offsetHeight || 0) - 22;
-  if (pool) {
+  if (pool?.classList.contains('xtra')) { pool.style.height = ''; room -= pool.offsetHeight + 6; }   // 마지막 남은 선수: 내용 높이 그대로
+  else if (pool) {
     const n = pool.querySelectorAll('[data-pick]').length, W = pool.clientWidth - 16;
     let fw = 60, need = 0;
     for (; fw >= 38; fw -= 2) { const cols = Math.max(1, Math.floor((W + 6) / (fw + 6))); need = Math.ceil(n / cols) * (fw * 0.9 + 6) + 30; if (need <= room * 0.5) break; }
@@ -462,6 +494,17 @@ function bindBoard(root, md, myCap) {
     });
     if (!ok) toast('지금은 고를 수 없어요');
   }));
+  root.querySelectorAll('[data-extra]').forEach((b) => b.addEventListener('click', async () => {
+    const [id, t] = b.dataset.extra.split('|');
+    const ok = await db.tx(P, (cur) => {
+      const ds = draftState(cur);
+      if (!S.operator || !ds.extra || !ds.remaining.includes(id)) return null;
+      cur.picks = [...(cur.picks || []), { id, team: +t, at: Date.now(), extra: true }];
+      cur.pending = null; return cur;
+    });
+    if (ok) toast(`${nameOf(id, md)} → ${teamLabel(md, +t)}`); else toast('넣지 못했어요 — 화면을 다시 확인해 주세요');
+  }));
+  root.querySelectorAll('[data-recolor]').forEach((b) => b.addEventListener('click', () => recolor(md, +b.dataset.recolor)));
   root.querySelector('[data-confirm]')?.addEventListener('click', async () => {
     const ok = await db.tx(P, (cur) => {
       const ds = draftState(cur);
@@ -538,6 +581,7 @@ function teamsView(md) {
 function bindTeams(root, md) {
   bindTeamNames(root, md);
   root.querySelector('[data-swapside]')?.addEventListener('click', () => swapSides(md));
+  root.querySelectorAll('[data-recolor]').forEach((b) => b.addEventListener('click', () => recolor(md, +b.dataset.recolor)));
   const moveTo = async (from, id, to) => {
     await db.tx(mdPath(md.id), (cur) => {
       cur.teams[from].members = cur.teams[from].members.filter((x) => x !== id);
