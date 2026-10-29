@@ -1879,7 +1879,12 @@ body { overflow-x: clip; }
 .lp-ref-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .lp-ref-h b { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; }
 .lp-ref-h small { color: var(--sub); font-size: 11.5px; }
-.lp-ref-sel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.lp-ref-sel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.lp-ref-off { display: grid; gap: 3px; align-content: start; }
+.lp-ref-off span { font-size: 11.5px; font-weight: 700; color: var(--sub); }
+.lp-ref-off b { display: flex; align-items: center; min-height: 42px; padding: 0 10px; border-radius: 10px; border: 1px dashed var(--line); font-size: 13px; font-weight: 600; color: var(--sub); }
+.lp-ref-rule { margin: 8px 0 0; }
+.lp-ref-rule .link { padding: 0; margin-left: 2px; }
 .lp-ref-sel label { display: grid; gap: 3px; min-width: 0; }
 .lp-ref-sel label span { font-size: 11.5px; font-weight: 700; color: var(--sub); }
 .lp-ref-sel label.m span { color: var(--ink); }
