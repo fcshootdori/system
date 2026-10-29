@@ -1,7 +1,7 @@
-import { esc } from './util.js?v=0.1.87';
-import { TEAM_COLORS, STATUS } from './config.js?v=0.1.87';
-import { teamColor, teamName } from './domain.js?v=0.1.87';
-import { memoOf, hostOf } from './state.js?v=0.1.87';
+import { esc } from './util.js?v=0.1.88';
+import { TEAM_COLORS, STATUS } from './config.js?v=0.1.88';
+import { teamColor, teamName } from './domain.js?v=0.1.88';
+import { memoOf, hostOf } from './state.js?v=0.1.88';
 
 // 입력칸에 바로 커서 — 버튼을 누른 그 순간에 맞춰야 휴대폰 키패드도 같이 올라옴
 export function focusNow(inp) {

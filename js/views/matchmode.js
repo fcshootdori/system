@@ -2,17 +2,17 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.87';
-import { db, newId } from '../store.js?v=0.1.87';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.87';
-import { TEAM_COLORS } from '../config.js?v=0.1.87';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.87';
-import { icon } from '../icons.js?v=0.1.87';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.87';
-import { figHTML } from './draft.js?v=0.1.87';
-import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.87';
-import { statsTable, myStats, REF_KEYS, refStartOf, mainTeam, refOf, refRole } from '../lineup-stats.js?v=0.1.87';
-import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.87';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.88';
+import { db, newId } from '../store.js?v=0.1.88';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.88';
+import { TEAM_COLORS } from '../config.js?v=0.1.88';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.88';
+import { icon } from '../icons.js?v=0.1.88';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.88';
+import { figHTML } from './draft.js?v=0.1.88';
+import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.88';
+import { statsTable, myStats, REF_KEYS, refStartOf, mainTeam, refOf, refRole } from '../lineup-stats.js?v=0.1.88';
+import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.88';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];
@@ -251,16 +251,22 @@ function pitchHTML(md, ti, lu, editable, note = '') {
 function lineupCard(md, capOf, op) {
   const R = ui.round, ros = rosters(md);
   const canEdit = (i) => md.status !== 'played' && capOf.includes(i);   // 포지션은 그 팀 주장만 정함 (운영진은 두 팀 보기만)
-  // 포지션은 그 팀 선수(주장 포함)만 볼 수 있음 — 상대 팀 포지션은 숨김. 운영진은 두 팀 모두
+  // 시작 전 라운드: 그 팀 선수(주장 포함)만 볼 수 있음 — 상대 팀 포지션은 숨김. 운영진은 두 팀 모두
+  // 시작된 라운드(시작·종료했거나 경기가 끝남): 누구나 양 팀 포지션을 볼 수 있음
+  const g = gamesOf(md).find((x) => x.round === R);
+  const started = md.status === 'played' || !!(g && (g.startedAt || g.done));
   const mine = [0, 1].filter((i) => capOf.includes(i) || (ros[i] || []).includes(me.id));
-  const vis = op ? [0, 1] : mine;
-  if (!vis.length) return `<section class="card mm-lineup"><h2>${icon('field')} 포지션</h2>
-    <p class="muted small lp-none">포지션은 그 팀 선수만 볼 수 있어요.</p></section>`;
+  const vis = op || started ? [0, 1] : mine;
+  if (!vis.length) return `<section class="card mm-lineup"><h2>${icon('field')} 포지션 <small>${R}라운드</small></h2>
+    <p class="muted small lp-none">시작 전 라운드의 포지션은 그 팀 선수만 볼 수 있어요. 라운드가 시작되면 양 팀 포지션이 모두 보여요.</p></section>`;
   if (!vis.includes(ui.view)) ui.view = vis[0];
   const ti = ui.view;
   const edit = canEdit(ti);
   // 포지션 공개: 주장이 [포지션 확정]을 누르기 전에는 주장만 보고(다른 사람에게는 '지정 중'), 확정 뒤에는 고치는 대로 바로 보임
-  const pub = !!md.lineupPub?.[ti] || md.status === 'played';
+  //  라운드가 시작되면 확정 전이라도 정해 둔 포지션을 그대로 보여 줌
+  const pubFlag = !!md.lineupPub?.[ti] || md.status === 'played';
+  const pub = pubFlag || started;
+  const own = op || mine.includes(ti);   // 우리 팀(또는 운영진) — 출전 현황 표는 다른 라운드 포지션이 드러나므로 우리 팀만
   const lu = edit || pub ? lineupOf(md, ti, R) : null;
   const placed = new Set(Object.values(lu?.s || {}));
   const bench = (ros[ti] || []).filter((id) => !placed.has(id));
@@ -268,12 +274,12 @@ function lineupCard(md, capOf, op) {
   const { f } = slotsOf(lu);
   return `<section class="card mm-lineup">
     <h2>${icon('field')} 포지션 <small>${R}라운드</small></h2>
-    ${vis.length > 1 ? `<div class="seg lp-teams">${vis.map((i) => `<button type="button" data-view="${i}" class="${i === ti ? 'on' : ''}" style="--tc:${hexOf(md, i).hex}"><i></i>${esc(teamLabel(md, i))}${mine.includes(i) ? ' · 우리 팀' : ''}</button>`).join('')}</div>` : `<p class="lp-myteam" style="--tc:${hexOf(md, ti).hex}"><i></i>${esc(teamLabel(md, ti))} · 우리 팀 <small class="muted">상대 팀 포지션은 보이지 않아요</small></p>`}
+    ${vis.length > 1 ? `<div class="seg lp-teams">${vis.map((i) => `<button type="button" data-view="${i}" class="${i === ti ? 'on' : ''}" style="--tc:${hexOf(md, i).hex}"><i></i>${esc(teamLabel(md, i))}${mine.includes(i) ? ' · 우리 팀' : ''}</button>`).join('')}</div>${started && !op && mine.length ? '<p class="tiny muted lp-open">시작된 라운드라 상대 팀 포지션도 볼 수 있어요.</p>' : ''}` : `<p class="lp-myteam" style="--tc:${hexOf(md, ti).hex}"><i></i>${esc(teamLabel(md, ti))} · 우리 팀 <small class="muted">상대 팀 포지션은 라운드가 시작되면 보여요</small></p>`}
     ${edit ? `<div class="lp-tools">
         <div class="lp-forms">${Object.keys(FORMS).map((k) => `<button type="button" data-form="${k}" class="${k === f ? 'on' : ''}">${k}</button>`).join('')}</div>
         <p class="tiny muted">${capOf.includes(ti) ? '주장 화면 · ' : '운영진 · '}아래 선수 유니폼을 끌어다 자리에 놓아요 (선수를 누르고 자리를 눌러도 돼요). 자리에 있는 선수를 아래 명단으로 끌면 빠져요.</p>
       </div>` : ''}
-    ${edit ? (pub ? '<p class="lp-pubst on">✓ 팀원에게 공개됨 · 고치면 바로 보여요</p>' : '<p class="lp-pubst">🔒 아직 나만 보여요 — 다 정했으면 아래 [포지션 확정]을 눌러 공개해요</p>') : ''}
+    ${edit ? (pubFlag ? `<p class="lp-pubst on">✓ 팀원에게 공개됨 · 고치면 바로 보여요${started ? ' (시작된 라운드는 상대 팀도 봐요)' : ''}</p>` : started ? '<p class="lp-pubst on">▶ 시작된 라운드라 모두에게 보여요 · 고치면 바로 보여요</p>' : '<p class="lp-pubst">🔒 아직 나만 보여요 — 다 정했으면 아래 [포지션 확정]을 눌러 공개해요</p>') : ''}
     ${pitchHTML(md, ti, lu, edit, !edit && !pub
       ? `<div class="lp-wait" role="status"><div><b>주장이 포지션 지정 중입니다</b><small>${esc(teamLabel(md, ti))} 주장이 확정하면 여기에 보여요</small></div></div>` : '')}
     <div class="lp-bench ${edit ? 'edit' : ''}" ${edit ? 'data-bench' : ''}>
@@ -292,9 +298,9 @@ function lineupCard(md, capOf, op) {
       <button type="button" class="btn ghost sm" data-copyall>${icon('copy', 'sm')} 모든 라운드에 적용</button>
       ${lu ? '<button type="button" class="btn ghost sm danger" data-clear>비우기</button>' : ''}
     </div>
-    ${pub ? '' : '<button type="button" class="btn full big lp-pub" data-lppub>포지션 확정 · 팀원에게 공개</button>'}` : ''}
+    ${pubFlag ? '' : '<button type="button" class="btn full big lp-pub" data-lppub>포지션 확정 · 팀원에게 공개</button>'}` : ''}
     ${!(ros[ti] || []).length ? '' : edit ? statsTable(md, ti, { cur: R })   // 주장: 팀 전체 표를 늘 펼쳐서
-      : pub ? `${(ros[ti] || []).includes(me.id) ? myStats(md, ti, me.id, R) : ''}
+      : pub && own ? `${(ros[ti] || []).includes(me.id) ? myStats(md, ti, me.id, R) : ''}
         <details class="lp-all"><summary>${icon('users', 'sm')}<span class="o">팀 전체 출전 현황 펼쳐 보기</span><span class="c">팀 전체 출전 현황 접기</span></summary>${statsTable(md, ti, { cur: R })}</details>` : ''}
     ${(edit || pub) && lu ? `<button type="button" class="btn ghost full lp-img" data-lpimg>${icon('download', 'sm')} ${R}라운드 포지션 이미지로 저장</button>` : ''}
   </section>`;
