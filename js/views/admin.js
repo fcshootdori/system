@@ -1,12 +1,12 @@
-import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.85';
-import { S, me, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.85';
-import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.85';
-import { db } from '../store.js?v=0.1.85';
-import { APP_NAME, APP_VERSION, DEFAULT_TEAM } from '../config.js?v=0.1.85';
-import { sheetApi, sheetKey, setSheetKey, okApiUrl, ping, readCheck, loadRecords, sheetState, pending, push, lastPush, archiveOn, archiveReady, cleanup, lastClean, ARCHIVE_DAYS } from '../record-sheet.js?v=0.1.85';
-import { esc, toast, fileToDataUrl, todayISO, fmtDate } from '../util.js?v=0.1.85';
-import { modal, empty } from '../ui.js?v=0.1.85';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.85';
+import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.86';
+import { S, me, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.86';
+import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.86';
+import { db } from '../store.js?v=0.1.86';
+import { APP_NAME, APP_VERSION, DEFAULT_TEAM } from '../config.js?v=0.1.86';
+import { sheetApi, sheetKey, setSheetKey, okApiUrl, ping, readCheck, loadRecords, sheetState, pending, push, lastPush, archiveOn, archiveReady, cleanup, lastClean, ARCHIVE_DAYS } from '../record-sheet.js?v=0.1.86';
+import { esc, toast, fileToDataUrl, todayISO, fmtDate } from '../util.js?v=0.1.86';
+import { modal, empty } from '../ui.js?v=0.1.86';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.86';
 
 export function render(root) { return settings(root); }
 
@@ -20,7 +20,6 @@ function settings(root) {
       <div class="row"><label>대표 색<input type="color" name="primary" value="${esc(t.primary)}"></label>
         <label>엠블럼<div class="emblem-edit">${t.emblem ? `<img src="${t.emblem}" alt="">` : ''}<span class="btn ghost sm" data-embl>사진 바꾸기</span><input type="file" accept="image/*" name="emblem" class="vh"></div></label></div>
       <label>다음 카페 주소<input name="cafeUrl" placeholder="https://cafe.daum.net/..." value="${esc(t.cafeUrl || '')}"></label>
-      <label>운영모드 PIN<input name="operatorPin" inputmode="numeric" value="${esc(t.operatorPin)}"></label>
       <label class="inline toggle"><input type="checkbox" name="cafeImport" ${t.cafeImport !== false ? 'checked' : ''}>
         <span>카페 댓글로 참석 받기 <small class="muted">임시 기능 · 정식 서비스에서 앱으로만 신청받으면 끄세요</small></span></label>
       <button class="btn">저장</button>
@@ -49,7 +48,7 @@ function settings(root) {
   root.querySelector('[data-team] [name=emblem]').addEventListener('change', (e) => { const f = e.target.files[0]; root.querySelector('[data-embl]').textContent = f ? f.name : '사진 바꾸기'; });
   root.querySelector('[data-team]').addEventListener('submit', async (e) => {
     e.preventDefault(); const fm = e.target;
-    const patch = { name: fm.name.value.trim() || DEFAULT_TEAM.name, primary: fm.primary.value, cafeUrl: fm.cafeUrl.value.trim(), operatorPin: fm.operatorPin.value.trim() || '0000', cafeImport: fm.cafeImport.checked };
+    const patch = { name: fm.name.value.trim() || DEFAULT_TEAM.name, primary: fm.primary.value, cafeUrl: fm.cafeUrl.value.trim(), operatorPin: null, cafeImport: fm.cafeImport.checked };
     if (fm.emblem.files[0]) patch.emblem = await fileToDataUrl(fm.emblem.files[0]);
     await db.set('meta/team', patch, { merge: true }); toast('저장했어요');
   });
@@ -205,9 +204,9 @@ function betaCard() {
   const kLabel = (m) => (m.event ? (m.eventMode === 'captains' ? '이벤트(주장만)' : '이벤트(팀원까지)') : '일반');
   const on = betaOn();
   return `<section class="card beta"><h2>🧪 베타 테스트</h2>
-    <label class="switch-row"><span><b>베타 데모 기능</b><small class="muted">켜져 있으면 회원이 앱을 열 때 <b>일반 회원 · 주장 · 운영진</b> 중 체험할 화면을 고르고, 이 기기에만 만든 체험판에서 모든 기능을 써 봐요 (실제 기록에는 반영 안 됨). 회원은 데모에서 나갈 수 없고, <b>운영진 비밀번호로 접속해야만</b> 나가거나 이 기능을 끌 수 있어요. 끄면 모든 회원이 다음에 열 때 실제 앱으로 돌아와요.</small></span>
+    <label class="switch-row"><span><b>베타 데모 기능</b><small class="muted">켜져 있으면 회원이 앱을 열 때 <b>일반 회원 · 주장 · 운영진</b> 중 체험할 화면을 고르고, 이 기기에만 만든 체험판에서 모든 기능을 써 봐요 (실제 기록에는 반영 안 됨). 회원은 데모에서 나갈 수 없고, <b>마스터 비밀번호로 접속해야만</b> 나가거나 이 기능을 끌 수 있어요. 끄면 모든 회원이 다음에 열 때 실제 앱으로 돌아와요.</small></span>
       <input type="checkbox" class="switch" data-betaon ${on ? 'checked' : ''} ${inSandbox() ? 'disabled' : ''}></label>
-    ${inSandbox() ? '<p class="small warn-t">지금은 데모 체험판의 운영진 화면이에요. 이 기능은 실제 운영모드에서만 끌 수 있어요 — 위쪽 띠의 [나가기]에서 실제 운영진 비밀번호를 넣으세요.</p>' : ''}
+    ${inSandbox() ? '<p class="small warn-t">지금은 데모 체험판의 운영진 화면이에요. 이 기능은 실제 운영모드에서만 끌 수 있어요 — 위쪽 띠의 [나가기]에서 마스터 비밀번호를 넣으세요.</p>' : ''}
     ${on && !inSandbox() ? '<div class="row wrap beta-demo"><button class="btn ghost" data-sbx>이 기기에서 역할 골라 데모 체험</button></div>' : ''}
     <h3 class="bh">샘플 경기 <small class="muted">실제 앱에 만드는 시험 경기</small></h3>
     <p class="muted small">원하는 단계까지 진행된 샘플 경기를 만들어 신청 → 주장 → 드래프트 → 팀 확정 → 경기 → 결과를 직접 시험해 보세요.

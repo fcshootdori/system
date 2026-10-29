@@ -1,7 +1,7 @@
 // 앱 전역 상태 — 저장소를 구독해 화면이 항상 최신 데이터를 보도록 함
-import { db } from './store.js?v=0.1.85';
-import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.85';
-import { byName } from './util.js?v=0.1.85';
+import { db } from './store.js?v=0.1.86';
+import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.86';
+import { byName } from './util.js?v=0.1.86';
 
 export const S = {
   team: { ...DEFAULT_TEAM },
@@ -18,8 +18,13 @@ export const S = {
   sel: null,      // 운영 > 경기 메뉴에서 고른 경기일
   step: null,     // 운영 > 경기 메뉴에서 고른 단계
 };
-// 이 기기에서 운영모드 PIN을 한 번이라도 맞혔으면 오른쪽 위에 운영모드 버튼을 보여 줌 (WD_FUTSAL과 같은 방식)
-export const opDevice = () => localStorage.getItem('teamapp:opdev') === '1';
+// 운영모드를 쓸 수 있는 사람: 마스터 계정 또는 회원 명부에서 운영진으로 표시된 회원 (PIN 없이 버튼으로 켜고 끔)
+export const canOp = () => {
+  if (S.auth?.master === true && S.auth.pid === '__master__') return true;
+  const m = S.auth?.pid && S.members.find((x) => x.id === S.auth.pid);
+  return !!m && (m.staff ?? m.status === 'staff') === true;
+};
+export const opDevice = canOp;   // (예전 이름)
 
 const listeners = new Set();
 export const onChange = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
@@ -87,8 +92,9 @@ export const refresh = emit;
 
 // 이 기기의 "내 이름" (로그인 없이 이름 선택 방식)
 // 이 기기의 "나" = 로그인한 회원 (카페 닉네임 + 비밀번호)
+export const isMaster = () => S.auth?.master === true && S.auth.pid === '__master__';
 export const me = {
-  get id() { return S.auth?.pid || ''; },
+  get id() { return isMaster() ? '' : S.auth?.pid || ''; },   // 마스터는 회원이 아니라서 신청·주장·기록 어디에도 남지 않음
   set() { location.hash = '#/login'; },
 };
 export const go = (path) => { location.hash = '#/' + path; };

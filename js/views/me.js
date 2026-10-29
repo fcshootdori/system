@@ -1,11 +1,11 @@
 // 내 정보 — 내 이름, 내 기록 요약, 앱 정보, 운영모드 입구 (WD_FUTSAL 내 정보와 같은 위치)
-import { S, me, memberById, opDevice, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.85';
-import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.85';
-import { modal } from '../ui.js?v=0.1.85';
-import { toast } from '../util.js?v=0.1.85';
-import { allStats, pct } from '../domain.js?v=0.1.85';
-import { esc } from '../util.js?v=0.1.85';
-import { inSandbox, sandboxRole, ROLES, pickRole, switchRole, askExit } from '../sandbox.js?v=0.1.85';
+import { S, me, memberById, canOp, isMaster, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.86';
+import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.86';
+import { modal } from '../ui.js?v=0.1.86';
+import { toast } from '../util.js?v=0.1.86';
+import { allStats, pct } from '../domain.js?v=0.1.86';
+import { esc } from '../util.js?v=0.1.86';
+import { inSandbox, sandboxRole, ROLES, pickRole, switchRole, askExit } from '../sandbox.js?v=0.1.86';
 
 export function render(root) {
   const m = memberById(me.id);
@@ -13,7 +13,9 @@ export function render(root) {
   root.innerHTML = `
     <section class="card">
       <h1>내 정보</h1>
-      ${m ? `<div class="me-row"><div><b class="me-name">${esc(m.name)}</b><small class="muted">${S.auth?.temp ? '비밀번호 없이 접속 중' : isRemembered() ? '자동 로그인 켜짐' : '이번 접속에만 로그인'}</small></div></div>
+      ${isMaster() ? `<div class="me-row"><div><b class="me-name">마스터</b><small class="muted">관리용 계정 · 회원 명부에 없고 신청·드래프트·기록에 남지 않아요</small></div></div>
+          <div class="row"><button class="btn ghost" data-logout>로그아웃</button></div>`
+      : m ? `<div class="me-row"><div><b class="me-name">${esc(m.name)}</b><small class="muted">${S.auth?.temp ? '비밀번호 없이 접속 중' : isRemembered() ? '자동 로그인 켜짐' : '이번 접속에만 로그인'}</small></div></div>
           <div class="row">${S.auth?.temp ? '' : '<button class="btn ghost" data-pin>비밀번호 변경</button>'}<button class="btn ghost" data-logout>로그아웃</button></div>`
         : `<p class="muted">카페 닉네임과 비밀번호로 로그인하면 신청하고 내 기록을 볼 수 있어요.</p><button class="btn full" data-pick>로그인</button>`}
     </section>
@@ -32,14 +34,14 @@ export function render(root) {
     </section>
     ${inSandbox() ? `<section class="card beta">
       <h2>🧪 데모 체험 중 <small>${ROLES[sandboxRole()]?.icon} ${ROLES[sandboxRole()]?.label}</small></h2>
-      <p class="small">여기서 한 일은 이 기기에만 남고 실제 기록에는 반영되지 않아요. 데모에서 나가려면 운영진 비밀번호가 필요해요.</p>
+      <p class="small">여기서 한 일은 이 기기에만 남고 실제 기록에는 반영되지 않아요. 데모에서 나가려면 마스터 비밀번호가 필요해요.</p>
       <div class="row wrap"><button class="btn" data-sbxrole>역할 바꾸기</button><button class="btn ghost" data-sbxnew>체험 경기 새로 만들기</button><button class="btn ghost" data-sbxexit>나가기 (운영진)</button></div>
     </section>` : (S.allMatchdays || []).some((x) => x.sample) ? `<section class="card beta"><h2>🧪 베타 테스트</h2>
       <label class="chk"><input type="checkbox" data-samples ${samplesOnDevice() ? 'checked' : ''}><span>이 기기에서 샘플 경기 보기<small class="muted">운영진이 만든 시험 경기 · 기록에는 안 들어가요</small></span></label></section>` : ''}
-    ${inSandbox() && sandboxRole() !== 'op' ? '' : `<section class="card op-entry">
+    ${(inSandbox() ? sandboxRole() !== 'op' : !canOp()) ? '' : `<section class="card op-entry">
       <h2>운영진</h2>
-      <p class="muted small">운영진은 비밀번호로 운영모드에 들어가요.${opDevice() ? ' 이 기기는 오른쪽 위 버튼으로도 들어갈 수 있어요.' : ''}</p>
-      <button class="btn ghost full" data-op>운영모드</button>
+      <p class="muted small">${isMaster() ? '마스터 계정' : '운영진 회원'}이라 비밀번호 없이 운영모드와 일반 모드를 오갈 수 있어요. 오른쪽 위 [운영] 버튼으로도 바꿔요.</p>
+      <button class="btn ghost full" data-op>${S.operator ? '일반 모드로' : '운영모드 켜기'}</button>
     </section>`}`;
   root.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => { location.hash = '#/login'; }));
   root.querySelector('[data-sbxrole]')?.addEventListener('click', () => pickRole(true));

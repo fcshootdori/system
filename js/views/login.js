@@ -1,8 +1,8 @@
 // 로그인 — 카페 닉네임 → (처음) 비밀번호 정하기 / (다음부터) 비밀번호 입력, 자동 로그인
-import { S, refresh } from '../state.js?v=0.1.85';
-import { register, login, status, saveSession, validPin } from '../auth.js?v=0.1.85';
-import { norm } from '../cafe-parser.js?v=0.1.85';
-import { esc } from '../util.js?v=0.1.85';
+import { S, refresh } from '../state.js?v=0.1.86';
+import { register, login, status, saveSession, validPin, masterLogin, MASTER_PID, MASTER_NAME } from '../auth.js?v=0.1.86';
+import { norm } from '../cafe-parser.js?v=0.1.86';
+import { esc } from '../util.js?v=0.1.86';
 
 let step = { pid: null, registered: false }, nick = '', err = '', denied = false;
 
@@ -14,7 +14,7 @@ const findMember = (name) => {
 
 export function render(root) {
   document.body.classList.add('gate');
-  const m = step.pid ? S.members.find((x) => x.id === step.pid) : null;
+  const m = step.pid === MASTER_PID ? { id: MASTER_PID, name: MASTER_NAME } : step.pid ? S.members.find((x) => x.id === step.pid) : null;
   root.innerHTML = `<section class="lg">
     ${S.team.emblem ? `<img class="lg-emb" src="${S.team.emblem}" alt="">` : ''}
     <h1>${esc(S.team.name)}</h1>
@@ -42,7 +42,7 @@ export function render(root) {
         <button class="btn full" data-register>비밀번호 정하고 시작하기</button>`}
     </div>
     ${denied ? `<button class="btn ghost full" data-temp>비밀번호 없이 닉네임으로만 들어가기 (임시)</button>` : ''}
-    <button class="link lg-op" data-op>운영진이신가요? 운영모드로 들어가기 ›</button>
+    <p class="tiny muted lg-op">운영진은 로그인한 뒤 오른쪽 위 [운영] 버튼으로 운영모드를 켜요.</p>
     ${matchMedia('(display-mode: standalone)').matches || navigator.standalone ? '' : '<a class="lg-inst" href="install.html">📲 휴대폰 홈 화면에 앱 설치하는 방법</a>'}
   </section>`;
 
@@ -75,6 +75,7 @@ export function render(root) {
     inp.addEventListener('input', () => { nick = inp.value; draw(); });
     sug.addEventListener('click', (e) => { const b = e.target.closest('[data-pick]'); if (b) { inp.value = nick = b.dataset.pick; go(); } });
     const go = async () => {
+      if (norm(inp.value) === norm(MASTER_NAME) && !findMember(inp.value)) { step = { pid: MASTER_PID, registered: true }; err = ''; rer(); setTimeout(() => q('[name=pin]')?.focus(), 50); return; }
       const mm = findMember(inp.value);
       if (!mm) { err = inp.value.trim() ? `"${inp.value.trim()}" — 회원 목록에 없는 닉네임이에요. 카페 닉네임을 확인하거나 운영진에게 문의해 주세요.` : '카페 닉네임을 입력해 주세요.'; return rer(); }
       try { const st = await status(mm.id); step = { pid: mm.id, registered: st.registered }; err = ''; rer(); setTimeout(() => q('[name=pin]')?.focus(), 50); }
@@ -96,7 +97,7 @@ export function render(root) {
   q('[data-back]')?.addEventListener('click', () => { step = { pid: null, registered: false }; err = ''; rer(); });
 
   // 2단계: 로그인 / 비밀번호 등록
-  const doLogin = async () => { try { done(await login(step.pid, q('[name=pin]').value.trim())); } catch (e) { fail(e); } };
+  const doLogin = async () => { try { const pin = q('[name=pin]').value.trim(); done(step.pid === MASTER_PID ? await masterLogin(pin) : await login(step.pid, pin)); } catch (e) { fail(e); } };
   const doRegister = async () => {
     const p1 = q('[name=pin]').value.trim(), p2 = q('[name=pin2]').value.trim();
     if (!validPin(p1)) { err = '비밀번호는 숫자 4자리로 정해 주세요.'; return rer(); }

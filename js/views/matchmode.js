@@ -2,17 +2,17 @@
 //  · 회원: 주장이 정한 라운드별 포지션 · 실시간 스코어 · 득점자 · 라운드별 득점
 //  · 운영진: 라운드별 스코어·득점자 기록 (운영모드 > 경기 운영 > 경기 단계에서도 같은 화면)
 //  · 주장: 라운드별 우리 팀 포지션 지정 — 골대는 아래, 하프라인은 위. 아래 선수 유니폼을 끌어다 자리에 놓기 (누르고 자리 누르기도 가능)
-import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.85';
-import { db, newId } from '../store.js?v=0.1.85';
-import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.85';
-import { TEAM_COLORS } from '../config.js?v=0.1.85';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.85';
-import { icon } from '../icons.js?v=0.1.85';
-import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.85';
-import { figHTML } from './draft.js?v=0.1.85';
-import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.85';
-import { statsTable, myStats, REF_KEYS, refStartOf, mainTeam, refOf, refRole } from '../lineup-stats.js?v=0.1.85';
-import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.85';
+import { S, me, mdPath, nameOf, today, playedDays } from '../state.js?v=0.1.86';
+import { db, newId } from '../store.js?v=0.1.86';
+import { rosters, fmtOf, totals, noLabel, teamColor, captainIds } from '../domain.js?v=0.1.86';
+import { TEAM_COLORS } from '../config.js?v=0.1.86';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.86';
+import { icon } from '../icons.js?v=0.1.86';
+import { teamChip, teamLabel, empty } from '../ui.js?v=0.1.86';
+import { figHTML } from './draft.js?v=0.1.86';
+import { renderLineupImage, shareCanvas, downloadCanvas } from '../notice-image.js?v=0.1.86';
+import { statsTable, myStats, REF_KEYS, refStartOf, mainTeam, refOf, refRole } from '../lineup-stats.js?v=0.1.86';
+import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.86';
 
 // 포메이션: [자리, 가로 %, 세로 %(0 = 하프라인, 100 = 골라인)]
 const B4 = [['LB', 12, 70], ['LCB', 37, 75], ['RCB', 63, 75], ['RB', 88, 70]];

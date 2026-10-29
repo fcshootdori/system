@@ -3,36 +3,36 @@
 //   · 일반 회원: 홈 · 일정 · ⚽경기모드 · 경기결과 · 내 정보
 //   · 운영모드: 일정 · 경기 · 공지 · 회원 · 설정
 //   · 주장: 오른쪽 위 👑 드래프트 버튼으로 입장
-import { APP_NAME, APP_VERSION } from './config.js?v=0.1.85';
-import { initStore, db } from './store.js?v=0.1.85';
-import { initPullRefresh } from './ptr.js?v=0.1.85';
-import { startUpdateCheck } from './update.js?v=0.1.85';
-import { lockZoom } from './nozoom.js?v=0.1.85';
-import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.85';
-import { S, startSync, onChange, setOperator, opDevice, captainMatchday, go, today } from './state.js?v=0.1.85';
-import { esc, toast } from './util.js?v=0.1.85';
-import { modal, fitBoxes, focusNow } from './ui.js?v=0.1.85';
-import { icon } from './icons.js?v=0.1.85';
+import { APP_NAME, APP_VERSION } from './config.js?v=0.1.86';
+import { initStore, db } from './store.js?v=0.1.86';
+import { initPullRefresh } from './ptr.js?v=0.1.86';
+import { startUpdateCheck } from './update.js?v=0.1.86';
+import { lockZoom } from './nozoom.js?v=0.1.86';
+import { startSandbox, inSandbox, betaOn, renderPicker, sandboxRole } from './sandbox.js?v=0.1.86';
+import { S, startSync, onChange, setOperator, canOp, isMaster, captainMatchday, go, today } from './state.js?v=0.1.86';
+import { esc, toast } from './util.js?v=0.1.86';
+import { modal, fitBoxes, focusNow } from './ui.js?v=0.1.86';
+import { icon } from './icons.js?v=0.1.86';
 
-import * as home from './views/home.js?v=0.1.85';
-import * as schedule from './views/schedule.js?v=0.1.85';
-import * as matchmode from './views/matchmode.js?v=0.1.85';
-import * as results from './views/results.js?v=0.1.85';
-import * as myinfo from './views/me.js?v=0.1.85';
-import * as apply from './views/apply.js?v=0.1.85';
-import * as draft from './views/draft.js?v=0.1.85';
-import * as games from './views/games.js?v=0.1.85';
-import * as run from './views/run.js?v=0.1.85';
-import * as notice from './views/notice.js?v=0.1.85';
-import * as admin from './views/admin.js?v=0.1.85';
-import * as membersView from './views/members.js?v=0.1.85';
-import * as loginView from './views/login.js?v=0.1.85';
-import { loadSession, saveSession, verify } from './auth.js?v=0.1.85';
-import { startAutoSync } from './member-sync.js?v=0.1.85';
-import { startRecordSync } from './record-sheet.js?v=0.1.85';
-import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.85';
-import { applyEmblemMarks } from './emblem-mark.js?v=0.1.85';
-import { startSwipe, clearPageSwipe, slideIn } from './swipe.js?v=0.1.85';
+import * as home from './views/home.js?v=0.1.86';
+import * as schedule from './views/schedule.js?v=0.1.86';
+import * as matchmode from './views/matchmode.js?v=0.1.86';
+import * as results from './views/results.js?v=0.1.86';
+import * as myinfo from './views/me.js?v=0.1.86';
+import * as apply from './views/apply.js?v=0.1.86';
+import * as draft from './views/draft.js?v=0.1.86';
+import * as games from './views/games.js?v=0.1.86';
+import * as run from './views/run.js?v=0.1.86';
+import * as notice from './views/notice.js?v=0.1.86';
+import * as admin from './views/admin.js?v=0.1.86';
+import * as membersView from './views/members.js?v=0.1.86';
+import * as loginView from './views/login.js?v=0.1.86';
+import { loadSession, saveSession, verify } from './auth.js?v=0.1.86';
+import { startAutoSync } from './member-sync.js?v=0.1.86';
+import { startRecordSync } from './record-sheet.js?v=0.1.86';
+import { closePassed, closeTime, teamEvent } from './domain.js?v=0.1.86';
+import { applyEmblemMarks } from './emblem-mark.js?v=0.1.86';
+import { startSwipe, clearPageSwipe, slideIn } from './swipe.js?v=0.1.86';
 
 const MEMBER_TABS = [['home', '홈', 'home'], ['sched', '일정', 'calendar'], ['mm', '경기', 'ball'], ['results', '기록', 'board'], ['me', '내 정보', 'user']];
 const OP_TABS = [['plan', '일정', 'calendar'], ['run', '경기 운영', 'whistle'], ['notice', '공지', 'megaphone'], ['members', '회원', 'users'], ['settings', '설정', 'gear']];
@@ -69,7 +69,7 @@ function renderShell() {
     <div class="top-actions">
       <span class="top-ver" title="앱 버전">v${APP_VERSION}</span>
       ${capMd ? `<a class="pill cap" href="#/draft">${icon('crown')}<span>드래프트</span></a>` : ''}
-      ${(inSandbox() ? sandboxRole() === 'op' : S.operator || opDevice()) ? `<button class="pill ${S.operator ? 'on' : 'ghost'}" data-op>${icon('whistle')}<span>${S.operator ? '운영 끄기' : '운영'}</span></button>` : ''}
+      ${(inSandbox() ? sandboxRole() === 'op' : S.operator || canOp()) ? `<button class="pill ${S.operator ? 'on' : 'ghost'}" data-op>${icon('whistle')}<span>${S.operator ? '운영 끄기' : '운영'}</span></button>` : ''}
     </div>`;
   const tabs = S.operator ? OP_TABS : MEMBER_TABS;
   const active = ROUTES[name]?.parent || name;
@@ -88,11 +88,15 @@ function render() {
   let route = ROUTES[name];
   const root = document.getElementById('view');
   // 베타 데모 기간: 실제 앱은 운영진만. 회원은 역할(일반 회원·주장·운영진)을 골라 체험판으로
+  //  운영진(운영진 회원 · 마스터)은 [운영진 실제 접속] → 로그인하면 바로 운영모드
   if (betaOn() && !inSandbox() && !S.operator) {
-    document.body.classList.add('gate'); renderPicker(root, askPin); return;
+    if (S.auth && S.ready && canOp()) { setOperator(true); return; }
+    if (!betaLogin || S.auth) { betaLogin = false; document.body.classList.add('gate'); renderPicker(root, () => { betaLogin = true; render(); }); return; }
   }
-  // 로그인 전에는 로그인 화면만 (운영모드는 운영진 비밀번호로 따로 들어감)
-  const gated = !S.auth && !S.operator;
+  // 운영모드는 운영진 회원·마스터만 (예전 PIN으로 켠 운영모드는 로그인 정보로 다시 확인)
+  if (S.operator && !inSandbox() && S.ready && !canOp()) { setOperator(false); return; }
+  // 로그인 전에는 로그인 화면만
+  const gated = !S.auth && !(inSandbox() && S.operator);
   document.body.classList.toggle('gate', gated || name === 'login');
   if (gated || name === 'login') {
     if (S.auth && name === 'login') { location.hash = '#/home'; return; }
@@ -108,25 +112,14 @@ function safeRender() {
   renderShell(); render();
 }
 
-export function askPin() {
-  const { el, close } = modal('운영모드', `
-    <form class="stack">
-      <label>운영진 비밀번호<input type="password" inputmode="numeric" name="pin" autocomplete="off" enterkeyhint="go"></label>
-      <button class="btn">운영모드 켜기</button>
-    </form>`);
-  focusNow(el.querySelector('[name=pin]'));
-  el.querySelector('form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    if (e.target.pin.value === String(S.team.operatorPin)) { setOperator(true); close(); toast('운영모드를 켰어요'); go('plan'); }
-    else toast('비밀번호가 맞지 않아요');
-  });
+let betaLogin = false;   // 베타 데모 기간: 운영진이 실제 앱으로 로그인하는 중
+// 운영모드 켜기·끄기 — PIN 없이 버튼으로 (운영진 회원 · 마스터, 체험판은 운영진 역할)
+export function toggleOp() {
+  if (S.operator) { setOperator(false); toast('일반 모드로 바꿨어요'); go('home'); return; }
+  if (inSandbox() ? sandboxRole() === 'op' : canOp()) { setOperator(true); toast('운영모드를 켰어요'); go('plan'); return; }
+  toast(S.auth ? '운영진만 운영모드를 쓸 수 있어요' : '먼저 로그인해 주세요');
 }
-
-document.addEventListener('click', (e) => {
-  if (e.target.closest('[data-op]')) {
-    if (S.operator) { setOperator(false); toast('운영모드를 껐어요'); go('home'); } else askPin();
-  }
-});
+document.addEventListener('click', (e) => { if (e.target.closest('[data-op]')) toggleOp(); });
 document.addEventListener('focusout', () => setTimeout(() => {
   if (pending && !typing()) { pending = false; renderShell(); render(); }
 }, 0));

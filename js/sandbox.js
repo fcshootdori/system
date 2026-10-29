@@ -2,16 +2,16 @@
 //  · 운영모드 › 설정의 '베타 데모 기능'이 켜져 있으면, 앱을 열 때 [일반 회원 · 주장 · 운영진] 중 체험할 화면을 고름
 //  · 고르면 지금 회원·경기·기록을 이 기기에 복사한 "체험판"으로 들어가 그 역할의 화면을 그대로 써 봄
 //    체험판에서 한 일은 이 기기에만 남고 서버·실제 기록에는 전혀 반영되지 않음. 역할은 체험 중에도 바꿀 수 있음
-//  · 데모에서 나가기(실제 앱으로)는 운영진 비밀번호를 넣어야만 가능 → 나가면 실제 운영모드로 접속
+//  · 데모에서 나가기(실제 앱으로)는 마스터 비밀번호를 넣어야만 가능 → 나가면 마스터 계정으로 실제 운영모드 접속
 //    운영진이 실제 운영모드 › 설정에서 '베타 데모 기능'을 끄면, 회원 기기도 다음에 열 때 자동으로 실제 앱으로 돌아옴
-import { S, me, onChange, setOperator } from './state.js?v=0.1.85';
-import { db, SANDBOX_KEY, inSandbox } from './store.js?v=0.1.85';
-import { FIREBASE } from './config.js?v=0.1.85';
-import { createSample, clearSamples } from './sample.js?v=0.1.85';
-import { hardReload } from './update.js?v=0.1.85';
-import { saveSession, loadSession, isRemembered } from './auth.js?v=0.1.85';
-import { modal, focusNow } from './ui.js?v=0.1.85';
-import { esc, toast } from './util.js?v=0.1.85';
+import { S, me, onChange, setOperator } from './state.js?v=0.1.86';
+import { db, SANDBOX_KEY, inSandbox } from './store.js?v=0.1.86';
+import { FIREBASE } from './config.js?v=0.1.86';
+import { createSample, clearSamples } from './sample.js?v=0.1.86';
+import { hardReload } from './update.js?v=0.1.86';
+import { saveSession, loadSession, isRemembered, checkMasterPin, masterLogin } from './auth.js?v=0.1.86';
+import { modal, focusNow } from './ui.js?v=0.1.86';
+import { esc, toast } from './util.js?v=0.1.86';
 
 export { inSandbox };
 export const DEMO_PIN = '0000';   // 체험판 안의 운영진 비밀번호 (체험용)
@@ -49,7 +49,7 @@ export function enterSandbox(role = 'member') {
   hardReload();
 }
 
-// 실제 앱으로 나가기 (운영진 비밀번호 확인 뒤) → 실제 운영모드로 접속
+// 실제 앱으로 나가기 (마스터 비밀번호 확인 뒤) → 마스터 계정 · 실제 운영모드로 접속
 function leaveSandbox() {
   [K.on, K.role, K.seed, K.pin, K.who, SANDBOX_KEY].forEach(ls.del);
   const live = ls.get(K.live); ls.del(K.live);
@@ -57,16 +57,15 @@ function leaveSandbox() {
 }
 export function askExit() {
   const { el, close } = modal('데모에서 나가기', `<form class="stack">
-    <p class="small">데모에서 나가 실제 앱으로 돌아가려면 <b>운영진 비밀번호</b>가 필요해요. 나가면 실제 운영모드로 접속돼요. 체험판에서 한 일은 지워져요.</p>
-    <label>운영진 비밀번호 (실제)<input type="password" inputmode="numeric" name="pin" autocomplete="off" enterkeyhint="go"></label>
+    <p class="small">데모에서 나가 실제 앱으로 돌아가려면 <b>마스터 비밀번호</b>가 필요해요. 나가면 마스터 계정으로 실제 운영모드에 접속돼요. 체험판에서 한 일은 지워져요.</p>
+    <label>마스터 비밀번호<input type="password" inputmode="numeric" name="pin" autocomplete="off" enterkeyhint="go" maxlength="4"></label>
     <button class="btn">나가기 · 운영모드 접속</button></form>`);
   focusNow(el.querySelector('[name=pin]'));
   el.querySelector('form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const pin = e.target.pin.value.trim();
-    const real = (await liveTeam())?.operatorPin ?? ls.get(K.pin);
-    if (!pin || pin !== String(real ?? '')) return toast('운영진 비밀번호가 맞지 않아요');
-    leaveSandbox(); sessionStorage.setItem('teamapp:op', '1'); localStorage.setItem('teamapp:opdev', '1');
+    if (!(await checkMasterPin(pin))) return toast('마스터 비밀번호가 맞지 않아요');
+    leaveSandbox(); saveSession(await masterLogin(pin), false); sessionStorage.setItem('teamapp:op', '1');
     close(); location.hash = '#/settings'; hardReload();
   });
 }
@@ -150,7 +149,7 @@ export function renderPicker(root, askPin) {
     <h1>${esc(S.team.name)} 베타 체험</h1>
     <p class="muted">지금은 베타 테스트 기간이에요. 체험할 화면을 고르면 실제 회원·경기 기록으로 만든 체험판에서 모든 기능을 써 볼 수 있어요. <b>실제 기록에는 반영되지 않아요.</b></p>
     <div class="card lg-card">${ready ? roleCards() : '<p class="muted small center">불러오는 중…</p>'}</div>
-    <button class="link lg-op" data-realop>운영진 실제 접속 (운영진 비밀번호) ›</button>
+    <button class="link lg-op" data-realop>운영진 실제 접속 (로그인) ›</button>
   </section>`;
   root.querySelectorAll('[data-role]').forEach((b) => b.addEventListener('click', () => enterSandbox(b.dataset.role)));
   root.querySelector('[data-realop]').addEventListener('click', askPin);
