@@ -1,17 +1,17 @@
 // 운영 > 회원 — [회원 관리 | 출석 관리]  (WD_FUTSAL 운영 회원 메뉴와 같은 구성)
 //  회원 관리: 검색 · 유형 필터 · 표에서 바로 고치기 · 명단 붙여넣기 · CSV 저장 · 여러 명 선택 처리
 //  출석 관리: 기간별 출석 횟수 · 출석률 · 최근 출석 · 연속 출석
-import { S, playedDays } from '../state.js?v=0.1.88';
-import { db, newId } from '../store.js?v=0.1.88';
-import { APP_NAME } from '../config.js?v=0.1.88';
-import { rosters } from '../domain.js?v=0.1.88';
-import { esc, toast, fmtDate, todayISO, koSort } from '../util.js?v=0.1.88';
-import { modal, empty, fitBoxes } from '../ui.js?v=0.1.88';
-import { norm } from '../cafe-parser.js?v=0.1.88';
-import { resetPin } from '../auth.js?v=0.1.88';
-import { sheetLink, setSheetLink, sheetUrl, preview, apply, needsReview, startAutoSync, autoSync, holdAuto } from '../member-sync.js?v=0.1.88';
-import { sheetApi, saveMemberRow } from '../record-sheet.js?v=0.1.88';
-import { FEE_KINDS, feeKind, isLeftGrade, nickParts, publicOf } from '../member-sheet.js?v=0.1.88';
+import { S, playedDays } from '../state.js?v=0.1.89';
+import { db, newId } from '../store.js?v=0.1.89';
+import { APP_NAME } from '../config.js?v=0.1.89';
+import { rosters } from '../domain.js?v=0.1.89';
+import { esc, toast, fmtDate, todayISO, koSort } from '../util.js?v=0.1.89';
+import { modal, empty, fitBoxes } from '../ui.js?v=0.1.89';
+import { norm } from '../cafe-parser.js?v=0.1.89';
+import { resetPin } from '../auth.js?v=0.1.89';
+import { sheetLink, setSheetLink, sheetUrl, preview, apply, needsReview, startAutoSync, autoSync, holdAuto } from '../member-sync.js?v=0.1.89';
+import { sheetApi, saveMemberRow } from '../record-sheet.js?v=0.1.89';
+import { FEE_KINDS, feeKind, isLeftGrade, nickParts, publicOf } from '../member-sheet.js?v=0.1.89';
 
 // 회원 구분 = 회원 시트 등급 (VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원), 운영진은 따로 체크
 export const isLeft = (m) => isLeftGrade(m.grade) || m.status === 'left';
@@ -180,9 +180,10 @@ function listView(body, root) {
   const cnt = (k) => all.filter((r) => !r.left && fOf(k)(r)).length;
   if (!FILTERS.some((x) => x[0] === filt)) filt = 'all';
   let rows = all.filter((r) => r.left || fOf(filt)(r));
+  // 검색은 다시 그리지 않고 줄만 숨김 (다시 그리면 한글 입력 중인 글자가 자음·모음으로 떨어짐)
   const k = q.trim().toLowerCase();
-  if (k) rows = rows.filter((r) => r.name.toLowerCase().includes(k) || r.realName.toLowerCase().includes(k) || r.aliases.toLowerCase().includes(k) || norm(r.name).includes(norm(k))
-    || (k.replace(/\D/g, '').length >= 4 && r.phone.replace(/\D/g, '').includes(k.replace(/\D/g, ''))));
+  const hitQ = (r, kk) => !kk || r.name.toLowerCase().includes(kk) || r.realName.toLowerCase().includes(kk) || r.aliases.toLowerCase().includes(kk) || norm(r.name).includes(norm(kk))
+    || (kk.replace(/\D/g, '').length >= 4 && r.phone.replace(/\D/g, '').includes(kk.replace(/\D/g, '')));
   rows.sort((a, b) => {
     const x = a[sort.k], y = b[sort.k];
     const c = typeof x === 'number' ? x - y : koSort(x || '￿', y || '￿');
@@ -202,7 +203,7 @@ function listView(body, root) {
       <th class="ck"><input type="checkbox" data-selall="${key}" ${list.length && list.every((r) => sel.has(r.id)) ? 'checked' : ''} aria-label="모두 선택"></th>
       ${th('name', '닉네임', 'stick')}${th('grank', '등급')}${th('staff', '운영진')}${th('joined', '가입일자')}${th('realName', '이름')}${th('birth', '생년월일')}${th('phone', '연락처')}${th('staffHist', '운영진 이력')}${th('absent', '장불여부')}
       <th class="gap"></th>${th('login', '로그인')}${th('aliases', '별칭')}${th('att', '출석')}${th('rate', '출석률')}${th('last', '최근 출석')}<th>관리</th></tr></thead><tbody>
-      ${list.map((r, i) => `${r.left && (i === 0 || !list[i - 1].left) ? leftDiv : ''}<tr class="${sel.has(r.id) ? 'msel' : ''} ${r.left ? 'st-row-left' : r.rest || !r.inSheet ? 'st-row-rest' : ''}">
+      ${list.map((r, i) => `${r.left && (i === 0 || !list[i - 1].left) ? leftDiv : ''}<tr data-rid="${r.id}" ${hitQ(r, k) ? '' : 'hidden'} class="${sel.has(r.id) ? 'msel' : ''} ${r.left ? 'st-row-left' : r.rest || !r.inSheet ? 'st-row-rest' : ''}">
         <td class="ck"><input type="checkbox" data-sel="${r.id}" ${sel.has(r.id) ? 'checked' : ''} aria-label="${esc(r.name)} 선택"></td>
         <td class="stick">${r.inSheet ? `<button type="button" class="cell ro nm-edit" data-edit="${r.id}" title="눌러서 회원 정보 고치기">${esc(r.name)}</button>` : `<input class="cell w-name" value="${esc(r.name)}" data-cell="name" data-id="${r.id}"><small class="nosheet">시트에 없음</small>`}</td>
         <td>${r.grade ? `<span class="grade g-${GRADES.indexOf(r.grade)}">${esc(r.grade)}</span>` : '-'}</td>
@@ -237,14 +238,23 @@ function listView(body, root) {
       <button class="btn ghost sm" data-bulkstaff="1">운영진 지정</button><button class="btn ghost sm" data-bulkstaff="0">운영진 해제</button>
       <button class="btn ghost sm" data-selclear>선택 해제</button><button class="btn ghost danger sm" data-seldel>선택 삭제</button></div>` : ''}
 
-    ${rows.length ? `<div class="card sheetwrap vfit" data-key="mlist">${table([...main, ...left], 'all')}</div>` : `<section class="card">${empty(q || filt !== 'all' ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 통합 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
+    ${rows.length ? `<div class="card sheetwrap vfit" data-key="mlist">${table([...main, ...left], 'all')}</div><section class="card" data-qempty hidden>${empty('검색과 맞는 회원이 없어요.')}</section>` : `<section class="card">${empty(filt !== 'all' ? '조건에 맞는 회원이 없어요.' : '회원이 없어요. 통합 시트를 연결하거나 회원 추가·명단 붙여넣기로 등록하세요.')}</section>`}
 `;
 
   const rer = () => render(root);
   bindSheetCard(body, root);
   body.querySelector('[data-tnote]').addEventListener('click', () => modal('회원 표 안내', `<p class="small">등급·가입일자~장불여부는 통합 시트 회원 탭 내용 그대로예요(시트에서 고치면 반영돼요). 회원 구분은 시트 등급(VIP · 우수회원 · 슛도리 · 정회원 · 탈퇴회원)을 따르고, 운영진은 체크로 따로 지정해요.
       장불여부를 누르거나 마우스를 올리면 장불 사유·시작일자·해제일자가 보여요. 표가 길면 표 안에서 위아래·옆으로 넘겨 보세요. 별칭에는 오타·다른 표기를 쉼표로 넣으세요(카페 댓글·로그인에서 알아봐요). 출석률은 기록이 있는 전체 경기 기준이에요.</p>`));
-  body.querySelector('[data-q]').addEventListener('input', (e) => { q = e.target.value; const pos = e.target.selectionStart; rer(); const i = root.querySelector('[data-q]'); i.focus(); i.setSelectionRange(pos, pos); });
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const applyQ = () => {
+    const kk = q.trim().toLowerCase(); let n = 0, nl = 0;
+    body.querySelectorAll('tr[data-rid]').forEach((tr) => { const r = byId.get(tr.dataset.rid), on = !!r && hitQ(r, kk); tr.hidden = !on; if (on) { n++; if (r.left) nl++; } });
+    body.querySelectorAll('tr.left-div').forEach((tr) => { tr.hidden = !nl; });
+    const em = body.querySelector('[data-qempty]'), wrap = body.querySelector('[data-key="mlist"]');
+    if (em) em.hidden = n > 0; if (wrap) wrap.hidden = !n;
+  };
+  applyQ();
+  body.querySelector('[data-q]').addEventListener('input', (e) => { q = e.target.value; applyQ(); });
   body.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => { filt = b.dataset.f; rer(); }));
   body.querySelectorAll('[data-sort]').forEach((t) => t.addEventListener('click', () => {
     const key = t.dataset.sort; sort = sort.k === key ? { k: key, d: -sort.d } : { k: key, d: ['att', 'rate', 'last', 'joined'].includes(key) ? -1 : 1 }; rer();
@@ -304,7 +314,7 @@ function feeView(body, root) {
   let list = S.members.filter((m) => m.inSheet && P?.[m.id]).map((m) => ({ m, f: P[m.id].fees || [] }));
   if (hideLeft) list = list.filter(({ m }) => !isLeft(m));
   const k = q.trim().toLowerCase();
-  if (k) list = list.filter(({ m }) => m.name.toLowerCase().includes(k) || norm(m.name).includes(norm(k)) || (P[m.id].realName || '').includes(k));
+  const hitQ = (m, kk) => !kk || m.name.toLowerCase().includes(kk) || norm(m.name).includes(norm(kk)) || (P[m.id].realName || '').includes(kk);
   list.sort((a, b) => (Number(a.m.sheetNo) || 9999) - (Number(b.m.sheetNo) || 9999));
   const cnt = {}; list.forEach(({ f }) => { const kk = feeKind(f[mon]) || 'none'; cnt[kk] = (cnt[kk] || 0) + 1; });
   const pill = (v) => { const kk = feeKind(v); return kk ? `<span class="fee f-${kk}" title="${esc(v)}">${FEE_KINDS[kk]?.mark || ''} ${esc(FEE_KINDS[kk]?.label || v)}</span>` : '<span class="fee f-none">-</span>'; };
@@ -316,13 +326,18 @@ function feeView(body, root) {
     <div class="mtools"><input class="search" type="search" placeholder="닉네임·이름 검색" value="${esc(q)}" data-q></div>
 
     <div class="card sheetwrap vfit" data-key="mfee"><table class="grid fgrid"><thead><tr><th class="stick">닉네임</th><th>등급</th>${Array.from({ length: 12 }, (_, i) => `<th class="${i === mon ? 'on' : ''}">${i + 1}월</th>`).join('')}</tr></thead><tbody>
-      ${list.map(({ m, f }) => `<tr class="${isLeft(m) ? 'st-row-left' : ''}"><td class="stick"><b>${esc(m.name)}</b></td><td>${m.grade ? `<span class="grade g-${GRADES.indexOf(m.grade)}">${esc(m.grade)}</span>` : ''}</td>
+      ${list.map(({ m, f }) => `<tr data-rid="${m.id}" ${hitQ(m, k) ? '' : 'hidden'} class="${isLeft(m) ? 'st-row-left' : ''}"><td class="stick"><b>${esc(m.name)}</b></td><td>${m.grade ? `<span class="grade g-${GRADES.indexOf(m.grade)}">${esc(m.grade)}</span>` : ''}</td>
         ${Array.from({ length: 12 }, (_, i) => `<td class="${i === mon ? 'cur' : ''}">${pill(f[i])}</td>`).join('')}</tr>`).join('')}
     </tbody></table></div>
 `}`;
   bindSheetCard(body, root);
   body.querySelector('[data-hl]')?.addEventListener('change', (e) => { hideLeft = e.target.checked; render(root); });
-  body.querySelector('[data-q]')?.addEventListener('input', (e) => { q = e.target.value; const pos = e.target.selectionStart; render(root); const i = root.querySelector('[data-q]'); i.focus(); i.setSelectionRange(pos, pos); });
+  // 검색: 다시 그리지 않고 줄만 숨김 (한글 입력이 끊기지 않게)
+  const byM = new Map(list.map(({ m }) => [m.id, m]));
+  body.querySelector('[data-q]')?.addEventListener('input', (e) => {
+    q = e.target.value; const kk = q.trim().toLowerCase();
+    body.querySelectorAll('tr[data-rid]').forEach((tr) => { const m = byM.get(tr.dataset.rid); tr.hidden = !(m && hitQ(m, kk)); });
+  });
   if (sheetLink() && !S.msheet && !busy && !loadedOnce) { loadedOnce = true; reload(root, false); }
 }
 

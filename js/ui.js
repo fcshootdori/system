@@ -1,7 +1,7 @@
-import { esc } from './util.js?v=0.1.88';
-import { TEAM_COLORS, STATUS } from './config.js?v=0.1.88';
-import { teamColor, teamName } from './domain.js?v=0.1.88';
-import { memoOf, hostOf } from './state.js?v=0.1.88';
+import { esc } from './util.js?v=0.1.89';
+import { TEAM_COLORS, STATUS } from './config.js?v=0.1.89';
+import { teamColor, teamName } from './domain.js?v=0.1.89';
+import { memoOf, hostOf } from './state.js?v=0.1.89';
 
 // 입력칸에 바로 커서 — 버튼을 누른 그 순간에 맞춰야 휴대폰 키패드도 같이 올라옴
 export function focusNow(inp) {
@@ -46,6 +46,25 @@ document.addEventListener('keydown', (e) => {
 });
 addEventListener('scroll', hideTip, true); addEventListener('hashchange', hideTip);
 
+// 화면을 다시 그리되, 지금 입력 중인 검색칸([data-q])은 그대로 두기
+//  입력칸을 새로 만들면 한글 조합 중인 글자가 자음·모음으로 떨어져서, 검색칸과 그 위 부모만 남기고 나머지만 바꿈
+export function setHTMLKeep(el, html, sel = '[data-q]') {
+  const a = document.activeElement;
+  if (!a || !el.contains(a) || !a.matches?.(sel)) { el.innerHTML = html; return; }
+  const t = document.createElement(el.tagName); t.innerHTML = html;
+  const nk = t.querySelector(sel);
+  const chain = (root, leaf) => { const c = []; for (let x = leaf; x && x !== root; x = x.parentElement) c.unshift(x); return [root, ...c]; };
+  const oc = chain(el, a), nc = nk ? chain(t, nk) : [];
+  if (!nk || oc.length !== nc.length) { el.innerHTML = html; return; }
+  for (let i = 0; i < oc.length - 1; i++) {
+    const o = oc[i], n = nc[i], oKid = oc[i + 1], nKid = nc[i + 1];
+    if (i > 0) { [...o.attributes].forEach((x) => { if (!n.hasAttribute(x.name)) o.removeAttribute(x.name); }); [...n.attributes].forEach((x) => o.setAttribute(x.name, x.value)); }
+    [...o.childNodes].forEach((c) => { if (c !== oKid) c.remove(); });
+    const kids = [...n.childNodes], at = kids.indexOf(nKid);
+    oKid.before(...kids.slice(0, at)); oKid.after(...kids.slice(at + 1));
+  }
+}
+
 export function modal(title, bodyHtml, { wide = false } = {}) {
   const wrap = document.createElement('div');
   wrap.className = 'modal-wrap';
@@ -54,7 +73,14 @@ export function modal(title, bodyHtml, { wide = false } = {}) {
     <div class="modal-body">${bodyHtml}</div></div>`;
   document.body.appendChild(wrap);
   const close = () => wrap.remove();
-  wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('[data-close]')) close(); });
+  // 바깥(어두운 곳)을 눌렀다 뗐을 때만 닫음 — 창 안에서 글자를 드래그해 선택하다 바깥에서 손을 떼도 닫히지 않게
+  let downOut = false;
+  wrap.addEventListener('pointerdown', (e) => { downOut = e.target === wrap; });
+  wrap.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]')) return close();
+    if (e.target === wrap && downOut) close();
+    downOut = false;
+  });
   return { el: wrap.querySelector('.modal'), close };
 }
 
