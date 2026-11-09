@@ -1,12 +1,12 @@
 // 일정 — 회원: 달력 보기 / 운영: 달력·목록에서 경기 추가·수정  (WD_FUTSAL 일정 메뉴와 같은 구성)
-import { S, go, mdPath, today, statusLabel } from '../state.js?v=0.1.91';
-import { db } from '../store.js?v=0.1.91';
-import { STATUS } from '../config.js?v=0.1.91';
-import { applicants, fmtOf, noLabel, isOpen, closeLabel, isNoMatch, schedTitle, dateRange, lastDay } from '../domain.js?v=0.1.91';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.91';
-import { empty } from '../ui.js?v=0.1.91';
-import { editMatchday, fmtSummary, reviewCard, cancelMatchday, mapUrl } from './home.js?v=0.1.91';
-import { forget } from '../record-sheet.js?v=0.1.91';
+import { S, go, mdPath, today, statusLabel } from '../state.js?v=0.1.92';
+import { db } from '../store.js?v=0.1.92';
+import { STATUS } from '../config.js?v=0.1.92';
+import { applicants, fmtOf, noLabel, isOpen, closeLabel, isNoMatch, schedTitle, dateRange, lastDay, whenText } from '../domain.js?v=0.1.92';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.92';
+import { empty } from '../ui.js?v=0.1.92';
+import { editMatchday, fmtSummary, reviewCard, cancelMatchday, mapUrl } from './home.js?v=0.1.92';
+import { forget } from '../record-sheet.js?v=0.1.92';
 
 let ym = null, sel = null, view = 'cal', picked = false;   // picked: 달력에서 날짜를 직접 눌렀는지
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
@@ -44,7 +44,7 @@ export function render(root, { sub }) {
   if (op && view === 'list') {
     const all = [...S.matchdays].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     root.innerHTML = head + `<section class="card"><p class="muted small">줄을 누르면 수정할 수 있어요.</p><div class="tbl-wrap vfit" data-key="plan"><table class="tbl plan"><thead><tr><th>회차</th><th>날짜</th><th>시간</th><th>장소</th><th>상태</th><th>참가</th></tr></thead><tbody>
-      ${all.map((m) => `<tr ${m.fromSheet ? `data-view-md="${m.id}" title="통합 시트에 보관된 경기"` : `data-edit="${m.id}"`}><td>${m.noMatch ? `<span class="nm-tag">${esc(schedTitle(m))}</span>` : noLabel(m) || '-'}</td><td class="nm">${m.noMatch ? esc(dateRange(m)) : fmtDate(m.date)}</td><td>${esc(m.time || '')}</td><td>${esc(m.venue || '')}</td>
+      ${all.map((m) => `<tr ${m.fromSheet ? `data-view-md="${m.id}" title="통합 시트에 보관된 경기"` : `data-edit="${m.id}"`}><td>${m.noMatch ? `<span class="nm-tag">${esc(schedTitle(m))}</span>` : noLabel(m) || '-'}</td><td class="nm">${m.noMatch ? esc(whenText(m)) : fmtDate(m.date)}</td><td>${m.noMatch ? '' : esc(m.time || '')}</td><td>${esc(m.venue || '')}</td>
         <td><span class="st st-${kindOf(m)}">${statusLabel(m, STATUS)}</span></td><td>${m.source === 'sheet' || m.fromSheet ? (m.fromSheet ? '📗' : '-') : applicants(m).filter((a) => !a.wait).length}</td></tr>`).join('')}
       </tbody></table></div></section>`;
     bindCommon(root);
@@ -113,11 +113,11 @@ function nmDetail(md, op) {
   const n = applicants(md).filter((a) => !a.wait).length;
   const past = lastDay(md) < today();
   if (md.cancelled) return `<div class="eyebrow cancel-t">${esc(schedTitle(md))} · 일정 취소</div>
-    <h2 class="dt struck">${esc(dateRange(md))} ${md.time ? `<small>${esc(md.time)}</small>` : ''}</h2>
+    <h2 class="dt struck">${esc(whenText(md))}</h2>
     <p class="cancel-box">이 일정은 취소됐어요${md.cancelReason ? ` — ${esc(md.cancelReason)}` : ''}.</p>
     ${op ? `<div class="row wrap"><button class="btn ghost" data-cancel>취소 철회</button><button class="btn ghost" data-editmd>수정</button><button class="btn ghost danger" data-delmd>삭제</button></div>` : ''}`;
   return `<div class="eyebrow nm-eye"><span class="nm-tag">${esc(schedTitle(md))}</span> 경기 없는 일정${past ? ' · 지난 일정' : ''}</div>
-    <h2 class="dt">${esc(dateRange(md))} ${md.time ? `<small>${esc(md.time)}</small>` : ''}</h2>
+    <h2 class="dt">${esc(whenText(md))}</h2>
     ${md.venue || md.addr ? `<p class="small nm-place">📍 <b>${esc(md.venue || md.addr)}</b>${md.addr && md.venue ? ` <span class="muted">${esc(md.addr)}</span>` : ''} <a class="map-l" href="${mapUrl(md)}" target="_blank" rel="noopener">지도 보기</a></p>` : ''}
     ${md.note ? `<p class="note">${esc(md.note)}</p>` : ''}
     <p class="small">참석 ${n}명${isOpen(md) && closeLabel(md) && !md.reopened ? ` · ⏰ ${closeLabel(md)}` : ''}</p>

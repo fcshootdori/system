@@ -1,14 +1,14 @@
 // 경기 신청 — 참석 · 불참 · 운영진 협의
 //  · 일반 경기: 신청 마감 전에는 참석·협의·불참 명단, 팀이 정해지면(주장·드래프트) 팀별로 좌우 칸
 //  · 이벤트 경기: 처음부터 미리 정한 두 팀 칸 — 회원은 팀을 골라(또는 운영진이 넣어 둔 팀에서) 참석·불참
-import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf, isMaster } from '../state.js?v=0.1.91';
-import { db, newId } from '../store.js?v=0.1.91';
-import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent, schedTitle, dateRange } from '../domain.js?v=0.1.91';
-import { TEAM_COLORS } from '../config.js?v=0.1.91';
-import { parseCafeComments, norm } from '../cafe-parser.js?v=0.1.91';
-import { esc, fmtDate, fmtTime, toast, byName } from '../util.js?v=0.1.91';
-import { icon } from '../icons.js?v=0.1.91';
-import { modal, empty, colorChip, teamLabel, memoI, focusNow } from '../ui.js?v=0.1.91';
+import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf, isMaster } from '../state.js?v=0.1.92';
+import { db, newId } from '../store.js?v=0.1.92';
+import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent, schedTitle, dateRange, whenText } from '../domain.js?v=0.1.92';
+import { TEAM_COLORS } from '../config.js?v=0.1.92';
+import { parseCafeComments, norm } from '../cafe-parser.js?v=0.1.92';
+import { esc, fmtDate, fmtTime, toast, byName } from '../util.js?v=0.1.92';
+import { icon } from '../icons.js?v=0.1.92';
+import { modal, empty, colorChip, teamLabel, memoI, focusNow } from '../ui.js?v=0.1.92';
 
 const SRC = { app: '앱', cafe: '카페', manual: '운영진', sheet: '시트' };
 const colorHex = (k) => TEAM_COLORS.find((c) => c.key === k)?.hex || '#94a3b8';
@@ -28,7 +28,7 @@ export function render(root, ctx = {}) {
   root.innerHTML = `
     ${ctx.embedded ? '' : '<a class="back" href="#/home">‹ 홈</a>'}
     <section class="card">
-      ${ctx.embedded ? '' : `<div class="eyebrow">${nm ? esc(dateRange(md)) : fmtDate(md.date)} ${esc(md.venue || '')}</div>`}
+      ${ctx.embedded ? '' : `<div class="eyebrow">${nm ? esc(whenText(md)) : fmtDate(md.date)} ${esc(md.venue || '')}</div>`}
       <h1>${nm ? `${esc(schedTitle(md))} 참석` : v.ev ? '이벤트 경기 신청' : '참가 신청'} <small>참석 ${nIn}${cap ? ` / ${cap}` : ''}명</small></h1>
       ${nm ? '<p class="small muted">경기 없는 일정이에요 — 참석·불참만 알려 주세요.</p>' : ''}
       ${v.ev ? `<p class="small">${v.ev.map((t) => colorChip(t.color, t.name)).join(' vs ')} <span class="muted">· 팀이 미리 정해진 경기</span></p>` : ''}

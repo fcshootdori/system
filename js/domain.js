@@ -1,7 +1,7 @@
 // 경기 운영 규칙 — 경기 방식, 신청 순서, 드래프트 순번, 대진, 결과, 개인 기록
 //  승률계산기 시트와 같은 규칙: 승률 = 승 ÷ (승+패), 승점 = 승×3 + 무
-import { S, memberById, matchdayById } from './state.js?v=0.1.91';
-import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.91';
+import { S, memberById, matchdayById } from './state.js?v=0.1.92';
+import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.92';
 
 // ── 경기 방식: 팀 기본값 + 경기일별 변경값 ──
 export function fmtOf(md) {
@@ -39,6 +39,16 @@ export function dateRange(md) {
   const a = new Date(md.date + 'T00:00:00'), b = new Date(lastDay(md) + 'T00:00:00');
   const one = (d, m = true) => `${m ? `${d.getMonth() + 1}월 ` : ''}${d.getDate()}일 (${DW[d.getDay()]})`;
   return lastDay(md) === md.date ? one(a) : `${one(a)} ~ ${one(b, a.getMonth() !== b.getMonth())}`;
+}
+
+// 시작 일시 ~ 끝 일시: "11월 14일 (토) 15:00 ~ 15일 (일) 11:00" / 하루면 "11월 14일 (토) 15:00~22:00"
+export function whenText(md) {
+  if (!md?.date) return '';
+  const [s = '', e = ''] = String(md.time || '').split('~').map((x) => x.trim());
+  const a = new Date(md.date + 'T00:00:00'), b = new Date(lastDay(md) + 'T00:00:00');
+  const one = (d, m = true) => `${m ? `${d.getMonth() + 1}월 ` : ''}${d.getDate()}일 (${DW[d.getDay()]})`;
+  if (lastDay(md) === md.date) return `${one(a)}${s || e ? ` ${s}${e ? `~${e}` : ''}` : ''}`;
+  return `${one(a)}${s ? ` ${s}` : ''} ~ ${one(b, a.getMonth() !== b.getMonth())}${e ? ` ${e}` : ''}`;
 }
 
 export const isOpen = (md) => !!md && md.status === 'open' && !md.cancelled && !(closePassed(md) && !md.reopened);
