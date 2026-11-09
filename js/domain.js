@@ -1,7 +1,7 @@
 // 경기 운영 규칙 — 경기 방식, 신청 순서, 드래프트 순번, 대진, 결과, 개인 기록
 //  승률계산기 시트와 같은 규칙: 승률 = 승 ÷ (승+패), 승점 = 승×3 + 무
-import { S, memberById, matchdayById } from './state.js?v=0.1.89';
-import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.89';
+import { S, memberById, matchdayById } from './state.js?v=0.1.90';
+import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.90';
 
 // ── 경기 방식: 팀 기본값 + 경기일별 변경값 ──
 export function fmtOf(md) {
@@ -27,6 +27,20 @@ export function closeDate(md) {
 export const closeTime = (md) => { const c = closeDate(md); return c ? Date.parse(c + 'T00:00:00+09:00') : 0; };
 export const closePassed = (md, now = Date.now()) => { const t = closeTime(md); return !!t && now >= t; };
 // 지금 신청을 받는 중인지
+// ── 경기 없는 일정 (MT · 회식 등) ── md.noMatch = true, md.title = 'MT', md.endDate = 마지막 날(여러 날이면)
+//  참석·불참 신청만 받고 주장·드래프트·경기·기록은 없음. 회차에서 빠짐
+export const isNoMatch = (md) => !!md?.noMatch;
+export const schedTitle = (md) => (md?.title || '').trim() || 'MT';
+export const lastDay = (md) => (md?.endDate && md.endDate > (md.date || '') ? md.endDate : md?.date || '');
+const DW = ['일', '월', '화', '수', '목', '금', '토'];
+// "11월 14일 (토) ~ 15일 (일)" / 하루면 "11월 14일 (토)"
+export function dateRange(md) {
+  if (!md?.date) return '';
+  const a = new Date(md.date + 'T00:00:00'), b = new Date(lastDay(md) + 'T00:00:00');
+  const one = (d, m = true) => `${m ? `${d.getMonth() + 1}월 ` : ''}${d.getDate()}일 (${DW[d.getDay()]})`;
+  return lastDay(md) === md.date ? one(a) : `${one(a)} ~ ${one(b, a.getMonth() !== b.getMonth())}`;
+}
+
 export const isOpen = (md) => !!md && md.status === 'open' && !md.cancelled && !(closePassed(md) && !md.reopened);
 // 마감 안내 문구: "10월 22일 (목) 0시 마감"
 export function closeLabel(md) {
@@ -276,7 +290,7 @@ export function allStats() {
 //  · 승률계산기에서 가져온 경기는 시트의 Game_id(718, 719 …)를 기준 회차로 씀 (숫자가 아니면 제외)
 const sheetNo = (m) => (m.sheetGameId != null && /^\d+$/.test(String(m.sheetGameId)) ? +m.sheetGameId : null);
 export const explicitNo = (m) => (m.no != null && m.no !== '' && Number.isFinite(+m.no) ? +m.no : sheetNo(m));
-export const countsForNo = (m) => !m.cancelled && !m.noExclude && !m.sample && !(m.source === 'sheet' && sheetNo(m) == null && m.no == null);
+export const countsForNo = (m) => !m.cancelled && !m.noExclude && !m.noMatch && !m.sample && !(m.source === 'sheet' && sheetNo(m) == null && m.no == null);
 
 export function matchNumbers(extra) {
   const list = [...S.matchdays, ...(extra ? [extra] : [])]

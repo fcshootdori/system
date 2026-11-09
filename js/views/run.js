@@ -1,17 +1,17 @@
 // 운영 > 경기 — 위쪽에 선택한 경기(날짜·장소·상태, 이전/이후)와 단계 막대를 고정하고
 //  신청 → 주장 → 드래프트 → 팀 확정 → 경기 → 결과 단계 화면을 보여 줌 (WD_FUTSAL 경기 메뉴와 같은 구성)
-import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state.js?v=0.1.89';
-import { db } from '../store.js?v=0.1.89';
-import { STATUS } from '../config.js?v=0.1.89';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.89';
-import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel, teamEvent, capEvent } from '../domain.js?v=0.1.89';
-import { colorChip } from '../ui.js?v=0.1.89';
-import { empty } from '../ui.js?v=0.1.89';
-import { fmtSummary, editMatchday, cancelMatchday } from './home.js?v=0.1.89';
-import * as apply from './apply.js?v=0.1.89';
-import * as draft from './draft.js?v=0.1.89';
-import * as games from './games.js?v=0.1.89';
-import * as matchmode from './matchmode.js?v=0.1.89';
+import { S, nextMatchday, matchdayById, mdPath, go, statusLabel } from '../state.js?v=0.1.90';
+import { db } from '../store.js?v=0.1.90';
+import { STATUS } from '../config.js?v=0.1.90';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.90';
+import { noLabel, eventTeams, signupView, eventTeamsToTeams, closeTime, closePassed, closeLabel, teamEvent, capEvent, isNoMatch, schedTitle, dateRange } from '../domain.js?v=0.1.90';
+import { colorChip } from '../ui.js?v=0.1.90';
+import { empty } from '../ui.js?v=0.1.90';
+import { fmtSummary, editMatchday, cancelMatchday } from './home.js?v=0.1.90';
+import * as apply from './apply.js?v=0.1.90';
+import * as draft from './draft.js?v=0.1.90';
+import * as games from './games.js?v=0.1.90';
+import * as matchmode from './matchmode.js?v=0.1.90';
 
 const STAGES = [['apply', '신청'], ['captain', '주장'], ['draft', '드래프트'], ['teams', '팀 확정'], ['games', '경기'], ['result', '결과']];
 const idx = (k) => STAGES.findIndex(([s]) => s === k);
@@ -32,6 +32,7 @@ export function stageOf(md) {
 // ── 이전 단계로 되돌리기 (지금 단계 기준 한 단계씩) ──
 //  신청 ← 주장 ← 드래프트 ← 팀 확정 ← 경기 ← 결과  (이벤트 경기는 생략한 단계를 건너뜀)
 function prevStage(md) {
+  if (isNoMatch(md)) return null;
   const auto = stageOf(md), P = mdPath(md.id);
   const games = S.games.filter((g) => g.matchdayId === md.id);
   const toApply = (extra = {}) => db.tx(P, (cur) => {
@@ -74,8 +75,10 @@ export function render(root) {
   }
   const i = list.indexOf(md), prev = list[i - 1], next = list[i + 1];
   // 이벤트 경기: 팀원까지 미리 정함 → 주장·드래프트 생략 / 주장만 미리 정함 → 주장 생략
-  const skip = teamEvent(md) ? ['captain', 'draft'] : capEvent(md) ? ['captain'] : [];
-  const jump = (k) => (skip.includes(k) ? (teamEvent(md) ? 'teams' : 'draft') : k);
+  //  MT 등 경기 없는 일정 → 신청(참석) 단계만
+  const nm = isNoMatch(md);
+  const skip = nm ? ['captain', 'draft', 'teams', 'games', 'result'] : teamEvent(md) ? ['captain', 'draft'] : capEvent(md) ? ['captain'] : [];
+  const jump = (k) => (skip.includes(k) ? (nm ? 'apply' : teamEvent(md) ? 'teams' : 'draft') : k);
   draft.snap(root);   // 드래프트 지명 애니메이션용: 다시 그리기 전 선수 위치
   const auto = jump(stageOf(md));
   const step = jump(S.step || auto);
@@ -84,14 +87,14 @@ export function render(root) {
     <div class="runbar card">
       <div class="rb-top">
         <button class="navb" data-to="${prev?.id || ''}" ${prev ? '' : 'disabled'} aria-label="이전 경기">‹</button>
-        <div class="rb-title"><b>${noLabel(md) ? `<span class="no">${noLabel(md)}</span> ` : ''}${fmtDate(md.date)}${md.time ? ` <small>${esc(md.time)}</small>` : ''}</b>
+        <div class="rb-title"><b>${nm ? `<span class="no nm-tag">${esc(schedTitle(md))}</span> ${esc(dateRange(md))}` : `${noLabel(md) ? `<span class="no">${noLabel(md)}</span> ` : ''}${fmtDate(md.date)}`}${md.time ? ` <small>${esc(md.time)}</small>` : ''}</b>
           <small>${esc([md.venue, fmtSummary(md)].filter(Boolean).join(' · '))} · <span class="st ${md.cancelled ? 'st-cancel' : ''}">${statusLabel(md, STATUS)}</span></small></div>
         <button class="navb" data-to="${next?.id || ''}" ${next ? '' : 'disabled'} aria-label="이후 경기">›</button>
       </div>
       <ol class="stages">${STAGES.map(([k, l], n) => skip.includes(k)
-        ? `<li><button class="off" disabled title="이벤트 경기 — 미리 정해져 있어 생략">${l}<small>생략</small></button></li>`
+        ? `<li><button class="off" disabled title="${nm ? '경기 없는 일정 — 참석 신청만 받아요' : '이벤트 경기 — 미리 정해져 있어 생략'}">${l}<small>${nm ? '없음' : '생략'}</small></button></li>`
         : `<li><button data-step="${k}" class="${n < idx(auto) ? 'done' : ''} ${k === auto ? 'now' : ''} ${k === step ? 'sel' : ''}">${l}</button></li>`).join('')}</ol>
-      <div class="rb-tools">${!md.cancelled && prevStage(md) ? `<button class="link rb-back" data-prevstage>‹ ${prevStage(md).to} 단계로 되돌리기</button>` : ''}<span class="rb-links"><button class="link" data-edit>경기일·경기 방식 수정</button><button class="link" data-notice>공지 이미지</button>${md.status === 'played' ? '' : `<button class="link danger" data-cancelmd>${md.cancelled ? '취소 철회' : '경기 취소'}</button>`}</span></div>
+      <div class="rb-tools">${!md.cancelled && prevStage(md) ? `<button class="link rb-back" data-prevstage>‹ ${prevStage(md).to} 단계로 되돌리기</button>` : ''}<span class="rb-links"><button class="link" data-edit>${nm ? '일정 수정' : '경기일·경기 방식 수정'}</button>${nm ? '' : '<button class="link" data-notice>공지 이미지</button>'}${md.status === 'played' ? '' : `<button class="link danger" data-cancelmd>${md.cancelled ? '취소 철회' : nm ? '일정 취소' : '경기 취소'}</button>`}</span></div>
     </div>
     <div data-body></div>`;
 
@@ -102,7 +105,7 @@ export function render(root) {
   const noGames = !S.games.some((g) => g.matchdayId === md.id);
   root.querySelector('[data-cancelmd]')?.addEventListener('click', () => cancelMatchday(md));
   if (md.cancelled) {
-    body.innerHTML = `<section class="card cancel-card"><h2>취소된 경기예요</h2>
+    body.innerHTML = `<section class="card cancel-card"><h2>${nm ? `취소된 ${esc(schedTitle(md))} 일정이에요` : '취소된 경기예요'}</h2>
       <p class="small">${md.cancelReason ? esc(md.cancelReason) + ' · ' : ''}일정에는 "경기 취소"로 표시되고, 회원 홈에도 안내가 떠요. 신청 명단은 그대로 보관돼요.</p>
       <button class="btn ghost" data-uncancel>취소 철회</button></section>`;
     body.querySelector('[data-uncancel]').addEventListener('click', () => cancelMatchday(md));

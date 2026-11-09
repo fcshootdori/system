@@ -1,7 +1,7 @@
 // 앱 전역 상태 — 저장소를 구독해 화면이 항상 최신 데이터를 보도록 함
-import { db } from './store.js?v=0.1.89';
-import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.89';
-import { byName } from './util.js?v=0.1.89';
+import { db } from './store.js?v=0.1.90';
+import { DEFAULT_TEAM, DEFAULT_FORMAT, KNOWN_ALIASES } from './config.js?v=0.1.90';
+import { byName } from './util.js?v=0.1.90';
 
 export const S = {
   team: { ...DEFAULT_TEAM },
@@ -113,7 +113,7 @@ export const memoOf = (id, md) => md?.apps?.[id]?.memo || md?.guests?.[id]?.memo
 export const hostOf = (id, md) => { const g = md?.guests?.[id]; return g?.host ? (memberById(g.hostId)?.name || g.host) : ''; };
 // 진행 중인 경기일: 완료되지 않은 것 중 가장 이른 날짜, 없으면 가장 최근
 export function currentMatchday() {
-  const live = S.matchdays.filter((m) => m.status !== 'played' && !m.cancelled).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const live = S.matchdays.filter((m) => m.status !== 'played' && !m.cancelled && !m.noMatch).sort((a, b) => (a.date || '').localeCompare(b.date || ''));   // 공지 이미지는 경기만 (MT 등 제외)
   return live[0] || S.matchdays[0] || null;
 }
 export const matchdayById = (id) => S.matchdays.find((m) => m.id === id);
@@ -123,10 +123,18 @@ const todayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.g
 export const playedDays = () => S.matchdays.filter((m) => !m.cancelled && S.games.some((g) => g.matchdayId === m.id && g.done))
   .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 // 다음 경기: 오늘 이후의 끝나지 않은 경기일 중 가장 빠른 것
+//  (MT처럼 여러 날 일정은 마지막 날까지 '다음 일정')
 export function nextMatchday() {
   const t = todayStr();
-  const up = S.matchdays.filter((m) => m.status !== 'played' && !m.cancelled && (m.date || '') >= t).sort((a, b) => !!a.sample - !!b.sample || a.date.localeCompare(b.date));
+  const up = S.matchdays.filter((m) => m.status !== 'played' && !m.cancelled && ((m.noMatch && m.endDate > (m.date || '') ? m.endDate : m.date) || '') >= t).sort((a, b) => !!a.sample - !!b.sample || a.date.localeCompare(b.date));
   return up[0] || S.matchdays.filter((m) => m.status !== 'played' && !m.cancelled).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] || null;
+}
+// 다음 '경기' (MT 같은 경기 없는 일정은 건너뜀) — 드래프트·팀 화면용
+export function nextGameday() {
+  const t = todayStr();
+  const ok = (m) => m.status !== 'played' && !m.cancelled && !m.noMatch;
+  return S.matchdays.filter((m) => ok(m) && (m.date || '') >= t).sort((a, b) => !!a.sample - !!b.sample || a.date.localeCompare(b.date))[0]
+    || S.matchdays.filter(ok).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] || null;
 }
 // 이 기기가 주장 링크로 들어온 진행 중 드래프트
 export function captainMatchday() {
@@ -138,6 +146,6 @@ export function captainMatchday() {
 export const today = todayStr;
 
 // 경기 취소 — 일정에는 남기고 "취소"로 표시
-export const statusLabel = (md, STATUS) => (md?.cancelled ? '경기 취소' : STATUS[md?.status]?.label || '');
+export const statusLabel = (md, STATUS) => (md?.cancelled ? (md.noMatch ? '일정 취소' : '경기 취소') : md?.noMatch ? (['open'].includes(md.status) ? '참석 신청 중' : '참석 마감') : STATUS[md?.status]?.label || '');
 // 앞으로 있을 경기 중 취소된 것 (홈 안내용)
 export const upcomingCancelled = () => S.matchdays.filter((m) => m.cancelled && (m.date || '') >= todayStr()).sort((a, b) => a.date.localeCompare(b.date));

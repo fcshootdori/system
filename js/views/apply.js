@@ -1,14 +1,14 @@
 // 경기 신청 — 참석 · 불참 · 운영진 협의
 //  · 일반 경기: 신청 마감 전에는 참석·협의·불참 명단, 팀이 정해지면(주장·드래프트) 팀별로 좌우 칸
 //  · 이벤트 경기: 처음부터 미리 정한 두 팀 칸 — 회원은 팀을 골라(또는 운영진이 넣어 둔 팀에서) 참석·불참
-import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf, isMaster } from '../state.js?v=0.1.89';
-import { db, newId } from '../store.js?v=0.1.89';
-import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent } from '../domain.js?v=0.1.89';
-import { TEAM_COLORS } from '../config.js?v=0.1.89';
-import { parseCafeComments, norm } from '../cafe-parser.js?v=0.1.89';
-import { esc, fmtDate, fmtTime, toast, byName } from '../util.js?v=0.1.89';
-import { icon } from '../icons.js?v=0.1.89';
-import { modal, empty, colorChip, teamLabel, memoI, focusNow } from '../ui.js?v=0.1.89';
+import { S, nextMatchday, matchdayById, memberById, me, mdPath, nameOf, isMaster } from '../state.js?v=0.1.90';
+import { db, newId } from '../store.js?v=0.1.90';
+import { isOpen, closeLabel, closePassed, closeTime, applicants, pendingApps, fmtOf, defaultSectionColors, rosters, teamColor, eventTeams, signupView, eventTeamsToTeams, teamEvent, schedTitle, dateRange } from '../domain.js?v=0.1.90';
+import { TEAM_COLORS } from '../config.js?v=0.1.90';
+import { parseCafeComments, norm } from '../cafe-parser.js?v=0.1.90';
+import { esc, fmtDate, fmtTime, toast, byName } from '../util.js?v=0.1.90';
+import { icon } from '../icons.js?v=0.1.90';
+import { modal, empty, colorChip, teamLabel, memoI, focusNow } from '../ui.js?v=0.1.90';
 
 const SRC = { app: '앱', cafe: '카페', manual: '운영진', sheet: '시트' };
 const colorHex = (k) => TEAM_COLORS.find((c) => c.key === k)?.hex || '#94a3b8';
@@ -17,7 +17,8 @@ export function render(root, ctx = {}) {
   const md = ctx.md || (ctx.params?.[0] && matchdayById(ctx.params[0])) || nextMatchday();
   if (!md) { root.innerHTML = `<section class="card">${empty('진행 중인 경기가 없어요.')}</section>`; return; }
   const v = signupView(md);
-  const f = fmtOf(md), cap = f.capacity;
+  const nm = !!md.noMatch;   // MT 등 경기 없는 일정: 인원 기준 없이 참석·불참만
+  const f = nm ? { ...fmtOf(md), capacity: 0, minPlayers: 0 } : fmtOf(md), cap = f.capacity;
   const nIn = v.ins.length;
   const short = f.minPlayers && nIn < f.minPlayers ? f.minPlayers - nIn : 0;
   const open = isOpen(md);
@@ -27,8 +28,9 @@ export function render(root, ctx = {}) {
   root.innerHTML = `
     ${ctx.embedded ? '' : '<a class="back" href="#/home">‹ 홈</a>'}
     <section class="card">
-      ${ctx.embedded ? '' : `<div class="eyebrow">${fmtDate(md.date)} ${esc(md.venue || '')}</div>`}
-      <h1>${v.ev ? '이벤트 경기 신청' : '참가 신청'} <small>참석 ${nIn}${cap ? ` / ${cap}` : ''}명</small></h1>
+      ${ctx.embedded ? '' : `<div class="eyebrow">${nm ? esc(dateRange(md)) : fmtDate(md.date)} ${esc(md.venue || '')}</div>`}
+      <h1>${nm ? `${esc(schedTitle(md))} 참석` : v.ev ? '이벤트 경기 신청' : '참가 신청'} <small>참석 ${nIn}${cap ? ` / ${cap}` : ''}명</small></h1>
+      ${nm ? '<p class="small muted">경기 없는 일정이에요 — 참석·불참만 알려 주세요.</p>' : ''}
       ${v.ev ? `<p class="small">${v.ev.map((t) => colorChip(t.color, t.name)).join(' vs ')} <span class="muted">· 팀이 미리 정해진 경기</span></p>` : ''}
       ${f.minPlayers ? `<div class="meter ${short ? '' : 'ok'}"><i style="width:${Math.min(100, nIn / f.minPlayers * 100)}%"></i></div>
         <p class="small ${short ? 'warn-t' : 'ok-t'}">${short ? `최소 ${f.minPlayers}명까지 ${short}명 더 필요해요` : `최소 인원 ${f.minPlayers}명 충족`}</p>` : ''}
@@ -54,7 +56,7 @@ export function render(root, ctx = {}) {
 
 // 내 신청: 일반 → [참석][불참] / 이벤트 → 팀 고르고 참석 또는 불참 (미리 지정된 팀이면 그 팀 안에서)
 export function myBox(md, v, open) {
-  if (md.cancelled) return `<p class="cancel-box">취소된 경기예요${md.cancelReason ? ` — ${esc(md.cancelReason)}` : ''}.</p>`;
+  if (md.cancelled) return `<p class="cancel-box">취소된 ${md.noMatch ? '일정' : '경기'}예요${md.cancelReason ? ` — ${esc(md.cancelReason)}` : ''}.</p>`;
   if (!open) return `<p class="muted">신청이 마감됐어요.</p>`;
   if (isMaster()) return `<p class="muted small">마스터 계정은 신청하지 않아요 (회원 명부·기록에 남지 않음).</p>`;
   if (!me.id) return `<button class="btn full" data-me>내 이름 선택 후 신청하기</button>`;
@@ -363,7 +365,7 @@ function cafeImport(md) {
             ${!r.memberId && r.suggestion ? `<button class="link tiny" data-sug="${r.suggestion}">혹시 ${esc(memberById(r.suggestion)?.name || '')}?</button>` : ''}</td>
           <td><select data-kind>${KIND_OPTS.map(([k, l]) => `<option value="${k}" ${k === (r.tentative ? 'tentative' : r.kind) ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
         </tr>`).join('')}</tbody></table></div>`).join('')}
-      ${evNow || teamSecs.length >= 2 ? `<div class="teamopt">
+      ${!md.noMatch && (evNow || teamSecs.length >= 2) ? `<div class="teamopt">
         ${evNow ? `<p class="small"><b>이벤트 경기</b> · 댓글 구역을 팀으로 연결해요</p>`
           : `<label class="inline"><input type="checkbox" data-mkevent> <b>이벤트 경기로 등록 (댓글 구역 = 팀)</b> <small class="muted">가끔 있는 경기만 — 보통은 그대로 두세요</small></label>`}
         <div class="ev-opts" ${evNow ? '' : 'hidden'}>
