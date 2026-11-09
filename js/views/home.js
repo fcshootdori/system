@@ -1,18 +1,18 @@
 // 회원 홈 — 경기장 사진 첫 화면(다음 경기 한 줄) + 참석 카드(바로 참석·불참) + MOM 알림 + 지난 경기 카드
-import { sheetPending } from '../record-sheet.js?v=0.1.90';
-import { momAsks, momStrip } from './mom.js?v=0.1.90';
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.90';
-import { db, newId } from '../store.js?v=0.1.90';
-import { STATUS } from '../config.js?v=0.1.90';
-import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps, isNoMatch, schedTitle, dateRange, lastDay } from '../domain.js?v=0.1.90';
-import { icon } from '../icons.js?v=0.1.90';
-import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.90';
-import { myBox, bindMy } from './apply.js?v=0.1.90';
-import { TEAM_COLORS, DEFAULT_SLOT } from '../config.js?v=0.1.90';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.90';
-import { norm } from '../cafe-parser.js?v=0.1.90';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.90';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.90';
+import { sheetPending } from '../record-sheet.js?v=0.1.91';
+import { momAsks, momStrip } from './mom.js?v=0.1.91';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.91';
+import { db, newId } from '../store.js?v=0.1.91';
+import { STATUS } from '../config.js?v=0.1.91';
+import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps, isNoMatch, schedTitle, dateRange, lastDay } from '../domain.js?v=0.1.91';
+import { icon } from '../icons.js?v=0.1.91';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.91';
+import { myBox, bindMy } from './apply.js?v=0.1.91';
+import { TEAM_COLORS, DEFAULT_SLOT } from '../config.js?v=0.1.91';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.91';
+import { norm } from '../cafe-parser.js?v=0.1.91';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.91';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.91';
 
 export function fmtSummary(md) {
   if (isNoMatch(md)) return `${schedTitle(md)} · 경기 없음`;
@@ -75,6 +75,9 @@ function headline(md) {
   return `<span class="h2-when">${esc(l1)}${start ? ` <b class="h2-time">${esc(start)}</b>` : ''}</span><br>${esc(l2)}`;
 }
 
+// 지도 보기 (네이버 지도 검색) — 주소가 있으면 주소로, 없으면 장소 이름으로
+export const mapUrl = (md) => `https://map.naver.com/p/search/${encodeURIComponent(md.addr || md.venue || '')}`;
+
 // 다음 경기 참석 카드: 참석 인원 · 마감 · 시간·장소 · 내 참석/불참 · 명단·팀·포지션 바로가기
 function ticket(md) {
   const f = fmtOf(md), nm = isNoMatch(md);
@@ -95,7 +98,7 @@ function ticket(md) {
       <span class="att-st ${open && closeLabel(md) && !md.reopened ? 'dl' : ''}">${open && closeLabel(md) && !md.reopened ? esc(closeLabel(md)) : esc(STATUS[md.status]?.label || '')}</span>
     </div>
     ${nm ? '' : `<div class="att-bar ${min && nIn >= min ? 'ok' : ''}"><i style="width:${pct}%"></i></div>`}
-    <p class="att-info">${md.time ? `<span>${icon('clock')}${esc(t1)}${t2 ? `–${esc(t2)}` : ''}</span>` : ''}${md.venue ? `<span>${icon('pin')}${esc(md.venue)}</span>` : ''}<span>${icon('flag')}${esc(nm ? `${schedTitle(md)} · 경기 없는 일정` : fmtSummary(md))}</span></p>
+    <p class="att-info">${md.time ? `<span>${icon('clock')}${esc(t1)}${t2 ? `–${esc(t2)}` : ''}</span>` : ''}${md.venue ? `<span>${icon('pin')}${esc(md.venue)}${nm ? ` <a class="map-l" href="${mapUrl(md)}" target="_blank" rel="noopener">지도 보기</a>` : ''}</span>` : ''}<span>${icon('flag')}${esc(nm ? `${schedTitle(md)} · 경기 없는 일정` : fmtSummary(md))}</span></p>
     ${md.note ? `<p class="tk-note">${esc(md.note)}</p>` : ''}
     ${myTeam >= 0 ? `<p class="tk-me">내 팀 ${teamChip(md, myTeam)}</p>`
       : open ? `<div class="tk-reply">${myBox(md, v, open)}</div>`
@@ -196,6 +199,8 @@ export function editMatchday(md, presetDate) {
         <label>종료<select name="t2">${timeOpts(t0[1])}</select></label>
       </div>
       <label>장소<input name="venue" list="venue-list" placeholder="구장 이름" value="${esc(md?.venue || '')}" autocomplete="off">
+      </label>
+      <label data-nmonly>주소 <small class="muted">(선택 · 지도 보기에 써요)</small><input name="addr" placeholder="예: 경기 가평군 ○○면 ○○로 123" value="${esc(md?.addr || '')}" autocomplete="off">
         <datalist id="venue-list">${venues().map((v) => `<option value="${esc(v)}">`).join('')}</datalist></label>
       <label>메모<textarea name="note" rows="2" placeholder="회비, 준비물 등">${esc(md?.note || '')}</textarea></label>
       <div class="fld" data-gameonly><span class="fl">진행 상태</span>
@@ -218,6 +223,9 @@ export function editMatchday(md, presetDate) {
     form.querySelector('[data-evteams]').classList.toggle('hide', kind !== 'event');
     form.querySelectorAll('[data-gameonly]').forEach((x) => x.classList.toggle('hide', kind === 'nomatch'));
     form.querySelectorAll('[data-nmonly]').forEach((x) => x.classList.toggle('hide', kind !== 'nomatch'));
+    // 장소: 경기는 구장 이름(지난 구장 추천), MT 등은 숙소·식당 이름
+    form.venue.placeholder = kind === 'nomatch' ? 'MT 장소 (예: 가평 ○○펜션)' : '구장 이름';
+    if (kind === 'nomatch') form.venue.removeAttribute('list'); else form.venue.setAttribute('list', 'venue-list');
     form.querySelectorAll('[data-caphint]').forEach((x) => { x.textContent = emode === 'captains' ? '(필수 · 2명 이상 가능)' : '(선택 · 2명 이상 가능)'; });
     form.querySelector('[data-kindhint]').textContent = kind === 'nomatch'
       ? 'MT·회식처럼 경기가 없는 일정이에요. 참석·불참 신청만 받고 주장·드래프트·경기·기록은 없어요. 회차에도 들어가지 않아요. 여러 날이면 마지막 날을 넣어요.'
@@ -299,7 +307,7 @@ export function editMatchday(md, presetDate) {
       if (end && end < form.date.value) return toast('마지막 날이 시작 날보다 빨라요');
       const st = ['open', 'closed'].includes(form.status.value) ? form.status.value : 'open';
       const base = { event: false, ...(ev0 ? { eventMode: null, eventTeams: null, teamNames: null } : {}), noMatch: true, title, endDate: end && end > form.date.value ? end : null,
-        date: form.date.value, time, venue: form.venue.value.trim(), note: form.note.value, status: st, no: null, noExclude: true };
+        date: form.date.value, time, venue: form.venue.value.trim(), addr: form.addr.value.trim(), note: form.note.value, status: st, no: null, noExclude: true };
       if (isNew) {
         const id = newId();
         await db.set(mdPath(id), { ...base, format: null, apps: {}, guests: {}, captains: [], picks: [], teams: [], mom: [], late: {}, createdAt: Date.now() });

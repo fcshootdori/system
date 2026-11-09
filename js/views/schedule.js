@@ -1,12 +1,12 @@
 // 일정 — 회원: 달력 보기 / 운영: 달력·목록에서 경기 추가·수정  (WD_FUTSAL 일정 메뉴와 같은 구성)
-import { S, go, mdPath, today, statusLabel } from '../state.js?v=0.1.90';
-import { db } from '../store.js?v=0.1.90';
-import { STATUS } from '../config.js?v=0.1.90';
-import { applicants, fmtOf, noLabel, isOpen, closeLabel, isNoMatch, schedTitle, dateRange, lastDay } from '../domain.js?v=0.1.90';
-import { esc, fmtDate, toast } from '../util.js?v=0.1.90';
-import { empty } from '../ui.js?v=0.1.90';
-import { editMatchday, fmtSummary, reviewCard, cancelMatchday } from './home.js?v=0.1.90';
-import { forget } from '../record-sheet.js?v=0.1.90';
+import { S, go, mdPath, today, statusLabel } from '../state.js?v=0.1.91';
+import { db } from '../store.js?v=0.1.91';
+import { STATUS } from '../config.js?v=0.1.91';
+import { applicants, fmtOf, noLabel, isOpen, closeLabel, isNoMatch, schedTitle, dateRange, lastDay } from '../domain.js?v=0.1.91';
+import { esc, fmtDate, toast } from '../util.js?v=0.1.91';
+import { empty } from '../ui.js?v=0.1.91';
+import { editMatchday, fmtSummary, reviewCard, cancelMatchday, mapUrl } from './home.js?v=0.1.91';
+import { forget } from '../record-sheet.js?v=0.1.91';
 
 let ym = null, sel = null, view = 'cal', picked = false;   // picked: 달력에서 날짜를 직접 눌렀는지
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
@@ -118,7 +118,7 @@ function nmDetail(md, op) {
     ${op ? `<div class="row wrap"><button class="btn ghost" data-cancel>취소 철회</button><button class="btn ghost" data-editmd>수정</button><button class="btn ghost danger" data-delmd>삭제</button></div>` : ''}`;
   return `<div class="eyebrow nm-eye"><span class="nm-tag">${esc(schedTitle(md))}</span> 경기 없는 일정${past ? ' · 지난 일정' : ''}</div>
     <h2 class="dt">${esc(dateRange(md))} ${md.time ? `<small>${esc(md.time)}</small>` : ''}</h2>
-    ${md.venue ? `<p class="muted small">${esc(md.venue)}</p>` : ''}
+    ${md.venue || md.addr ? `<p class="small nm-place">📍 <b>${esc(md.venue || md.addr)}</b>${md.addr && md.venue ? ` <span class="muted">${esc(md.addr)}</span>` : ''} <a class="map-l" href="${mapUrl(md)}" target="_blank" rel="noopener">지도 보기</a></p>` : ''}
     ${md.note ? `<p class="note">${esc(md.note)}</p>` : ''}
     <p class="small">참석 ${n}명${isOpen(md) && closeLabel(md) && !md.reopened ? ` · ⏰ ${closeLabel(md)}` : ''}</p>
     <div class="row wrap">

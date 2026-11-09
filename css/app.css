@@ -1968,3 +1968,5 @@ body { overflow-x: clip; }
 .rb-title .no.nm-tag { background: #ede9fe; color: #5b21b6; }
 .att.nomatch .att-n b { color: #6d28d9; }
 .legend { flex-wrap: wrap; row-gap: 4px; }
+.map-l { margin-left: 6px; font-size: 12px; font-weight: 700; color: var(--navy, #171c61); text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+.nm-place { margin: 6px 0; }
