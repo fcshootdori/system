@@ -1,7 +1,7 @@
 // 경기 운영 규칙 — 경기 방식, 신청 순서, 드래프트 순번, 대진, 결과, 개인 기록
 //  승률계산기 시트와 같은 규칙: 승률 = 승 ÷ (승+패), 승점 = 승×3 + 무
-import { S, memberById, matchdayById } from './state.js?v=0.1.92';
-import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.92';
+import { S, memberById, matchdayById } from './state.js?v=0.1.93';
+import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.93';
 
 // ── 경기 방식: 팀 기본값 + 경기일별 변경값 ──
 export function fmtOf(md) {
@@ -16,7 +16,10 @@ export function fmtOf(md) {
 
 // ── 신청 마감 ──  경기일 전 목요일 0시(한국 시간)에 자동 마감 (최소 인원을 채워도 그때까지 계속 받음)
 //  운영진이 마감 시각 뒤에 다시 열면 md.reopened = true → 자동 마감하지 않음
+// 신청 마감: 운영진이 따로 정한 마감(md.closeAt = 'YYYY-MM-DDTHH:MM', 한국 시각)이 있으면 그것,
+//  없으면 경기일 직전 목요일 0시 (경기 방식에서 '수동 마감'이면 자동 마감 없음)
 export function closeDate(md) {
+  if (md?.closeAt) return String(md.closeAt).slice(0, 10);
   if (!md?.date || fmtOf(md).closeRule === 'manual') return '';
   const d = new Date(md.date + 'T00:00:00Z');
   if (isNaN(d)) return '';
@@ -24,7 +27,10 @@ export function closeDate(md) {
   d.setUTCDate(d.getUTCDate() - back);
   return d.toISOString().slice(0, 10);
 }
-export const closeTime = (md) => { const c = closeDate(md); return c ? Date.parse(c + 'T00:00:00+09:00') : 0; };
+export const closeTime = (md) => {
+  if (md?.closeAt) { const t = Date.parse(String(md.closeAt).slice(0, 16) + ':00+09:00'); return isNaN(t) ? 0 : t; }
+  const c = closeDate(md); return c ? Date.parse(c + 'T00:00:00+09:00') : 0;
+};
 export const closePassed = (md, now = Date.now()) => { const t = closeTime(md); return !!t && now >= t; };
 // 지금 신청을 받는 중인지
 // ── 경기 없는 일정 (MT · 회식 등) ── md.noMatch = true, md.title = 'MT', md.endDate = 마지막 날(여러 날이면)
@@ -56,6 +62,10 @@ export const isOpen = (md) => !!md && md.status === 'open' && !md.cancelled && !
 export function closeLabel(md) {
   const c = closeDate(md);
   if (!c) return '';
+  if (md.closeAt) {   // 따로 정한 마감: "11월 11일 (수) 22:00 마감" · 자정이면 "0시"
+    const d = new Date(c + 'T00:00:00'), hm = String(md.closeAt).slice(11, 16);
+    return `${d.getMonth() + 1}월 ${d.getDate()}일 (${'일월화수목금토'[d.getDay()]}) ${!hm || hm === '00:00' ? '0시' : hm} 마감`;
+  }
   const d = new Date(c + 'T00:00:00');
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (목) 0시 마감`;
 }

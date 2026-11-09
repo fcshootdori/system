@@ -1,18 +1,18 @@
 // 회원 홈 — 경기장 사진 첫 화면(다음 경기 한 줄) + 참석 카드(바로 참석·불참) + MOM 알림 + 지난 경기 카드
-import { sheetPending } from '../record-sheet.js?v=0.1.92';
-import { momAsks, momStrip } from './mom.js?v=0.1.92';
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.92';
-import { db, newId } from '../store.js?v=0.1.92';
-import { STATUS } from '../config.js?v=0.1.92';
-import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, signupView, captainIds, evCaps, isNoMatch, schedTitle, dateRange, lastDay, whenText } from '../domain.js?v=0.1.92';
-import { icon } from '../icons.js?v=0.1.92';
-import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.92';
-import { myBox, bindMy } from './apply.js?v=0.1.92';
-import { TEAM_COLORS, DEFAULT_SLOT } from '../config.js?v=0.1.92';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.92';
-import { norm } from '../cafe-parser.js?v=0.1.92';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.92';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.92';
+import { sheetPending } from '../record-sheet.js?v=0.1.93';
+import { momAsks, momStrip } from './mom.js?v=0.1.93';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.93';
+import { db, newId } from '../store.js?v=0.1.93';
+import { STATUS } from '../config.js?v=0.1.93';
+import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, closePassed, signupView, captainIds, evCaps, isNoMatch, schedTitle, dateRange, lastDay, whenText } from '../domain.js?v=0.1.93';
+import { icon } from '../icons.js?v=0.1.93';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.93';
+import { myBox, bindMy } from './apply.js?v=0.1.93';
+import { TEAM_COLORS, DEFAULT_SLOT } from '../config.js?v=0.1.93';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.93';
+import { norm } from '../cafe-parser.js?v=0.1.93';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.93';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.93';
 
 export function fmtSummary(md) {
   if (isNoMatch(md)) return `${schedTitle(md)} · 경기 없음`;
@@ -202,6 +202,13 @@ export function editMatchday(md, presetDate) {
         <span class="tilde">~</span>
         <label>종료<select name="t2">${timeOpts(t0[1])}</select></label>
       </div>
+      <div class="fld close-fld"><span class="fl">신청 마감 <small class="muted" data-closeauto></small></span>
+        <div class="row nowrap">
+          <label class="sr-wrap"><span class="sr">마감 날짜</span><input type="date" name="closeD" value="${esc(String(md?.closeAt || '').slice(0, 10))}"></label>
+          <label class="sr-wrap"><span class="sr">마감 시각</span><select name="closeT">${closeOpts(String(md?.closeAt || '').slice(11, 16))}</select></label>
+          <button type="button" class="link tiny" data-closeclr>자동으로</button>
+        </div>
+      </div>
       <label>장소<input name="venue" list="venue-list" placeholder="구장 이름" value="${esc(md?.venue || '')}" autocomplete="off">
       </label>
       <label data-nmonly>주소 <small class="muted">(선택 · 지도 보기에 써요)</small><input name="addr" placeholder="예: 경기 가평군 ○○면 ○○로 123" value="${esc(md?.addr || '')}" autocomplete="off">
@@ -276,6 +283,29 @@ export function editMatchday(md, presetDate) {
   };
   form.querySelectorAll('[data-st]').forEach((b) => b.addEventListener('click', () => { form.status.value = b.dataset.st; paintStage(); }));
   paintStage();
+  // 신청 마감: 비우면 자동(경기일 직전 목요일 0시) — 자동 마감 날짜를 옆에 보여 줌
+  const paintClose = () => {
+    const probe = { ...(md || {}), date: form.date.value, closeAt: null, format: md?.format };
+    const auto = closeLabel(probe);
+    form.querySelector('[data-closeauto]').textContent = form.closeD.value ? '(직접 정함)' : auto ? `(비우면 자동: ${auto.replace(' 마감', '')})` : '(비우면 운영진이 직접 마감)';
+    form.querySelector('[data-closeclr]').hidden = !form.closeD.value;
+  };
+  form.closeD.addEventListener('input', paintClose); form.date.addEventListener('change', paintClose);
+  form.querySelector('[data-closeclr]').addEventListener('click', () => { form.closeD.value = ''; form.closeT.value = ''; paintClose(); });
+  paintClose();
+  const readClose = () => {
+    if (!form.closeD.value) return { ok: true, v: null };
+    const v = `${form.closeD.value}T${form.closeT.value || '23:59'}`;
+    if (form.closeD.value > lastDay({ date: form.date.value, endDate: form.endDate?.value })) return { ok: false, msg: '신청 마감이 일정보다 늦어요' };
+    return { ok: true, v };
+  };
+  // 마감을 새로 정하면: 이미 자동 마감된 신청은 새 마감 전이면 다시 열고, '다시 열기' 표시는 지움
+  const closePatch = (cv) => {
+    const was = md?.closeAt || null;
+    if (cv === was) return {};
+    const fut = cv ? Date.parse(cv + ':00+09:00') > Date.now() : !closePassed({ ...(md || {}), date: form.date.value, closeAt: null });
+    return { closeAt: cv, reopened: false, ...(md?.status === 'closed' && md?.autoClosedAt && fut ? { status: 'open', autoClosedAt: null } : {}) };
+  };
   // 시작 시간을 고르면 종료는 2시간 뒤로 맞춰 줌 (종료가 시작보다 빠를 때)
   form.t1.addEventListener('change', () => {
     if (!form.t1.value) return;
@@ -314,9 +344,10 @@ export function editMatchday(md, presetDate) {
       const n1 = form.nt1.value, n2 = form.nt2.value, multi = end && end > form.date.value;
       if (!multi && n1 && n2 && n2 <= n1) return toast('끝 시각이 시작 시각보다 빨라요');
       const time = n1 ? (n2 ? `${n1}~${n2}` : n1) : n2 ? `~${n2}` : '';
+      const rc = readClose(); if (!rc.ok) return toast(rc.msg);
       const st = ['open', 'closed'].includes(form.status.value) ? form.status.value : 'open';
       const base = { event: false, ...(ev0 ? { eventMode: null, eventTeams: null, teamNames: null } : {}), noMatch: true, title, endDate: end && end > form.date.value ? end : null,
-        date: form.date.value, time, venue: form.venue.value.trim(), addr: form.addr.value.trim(), note: form.note.value, status: st, no: null, noExclude: true };
+        date: form.date.value, time, venue: form.venue.value.trim(), addr: form.addr.value.trim(), note: form.note.value, status: st, no: null, noExclude: true, closeAt: rc.v, ...(st === md?.status ? closePatch(rc.v) : {}) };
       if (isNew) {
         const id = newId();
         await db.set(mdPath(id), { ...base, format: null, apps: {}, guests: {}, captains: [], picks: [], teams: [], mom: [], late: {}, createdAt: Date.now() });
@@ -342,9 +373,12 @@ export function editMatchday(md, presetDate) {
       evData = { event: true, eventMode: emode, eventTeams: teams, teamNames: teams.map((t) => t.name) };
     } else if (ev0) evData = { event: false, eventMode: null, eventTeams: null, teamNames: null };   // 이벤트 → 일반으로 바꿈
     else evData = md?.event === undefined ? {} : { event: false };
+    const rc = readClose(); if (!rc.ok) return toast(rc.msg);
     const base = { ...evData, ...(md?.noMatch ? { noMatch: false, title: null, endDate: null } : {}),   // 경기 없는 일정 → 경기로 바꿈
+      closeAt: rc.v,
       date: form.date.value, time, venue: form.venue.value.trim(), note: form.note.value, status: form.status.value,
-      no: form.no.value === '' ? null : +form.no.value, noExclude: form.noExclude.checked };
+      no: form.no.value === '' ? null : +form.no.value, noExclude: form.noExclude.checked,
+      ...(form.status.value === md?.status ? closePatch(rc.v) : { reopened: rc.v !== (md?.closeAt || null) ? false : md?.reopened ?? false }) };   // 진행 상태를 직접 바꿨으면 그대로
     let format = md?.format || null;
     if (form.reset?.checked) format = null;
     else if (touched) format = readFormat(form);
@@ -422,6 +456,12 @@ export function cancelMatchday(md) {
 
 // ── 시간 선택 (30분 단위) ──
 const TIMES = (() => { const a = []; for (let h = 5; h <= 23; h++) for (const m of [0, 30]) a.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`); return a; })();
+// 신청 마감 시각: 비우면 그날 끝(23:59)
+function closeOpts(sel) {
+  const list = ['00:00', ...TIMES, '23:59'];
+  if (sel && !list.includes(sel)) list.push(sel);
+  return `<option value="">그날 밤까지 (23:59)</option>${list.sort().map((t) => `<option value="${t}" ${t === sel ? 'selected' : ''}>${t === '00:00' ? '0시 (그날 시작)' : t}</option>`).join('')}`;
+}
 function timeOpts(sel) {
   const list = sel && !TIMES.includes(sel) ? [...TIMES, sel].sort() : TIMES;
   return `<option value="">미정</option>${list.map((t) => `<option value="${t}" ${t === sel ? 'selected' : ''}>${t}</option>`).join('')}`;
