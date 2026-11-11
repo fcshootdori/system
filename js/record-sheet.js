@@ -4,11 +4,11 @@
 //  · 연결 키는 운영진 기기에만 — 회원 명부(연락처 포함)를 읽고 시트에 기록을 쓰는 열쇠라서
 //  · 기록 화면: 시트 기록 + 아직 시트에 없는(또는 시트에 보낸 뒤 앱에서 고친) 경기는 Firebase 기록
 //  · 운영진 기기(연결 키 있음): 경기를 마치거나 고치면 잠시 뒤 시트로 자동으로 보냄
-import { S, refresh, memberById, onChange, setArchiveSource, reapplyArchive, today } from './state.js?v=0.1.93';
-import { inSandbox, db } from './store.js?v=0.1.93';
-import { rosters, teamColor, teamName, fmtOf, matchNumbers, momPending } from './domain.js?v=0.1.93';
-import { toItem, fromSheet } from './record-rows.js?v=0.1.93';
-import { norm } from './member-sheet.js?v=0.1.93';
+import { S, refresh, memberById, onChange, setArchiveSource, reapplyArchive, today } from './state.js?v=0.1.94';
+import { inSandbox, db } from './store.js?v=0.1.94';
+import { rosters, teamColor, teamName, fmtOf, matchNumbers, momPending } from './domain.js?v=0.1.94';
+import { toItem, fromSheet } from './record-rows.js?v=0.1.94';
+import { norm } from './member-sheet.js?v=0.1.94';
 
 const LK = 'teamapp:sheetkey', LC = 'teamapp:rec', LP = 'teamapp:recpush';
 const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); return true; } catch { return false; } }, del: (k) => { try { localStorage.removeItem(k); } catch {} } };
@@ -185,6 +185,12 @@ export async function cleanup(list = archiveReady()) {
 }
 export const lastClean = () => { try { return JSON.parse(ls.get(LP + ':clean') || 'null'); } catch { return null; } };
 export const lastPush = () => { try { return JSON.parse(ls.get(LP) || 'null'); } catch { return null; } };
+// 기록 기준을 시트에도 보내 개인기록 탭을 같은 기준으로 다시 계산 (Code.gs 'rules' — 예전 Code.gs면 실패해도 그만)
+export async function pushRules(rules) {
+  if (!canPush()) return { ok: false, skipped: true };
+  try { const r = await call(null, { action: 'rules', key: sheetKey(), rules }); return r?.ok ? r : { ok: false, error: r?.error || '' }; }
+  catch (e) { return { ok: false, error: String(e?.message || e) }; }
+}
 export async function push(items, del = [], onProgress) {
   if (!canPush()) throw new Error('이 기기에 통합 시트 연결 키가 없어요');
   const CH = 60;

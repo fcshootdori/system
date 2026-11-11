@@ -1,7 +1,7 @@
 // 경기 운영 규칙 — 경기 방식, 신청 순서, 드래프트 순번, 대진, 결과, 개인 기록
 //  승률계산기 시트와 같은 규칙: 승률 = 승 ÷ (승+패), 승점 = 승×3 + 무
-import { S, memberById, matchdayById } from './state.js?v=0.1.93';
-import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.93';
+import { S, memberById, matchdayById } from './state.js?v=0.1.94';
+import { DEFAULT_FORMAT, TEAM_COLORS, EVENT_SEEDS } from './config.js?v=0.1.94';
 
 // ── 경기 방식: 팀 기본값 + 경기일별 변경값 ──
 export function fmtOf(md) {
@@ -242,6 +242,21 @@ export function applyMomPick(cur, ti, id, by, teams, ros) {
   return cur;
 }
 
+// ── 기록 기준 (운영모드 › 기록에서 바꿈, meta/team.recordRules · meta/team.winRate) ──
+//  min: 순위에 드는 최소 출전 경기 · minFor: 그 기준을 쓰는 순위 · win/draw: 승점 · 승률은 winRate 방식
+export const RULES_DEFAULT = { min: 15, minFor: { pts: false, wr: true, g: true, mom: true, gp: false }, win: 3, draw: 1 };
+export function recordRules() {
+  const r = S.team?.recordRules || {};
+  const n = (v, d, lo, hi) => (v !== '' && v != null && Number.isFinite(+v) ? Math.min(hi, Math.max(lo, Math.round(+v))) : d);
+  return {
+    min: n(r.min, RULES_DEFAULT.min, 0, 100),
+    minFor: { ...RULES_DEFAULT.minFor, ...(r.minFor || {}) },
+    win: n(r.win, RULES_DEFAULT.win, 0, 10), draw: n(r.draw, RULES_DEFAULT.draw, 0, 10),
+    rate: ['wl', 'win', 'point'].includes(S.team?.winRate) ? S.team.winRate : 'wl',
+  };
+}
+export const ptsOf = (r) => { const R = recordRules(); return r.w * R.win + r.d * R.draw; };
+
 // ── 개인 기록 ──
 export function winRate(r) {
   const mode = S.team.winRate || 'wl';
@@ -300,7 +315,7 @@ export function allStats() {
 
   return [...map.values()]
     .filter((r) => memberById(r.id))
-    .map((r) => ({ ...r, name: memberById(r.id).name, games: r.w + r.d + r.l, rate: winRate(r), pts: r.w * 3 + r.d,
+    .map((r) => ({ ...r, name: memberById(r.id).name, games: r.w + r.d + r.l, rate: winRate(r), pts: ptsOf(r),
       history: r.history.sort((a, b) => (b.date || '').localeCompare(a.date || '')) }));
 }
 

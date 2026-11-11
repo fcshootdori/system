@@ -1,15 +1,20 @@
 // 경기 기록 데이터 — 경기기록시스템(승률계산기 웹앱)과 같은 규칙으로 시즌 기록을 만듦
 //  · 경기 = 경기일 하나 (5라운드 합산 1경기). 핑크(A) vs 블루(B)
-//  · 승점 = 승×3 + 무, 승률 = 승 ÷ (승+패) (무승부 제외)
-//  · 승률·득점·MOM 순위는 RANK_MIN 경기 이상 출전한 회원끼리, 승점·출전 순위는 출전한 회원 전체
-import { S, memberById, nameOf } from './state.js?v=0.1.93';
-import { rosters, resultUnits, totals, teamColor, teamName, fmtOf } from './domain.js?v=0.1.93';
-import { mergedRecords } from './record-sheet.js?v=0.1.93';
+//  · 기록 기준은 운영모드 › 기록에서 바꿈 (meta/team.recordRules) — 기본:
+//    승점 = 승×3 + 무×1, 승률 = 승 ÷ (승+패) (무승부 제외)
+//    승률·득점·MOM 순위는 15경기 이상 출전한 회원끼리, 승점·출전 순위는 출전한 회원 전체
+import { S, memberById, nameOf } from './state.js?v=0.1.94';
+import { rosters, resultUnits, totals, teamColor, teamName, fmtOf, RULES_DEFAULT, recordRules } from './domain.js?v=0.1.94';
+import { mergedRecords } from './record-sheet.js?v=0.1.94';
 
+export { RULES_DEFAULT, recordRules };
+export const rankMin = () => recordRules().min;
+// (예전 이름) RANK_MIN — 값이 바뀔 수 있어 함수 rankMin()을 쓰세요
 export const RANK_MIN = 15;
 export const TEAM = { A: '핑크', B: '블루' };
 export const RES = { W: '승', D: '무', L: '패' };
-const pct = (w, l) => (w + l ? w / (w + l) : 0);
+// 승률: wl = 승 ÷ (승+패) (무승부 제외) · win = 승 ÷ 경기 · point = (승 + 무×0.5) ÷ 경기
+const pct = (w, l, d = 0, mode = 'wl') => { const t = w + l + d; return mode === 'win' ? (t ? w / t : 0) : mode === 'point' ? (t ? (w + d / 2) / t : 0) : w + l ? w / (w + l) : 0; };
 export const pctTxt = (v) => (v * 100).toFixed(1).replace(/\.0$/, '') + '%';
 export const ko = (a, b) => String(a).localeCompare(String(b), 'ko');
 
@@ -20,6 +25,8 @@ export const METRIC = {
   mom: { t: 'MOM', unit: '회', icon: 'star', fmt: (p) => p.mom, tb: ['mom', 'pts', 'g'], award: 'MOM 최다' },
   gp: { t: '출전', unit: '경기', icon: 'calendar', fmt: (p) => p.gp, tb: ['gp', 'pts', 'g'], award: '최다 출전', all: true },
 };
+// all = 출전한 회원 전체로 순위 (기준 경기 수 안 봄) — 기록 기준에서 바꿀 수 있어 값 대신 계산
+Object.keys(METRIC).forEach((k) => Object.defineProperty(METRIC[k], 'all', { get: () => !recordRules().minFor[k] || !recordRules().min, configurable: true }));
 
 // 팀 칸 → A(핑크)/B(블루): 색으로, 색이 없으면 순서로
 function sides(md) {
@@ -48,7 +55,8 @@ let cache = { key: '', db: null };
 export function buildDB(season) {
   const { gamesOf } = recs();
   const days = recordDays().filter((m) => !season || (m.date || '').startsWith(season));
-  const key = season + '|' + days.map((m) => m.id + (m.mom || []).join('') + Object.keys(m.late || {}).join('') + rosters(m).flat().join('')
+  const RR = recordRules();
+  const key = season + '|' + JSON.stringify(RR) + '|' + days.map((m) => m.id + (m.mom || []).join('') + Object.keys(m.late || {}).join('') + rosters(m).flat().join('')
     + gamesOf(m.id).reduce((s, g) => s + '/' + (g.sa || 0) + ':' + (g.sb || 0) + (g.done ? 'd' : '') + Object.entries(g.goals || {}).join() + Object.entries(g.og || {}).join(), '')).join(',') + '|' + S.members.length;
   if (cache.key === key) return cache.db;
 
@@ -96,9 +104,9 @@ export function buildDB(season) {
     s.g += e.goals; s.og += e.og; s.mom += e.mom ? 1 : 0; s.late += e.late;
     m.set(e.id, s);
   });
-  const stats = [...m.values()].map((s) => ({ ...s, pts: s.w * 3 + s.d, wr: pct(s.w, s.l) }));
+  const stats = [...m.values()].map((s) => ({ ...s, pts: s.w * RR.win + s.d * RR.draw, wr: pct(s.w, s.l, s.d, RR.rate) }));
   const players = stats.filter((s) => s.gp > 0);
-  const ranked = players.filter((s) => s.gp >= RANK_MIN);
+  const ranked = players.filter((s) => s.gp >= RR.min);
   const byId = new Map(stats.map((s) => [s.id, s]));
   const ranks = {};
   for (const k of Object.keys(METRIC)) {

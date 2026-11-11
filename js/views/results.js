@@ -2,14 +2,14 @@
 //  · 경기 결과: 핑크 vs 블루 시즌 전적 · 시즌 흐름(막대를 누르면 그 경기) · 경기 카드(MOM·득점·라운드·출전 명단)
 //  · 전체 순위: 부문별 1위 · 기준별 순위(승점·승률·득점·MOM·출전) · 순위 산정 전 회원
 //  · 개인 기록: 선수 카드 · 시즌 출전 칸 · 팀 평균과 비교 · 전체 경기 기록
-import { S, me, matchdayById } from '../state.js?v=0.1.93';
-import { esc } from '../util.js?v=0.1.93';
-import { icon } from '../icons.js?v=0.1.93';
-import { noLabel } from '../domain.js?v=0.1.93';
-import { setHTMLKeep } from '../ui.js?v=0.1.93';
-import { sheetState, loadRecords, sheetPending } from '../record-sheet.js?v=0.1.93';
-import { buildDB, fromSheet, seasons, METRIC, RANK_MIN, TEAM, RES, pctTxt, ko, sortedBy } from '../records-data.js?v=0.1.93';
-import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.93';
+import { S, me, matchdayById } from '../state.js?v=0.1.94';
+import { esc } from '../util.js?v=0.1.94';
+import { icon } from '../icons.js?v=0.1.94';
+import { noLabel } from '../domain.js?v=0.1.94';
+import { setHTMLKeep } from '../ui.js?v=0.1.94';
+import { sheetState, loadRecords, sheetPending } from '../record-sheet.js?v=0.1.94';
+import { buildDB, fromSheet, seasons, METRIC, rankMin, recordRules, TEAM, RES, pctTxt, ko, sortedBy } from '../records-data.js?v=0.1.94';
+import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.94';
 
 const st = { tab: 'games', season: null, sort: 'pts', q: '', rankLimit: 10, selGame: null, showAll: false, who: null, meSel: null, meSelFor: null, meAll: false };
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
@@ -146,10 +146,12 @@ function rankView(DB) {
   const top3 = q ? [] : shown.slice(0, 3);
   const mx = k === 'wr' ? 1 : Math.max(1, ...list.map((p) => p[k]));
   const rest = q ? 0 : matched.length - shown.length;
-  const un = DB.players.filter((p) => p.gp < RANK_MIN).sort((a, b) => b.gp - a.gp || ko(a.name, b.name)).filter((p) => !q || p.name.toLowerCase().includes(q));
+  const RANK_MIN = rankMin();
+  const minKs = Object.keys(METRIC).filter((kk) => !METRIC[kk].all).map((kk) => METRIC[kk].t).join('·');
+  const un = !minKs ? [] : DB.players.filter((p) => p.gp < RANK_MIN).sort((a, b) => b.gp - a.gp || ko(a.name, b.name)).filter((p) => !q || p.name.toLowerCase().includes(q));
   return `
     <p class="r-note">${ic('info', 'xs')}<span>${allMode
-      ? `${METRIC[k].t} 순위는 한 경기라도 출전한 <b>전체 ${R.length}명</b>을 매겨요. 승률·득점·MOM은 ${RANK_MIN}경기 이상 ${DB.ranked.length}명만.`
+      ? `${METRIC[k].t} 순위는 한 경기라도 출전한 <b>전체 ${R.length}명</b>을 매겨요.${minKs ? ` ${minKs}은 ${RANK_MIN}경기 이상 ${DB.ranked.length}명만.` : ''}`
       : `${METRIC[k].t} 순위는 <b>${RANK_MIN}경기 이상</b> 출전한 ${R.length}명끼리 매겨요.`}</span></p>
     <div class="r-awards">${Object.keys(METRIC).map((kk) => {
       const L = sortedBy(kk, pool(kk)); if (!L.length) return `<div class="r-award none"><span class="ic">${ic(METRIC[kk].icon)}</span><span class="k">${METRIC[kk].award}</span><span class="nm muted">-</span></div>`;
@@ -172,7 +174,7 @@ function rankView(DB) {
     ${allMode ? '' : `<details class="r-card r-un" ${q && un.length && !list.some((p) => p.name.toLowerCase().includes(q)) ? 'open' : ''}><summary><span class="r-ci">${ic('hourglass')}</span><h3>순위 산정 전 <span class="muted n">${un.length}</span><small class="muted">명</small></h3>${ic('chevron', 'chev down')}</summary>
       <p class="r-note flat">${RANK_MIN}경기를 채우면 순위에 들어가요.</p>
       <ul class="r-ur">${un.map((p) => `<li data-p="${p.id}"><span>${esc(p.name)}</span><span class="trk" ${tipAttr(`${p.gp}/${RANK_MIN}경기`)}><i style="width:${(p.gp / RANK_MIN) * 100}%"></i></span><span class="left n">${p.gp}/${RANK_MIN}</span></li>`).join('')}</ul></details>`}
-    <p class="r-note">${ic('info', 'xs')}<span>승점 = 승 3점 · 무 1점. 승률 = 승 ÷ (승+패), 무승부는 빠져요.</span></p>`;
+    <p class="r-note">${ic('info', 'xs')}<span>${(() => { const R = recordRules(); return `승점 = 승 ${R.win}점 · 무 ${R.draw}점. ${R.rate === 'win' ? '승률 = 승 ÷ 경기 수' : R.rate === 'point' ? '승률 = (승 + 무×0.5) ÷ 경기 수' : '승률 = 승 ÷ (승+패), 무승부는 빠져요'}.`; })()}</span></p>`;
 }
 
 // ───────── 개인 기록 ─────────
@@ -200,7 +202,9 @@ function meView(DB) {
       <div class="r-chips">${names.map((x) => `<button class="r-chip" type="button" data-p="${x.id}">${esc(x.name)}<small class="n">${x.gp}</small></button>`).join('')}</div></section>`;
   }
   const logs = DB.mp.filter((m) => m.id === p.id).sort((x, y) => y.g.idx - x.g.idx);
-  const isRanked = p.gp >= RANK_MIN;
+  const RANK_MIN = rankMin();
+  const minKs = Object.keys(METRIC).filter((kk) => !METRIC[kk].all).map((kk) => METRIC[kk].t).join('·');
+  const isRanked = p.gp >= RANK_MIN || !minKs;
   const rOf = (k) => (isRanked || METRIC[k].all ? DB.ranks[k].get(p.id) : null);
   const tile = (k, label) => { const r = rOf(k);
     return `<div class="tile"><span class="k">${ic(METRIC[k].icon, 'xs')}${label}</span><b class="v n">${METRIC[k].fmt(p)}</b><span class="r ${r && r <= 3 ? 'top' : ''}">${r ? `${r <= 3 ? ic('medal', 'xs') : ''}${r}위` : '&nbsp;'}</span></div>`; };
@@ -224,7 +228,7 @@ function meView(DB) {
         <span class="sub">${ic('medal', 'xs')}승점 순위 · 출전한 ${DB.players.length}명 중</span>
         <div class="ptsrow"><b class="n">${p.pts}</b><span>승점</span>${pr ? `<span class="rkb"><b class="n">${pr}</b><small>위</small></span>` : ''}</div></div>
       <div class="body">
-        ${isRanked ? '' : `<div class="prog"><span>승률·득점·MOM 순위는 ${RANK_MIN}경기부터 · <b>${RANK_MIN - p.gp}경기</b> 남았어요 · <span class="n">${p.gp}/${RANK_MIN}</span></span><div class="trk"><i style="width:${(p.gp / RANK_MIN) * 100}%"></i></div></div>`}
+        ${isRanked ? '' : `<div class="prog"><span>${minKs} 순위는 ${RANK_MIN}경기부터 · <b>${RANK_MIN - p.gp}경기</b> 남았어요 · <span class="n">${p.gp}/${RANK_MIN}</span></span><div class="trk"><i style="width:${(p.gp / RANK_MIN) * 100}%"></i></div></div>`}
         <div class="tiles">${tile('gp', '출전')}${tile('g', '득점')}${tile('mom', 'MOM')}${tile('wr', '승률')}</div>
         <div class="teams">${teamCard('A', A)}${teamCard('B', B)}</div>
         <div class="wdl">${bar3([{ k: 'W', v: p.w, tip: `승 ${p.w}` }, { k: 'D', v: p.d, tip: `무 ${p.d}` }, { k: 'L', v: p.l, tip: `패 ${p.l}` }])}

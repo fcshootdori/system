@@ -26,7 +26,21 @@
 var APP_NAME = '슛도리';
 var TABS = { members: '회원', games: '경기', rounds: '라운드', players: '출전기록', stats: '개인기록', guide: '안내' };
 var RAW_TAB = '앱원본';   // 앱(Firebase)에서 지우기 전에 남겨 두는 경기 원본 (숨김 탭)
-var RANK_MIN = 15;
+var RANK_MIN = 15;   // 기본값 — 앱 운영모드 › 기록에서 바꾸면 RULES(스크립트 속성)로 덮어씀
+// 기록 기준: 앱에서 보낸 값 { min, win, draw, rate: 'wl'|'win'|'point' }
+function rules_() {
+  var r = {}; try { r = JSON.parse(PropertiesService.getScriptProperties().getProperty('RULES') || '{}'); } catch (e) { r = {}; }
+  var n = function (v, d) { v = Number(v); return isFinite(v) && v >= 0 ? Math.round(v) : d; };
+  return { min: n(r.min, RANK_MIN), win: n(r.win, 3), draw: n(r.draw, 1), rate: /^(wl|win|point)$/.test(r.rate) ? r.rate : 'wl' };
+}
+function rulesSave_(r) {
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    PropertiesService.getScriptProperties().setProperty('RULES', JSON.stringify(r || {}));
+    writeModel_(readModel_());   // 개인기록 탭을 새 기준으로 다시 계산
+    return { ok: true, rules: rules_() };
+  } finally { lock.releaseLock(); }
+}
 
 // 탭 칸 — 회색(auto) 칸은 시트가 다시 계산할 때 덮어씁니다
 var COLS = {
@@ -511,7 +525,12 @@ function compute_(M) {
   });
   var stats = [];
   Object.keys(season).sort(function (a, b) { return a === '통산' ? 1 : b === '통산' ? -1 : b < a ? -1 : 1; }).forEach(function (k) {
-    var list = Object.keys(season[k]).map(function (id) { var s = season[k][id]; s.s = k; s.pts = s.w * 3 + s.d; s.wr = s.w + s.l ? s.w / (s.w + s.l) : 0; s.ranked = s.gp >= RANK_MIN ? 'O' : ''; return s; });
+    var R = rules_();
+    var list = Object.keys(season[k]).map(function (id) {
+      var s = season[k][id], t = s.w + s.d + s.l; s.s = k; s.pts = s.w * R.win + s.d * R.draw;
+      s.wr = R.rate === 'win' ? (t ? s.w / t : 0) : R.rate === 'point' ? (t ? (s.w + s.d / 2) / t : 0) : (s.w + s.l ? s.w / (s.w + s.l) : 0);
+      s.ranked = s.gp >= R.min ? 'O' : ''; return s;
+    });
     list.sort(function (x, y) { return y.pts - x.pts || y.wr - x.wr || y.gp - x.gp || (x.name < y.name ? -1 : 1); });
     var prev = null, rank = 0;
     list.forEach(function (s, i) { if (s.pts !== prev) { rank = i + 1; prev = s.pts; } s.rank = rank; stats.push(s); });
@@ -611,6 +630,7 @@ function doPost(e) {
     if (b.action === 'push') return out_(push_(b.items || [], b.del || []));
     if (b.action === 'members') return out_(members_());
     if (b.action === 'memberSave') return out_(memberSave_(b.find || {}, b.set || {}));
+    if (b.action === 'rules') return out_(rulesSave_(b.rules || {}));
     return out_({ ok: false, error: '알 수 없는 요청' });
   } catch (err) { return out_({ ok: false, error: String(err && err.message || err) }); }
 }

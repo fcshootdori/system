@@ -1,12 +1,12 @@
-import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.93';
-import { S, me, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.93';
-import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.93';
-import { db } from '../store.js?v=0.1.93';
-import { APP_NAME, APP_VERSION, DEFAULT_TEAM } from '../config.js?v=0.1.93';
-import { sheetApi, sheetKey, setSheetKey, okApiUrl, ping, readCheck, loadRecords, sheetState, pending, push, lastPush, archiveOn, archiveReady, cleanup, lastClean, ARCHIVE_DAYS } from '../record-sheet.js?v=0.1.93';
-import { esc, toast, fileToDataUrl, todayISO, fmtDate } from '../util.js?v=0.1.93';
-import { modal, empty } from '../ui.js?v=0.1.93';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.93';
+import { createSample, clearSamples, sampleList, SAMPLE_STAGES, SAMPLE_KINDS } from '../sample.js?v=0.1.94';
+import { S, me, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.94';
+import { betaOn, inSandbox, pickRole } from '../sandbox.js?v=0.1.94';
+import { db } from '../store.js?v=0.1.94';
+import { APP_NAME, APP_VERSION, DEFAULT_TEAM } from '../config.js?v=0.1.94';
+import { sheetApi, sheetKey, setSheetKey, okApiUrl, ping, readCheck, loadRecords, sheetState, pending, push, lastPush, archiveOn, archiveReady, cleanup, lastClean, ARCHIVE_DAYS } from '../record-sheet.js?v=0.1.94';
+import { esc, toast, fileToDataUrl, todayISO, fmtDate } from '../util.js?v=0.1.94';
+import { modal, empty } from '../ui.js?v=0.1.94';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.94';
 
 export function render(root) { return settings(root); }
 
@@ -29,8 +29,7 @@ function settings(root) {
     <p class="muted small">새 경기일에 자동으로 적용돼요. 특정 날만 다르게 하려면 홈 → 경기일·경기 방식 수정에서 바꾸세요.</p>
     <form class="stack" data-format>
       ${formatFields(t.format)}
-      <label>승률 계산<select name="winRate">${[['wl', '승 ÷ (승+패) — 승률계산기와 같음'], ['win', '승 ÷ 경기'], ['point', '(승 + 무×0.5) ÷ 경기']]
-        .map(([v, l]) => `<option value="${v}" ${t.winRate === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <p class="tiny muted">승률·승점 계산과 순위 기준(최소 출전 경기)은 <a href="#/recadmin">운영 › 기록</a>에서 바꿔요.</p>
       <button class="btn">저장</button>
     </form></section>
 
@@ -56,7 +55,7 @@ function settings(root) {
   bindFormatFields(ff);
   ff.addEventListener('submit', async (e) => {
     e.preventDefault();
-    await db.set('meta/team', { format: readFormat(ff), winRate: ff.winRate.value }, { merge: true }); toast('저장했어요');
+    await db.set('meta/team', { format: readFormat(ff) }, { merge: true }); toast('저장했어요');
   });
   bindSheet(root);
   root.querySelector('[data-backup]').addEventListener('click', backup);

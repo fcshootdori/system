@@ -1978,3 +1978,29 @@ body { overflow-x: clip; }
 .close-fld .sr-wrap input, .close-fld .sr-wrap select { width: 100%; min-width: 0; }
 .close-fld [data-closeclr] { flex: none; white-space: nowrap; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── 0.1.94 운영 › 기록 관리 ── */
+.ra h2 { display: flex; align-items: center; gap: 8px; }
+.ra-num { display: grid; gap: 6px; }
+.ra-step { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.ra-step input { width: 76px; text-align: center; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ra-step .btn { min-width: 40px; font-size: 18px; }
+.ra-chk { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-chk { display: inline-flex; }
+.chip-chk input { position: absolute; opacity: 0; pointer-events: none; }
+.chip-chk span { padding: 7px 14px; border-radius: 999px; border: 1.5px solid var(--line); font-weight: 700; font-size: 14px; color: var(--sub); cursor: pointer; }
+.chip-chk input:checked + span { background: var(--navy, #171c61); border-color: var(--navy, #171c61); color: #fff; }
+.chip-chk input:focus-visible + span { outline: 2px solid var(--brand); outline-offset: 2px; }
+.ra-pts { gap: 10px; }
+.ra-pts label { flex: 1; min-width: 0; }
+.ra-in { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.ra-in input { width: 100%; min-width: 0; text-align: center; font-weight: 800; font-size: 17px; }
+.ra-season { font-size: 13px; padding: 4px 8px; border-radius: 8px; }
+.ra-top { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.ra-top li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: var(--soft, #f3f4f8); }
+.ra-top .k { font-weight: 700; display: grid; }
+.ra-top .k small { font-weight: 600; font-size: 11px; color: var(--sub); }
+.ra-top .v { text-align: right; font-weight: 700; }
+.ra-top .v small { color: var(--sub); margin-left: 4px; font-variant-numeric: tabular-nums; }
+.ra-act { display: grid; gap: 8px; margin: 4px 0 12px; }
+.ra-act .row { gap: 8px; flex-wrap: wrap; }
