@@ -1,18 +1,18 @@
 // 회원 홈 — 경기장 사진 첫 화면(다음 경기 한 줄) + 참석 카드(바로 참석·불참) + MOM 알림 + 지난 경기 카드
-import { sheetPending } from '../record-sheet.js?v=0.1.96';
-import { momAsks, momStrip } from './mom.js?v=0.1.96';
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.96';
-import { db, newId } from '../store.js?v=0.1.96';
-import { STATUS } from '../config.js?v=0.1.96';
-import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, closePassed, signupView, captainIds, evCaps, isNoMatch, schedTitle, dateRange, lastDay, whenText } from '../domain.js?v=0.1.96';
-import { icon } from '../icons.js?v=0.1.96';
-import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.96';
-import { myBox, bindMy } from './apply.js?v=0.1.96';
-import { TEAM_COLORS, DEFAULT_SLOT } from '../config.js?v=0.1.96';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.96';
-import { norm } from '../cafe-parser.js?v=0.1.96';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.96';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.96';
+import { sheetPending } from '../record-sheet.js?v=0.1.97';
+import { momAsks, momStrip } from './mom.js?v=0.1.97';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.97';
+import { db, newId } from '../store.js?v=0.1.97';
+import { STATUS } from '../config.js?v=0.1.97';
+import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, closePassed, signupView, captainIds, evCaps, isNoMatch, schedTitle, dateRange, lastDay, whenText } from '../domain.js?v=0.1.97';
+import { icon } from '../icons.js?v=0.1.97';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.97';
+import { myBox, bindMy } from './apply.js?v=0.1.97';
+import { TEAM_COLORS, DEFAULT_SLOT } from '../config.js?v=0.1.97';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.97';
+import { norm } from '../cafe-parser.js?v=0.1.97';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.97';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.97';
 
 export function fmtSummary(md) {
   if (isNoMatch(md)) return `${schedTitle(md)} · 경기 없음`;

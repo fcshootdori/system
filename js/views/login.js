@@ -1,8 +1,8 @@
 // 로그인 — 카페 닉네임 → (처음) 비밀번호 정하기 / (다음부터) 비밀번호 입력, 자동 로그인
-import { S, refresh } from '../state.js?v=0.1.96';
-import { register, login, status, saveSession, validPin, masterLogin, MASTER_PID, MASTER_NAME } from '../auth.js?v=0.1.96';
-import { norm } from '../cafe-parser.js?v=0.1.96';
-import { esc } from '../util.js?v=0.1.96';
+import { S, refresh } from '../state.js?v=0.1.97';
+import { register, login, status, saveSession, validPin, masterLogin, MASTER_PID, MASTER_NAME } from '../auth.js?v=0.1.97';
+import { norm } from '../cafe-parser.js?v=0.1.97';
+import { esc } from '../util.js?v=0.1.97';
 
 let step = { pid: null, registered: false }, nick = '', err = '', denied = false;
 

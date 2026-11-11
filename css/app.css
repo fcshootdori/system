@@ -2010,3 +2010,13 @@ body { overflow-x: clip; }
 .r-top3 .v + .t3-sub { margin-top: 4px; }
 .r-top3 .r1 .t3-sub { color: color-mix(in srgb, var(--ink) 65%, transparent); }
 @media (max-width: 380px) { .r-top3 .t3 { padding-left: 10px; padding-right: 8px; } .r-top3 .t3-sub { font-size: 10.5px; letter-spacing: -.03em; } }
+
+/* ── 0.1.97 순위 기준 탭: 더 눈에 띄게 (아이콘 위 · 글자 아래, 고른 탭은 남색) ── */
+.r-seg { gap: 6px; background: none; padding: 0; margin-bottom: 16px; overflow: visible; }
+.r-seg button { flex-direction: column; gap: 3px; padding: 9px 4px 8px; min-height: 56px; min-width: 0; border-radius: 14px; background: #fff; border: 1.5px solid var(--line); color: var(--ink); font: 800 13.5px var(--font); transition: background .15s, border-color .15s, transform .15s; }
+.rec .r-seg button .ico, .r-seg button .ico { width: 20px; height: 20px; color: var(--sub); }
+.r-seg button:hover { border-color: var(--navy); }
+.r-seg button[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; box-shadow: 0 6px 14px -6px rgba(23,28,97,.55); transform: translateY(-1px); }
+.rec .r-seg button[aria-pressed="true"] .ico, .r-seg button[aria-pressed="true"] .ico { color: #ffcf3d; }
+.r-seg button:focus-visible { outline: 2px solid #ffcf3d; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .r-seg button { transition: none; } .r-seg button[aria-pressed="true"] { transform: none; } }
