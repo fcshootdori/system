@@ -2,14 +2,14 @@
 //  · 경기 결과: 핑크 vs 블루 시즌 전적 · 시즌 흐름(막대를 누르면 그 경기) · 경기 카드(MOM·득점·라운드·출전 명단)
 //  · 전체 순위: 부문별 1위 · 기준별 순위(승점·승률·득점·MOM·출전) · 순위 산정 전 회원
 //  · 개인 기록: 선수 카드 · 시즌 출전 칸 · 팀 평균과 비교 · 전체 경기 기록
-import { S, me, matchdayById } from '../state.js?v=0.1.95';
-import { esc } from '../util.js?v=0.1.95';
-import { icon } from '../icons.js?v=0.1.95';
-import { noLabel } from '../domain.js?v=0.1.95';
-import { setHTMLKeep } from '../ui.js?v=0.1.95';
-import { sheetState, loadRecords, sheetPending } from '../record-sheet.js?v=0.1.95';
-import { buildDB, fromSheet, seasons, METRIC, rankMin, recordRules, TEAM, RES, pctTxt, ko, sortedBy } from '../records-data.js?v=0.1.95';
-import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.95';
+import { S, me, matchdayById } from '../state.js?v=0.1.96';
+import { esc } from '../util.js?v=0.1.96';
+import { icon } from '../icons.js?v=0.1.96';
+import { noLabel } from '../domain.js?v=0.1.96';
+import { setHTMLKeep } from '../ui.js?v=0.1.96';
+import { sheetState, loadRecords, sheetPending } from '../record-sheet.js?v=0.1.96';
+import { buildDB, fromSheet, seasons, METRIC, rankMin, recordRules, TEAM, RES, pctTxt, ko, sortedBy } from '../records-data.js?v=0.1.96';
+import { onPageSwipe, slideIn } from '../swipe.js?v=0.1.96';
 
 const st = { tab: 'games', season: null, sort: 'pts', q: '', rankLimit: 10, selGame: null, showAll: false, who: null, meSel: null, meSelFor: null, meAll: false };
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
@@ -162,7 +162,7 @@ function rankView(DB) {
     }).join('')}</div>
     <section class="r-card">
       <div class="r-seg" role="group" aria-label="순위 기준">${Object.keys(METRIC).map((kk) => `<button type="button" data-k="${kk}" aria-pressed="${kk === k}">${ic(METRIC[kk].icon, 'xs')}${METRIC[kk].t}</button>`).join('')}</div>
-      ${top3.length ? `<div class="r-top3">${top3.map((p) => { const r = rk.get(p.id); return `<button class="t3 r${Math.min(r, 3)}" type="button" data-p="${p.id}"><span class="rk n">${r}</span><span class="nm">${esc(p.name)}</span><span class="v n">${METRIC[k].fmt(p)}${unit}</span></button>`; }).join('')}</div>` : ''}
+      ${top3.length ? `<div class="r-top3">${top3.map((p) => { const r = rk.get(p.id); return `<button class="t3 r${Math.min(r, 3)}" type="button" data-p="${p.id}"><span class="rk n">${r}</span><span class="nm">${esc(p.name)}</span><span class="v n">${METRIC[k].fmt(p)}${unit}</span><span class="t3-sub n">${p.gp}경기</span><span class="t3-sub n">${p.w}승 ${p.d}무 ${p.l}패</span></button>`; }).join('')}</div>` : ''}
       <div class="r-search">${ic('search', 'sm')}<input data-q placeholder="이름으로 찾기" autocomplete="off" value="${esc(st.q)}"></div>
       <ol class="r-lb">${shown.slice(top3.length).map((p) => `<li data-p="${p.id}" class="${p.id === me.id ? 'me' : ''}">
         <span class="rk n">${rk.get(p.id)}</span>

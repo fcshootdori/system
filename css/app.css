@@ -2004,3 +2004,9 @@ body { overflow-x: clip; }
 .ra-top .v small { color: var(--sub); margin-left: 4px; font-variant-numeric: tabular-nums; }
 .ra-act { display: grid; gap: 8px; margin: 4px 0 12px; }
 .ra-act .row { gap: 8px; flex-wrap: wrap; }
+
+/* ── 0.1.96 순위 상위 3명에도 출전 · 승무패 ── */
+.r-top3 .t3-sub { font-size: 11.5px; font-weight: 600; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.01em; }
+.r-top3 .v + .t3-sub { margin-top: 4px; }
+.r-top3 .r1 .t3-sub { color: color-mix(in srgb, var(--ink) 65%, transparent); }
+@media (max-width: 380px) { .r-top3 .t3 { padding-left: 10px; padding-right: 8px; } .r-top3 .t3-sub { font-size: 10.5px; letter-spacing: -.03em; } }

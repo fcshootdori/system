@@ -1,11 +1,11 @@
 // 내 정보 — 내 이름, 내 기록 요약, 앱 정보, 운영모드 입구 (WD_FUTSAL 내 정보와 같은 위치)
-import { S, me, memberById, canOp, isMaster, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.95';
-import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.95';
-import { modal } from '../ui.js?v=0.1.95';
-import { toast } from '../util.js?v=0.1.95';
-import { allStats, pct } from '../domain.js?v=0.1.95';
-import { esc } from '../util.js?v=0.1.95';
-import { inSandbox, sandboxRole, ROLES, pickRole, switchRole, askExit } from '../sandbox.js?v=0.1.95';
+import { S, me, memberById, canOp, isMaster, refresh, samplesOnDevice, setSamplesOnDevice } from '../state.js?v=0.1.96';
+import { changePin, saveSession, isRemembered, validPin } from '../auth.js?v=0.1.96';
+import { modal } from '../ui.js?v=0.1.96';
+import { toast } from '../util.js?v=0.1.96';
+import { allStats, pct } from '../domain.js?v=0.1.96';
+import { esc } from '../util.js?v=0.1.96';
+import { inSandbox, sandboxRole, ROLES, pickRole, switchRole, askExit } from '../sandbox.js?v=0.1.96';
 
 export function render(root) {
   const m = memberById(me.id);
