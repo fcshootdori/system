@@ -3,9 +3,9 @@
 //  · 기록 기준은 운영모드 › 기록에서 바꿈 (meta/team.recordRules) — 기본:
 //    승점 = 승×3 + 무×1, 승률 = 승 ÷ (승+패) (무승부 제외)
 //    승률·득점·MOM 순위는 15경기 이상 출전한 회원끼리, 승점·출전 순위는 출전한 회원 전체
-import { S, memberById, nameOf } from './state.js?v=0.1.94';
-import { rosters, resultUnits, totals, teamColor, teamName, fmtOf, RULES_DEFAULT, recordRules } from './domain.js?v=0.1.94';
-import { mergedRecords } from './record-sheet.js?v=0.1.94';
+import { S, memberById, nameOf } from './state.js?v=0.1.95';
+import { rosters, resultUnits, totals, teamColor, teamName, fmtOf, RULES_DEFAULT, recordRules } from './domain.js?v=0.1.95';
+import { mergedRecords } from './record-sheet.js?v=0.1.95';
 
 export { RULES_DEFAULT, recordRules };
 export const rankMin = () => recordRules().min;

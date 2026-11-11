@@ -1,18 +1,18 @@
 // 회원 홈 — 경기장 사진 첫 화면(다음 경기 한 줄) + 참석 카드(바로 참석·불참) + MOM 알림 + 지난 경기 카드
-import { sheetPending } from '../record-sheet.js?v=0.1.94';
-import { momAsks, momStrip } from './mom.js?v=0.1.94';
-import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.94';
-import { db, newId } from '../store.js?v=0.1.94';
-import { STATUS } from '../config.js?v=0.1.94';
-import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, closePassed, signupView, captainIds, evCaps, isNoMatch, schedTitle, dateRange, lastDay, whenText } from '../domain.js?v=0.1.94';
-import { icon } from '../icons.js?v=0.1.94';
-import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.94';
-import { myBox, bindMy } from './apply.js?v=0.1.94';
-import { TEAM_COLORS, DEFAULT_SLOT } from '../config.js?v=0.1.94';
-import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.94';
-import { norm } from '../cafe-parser.js?v=0.1.94';
-import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.94';
-import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.94';
+import { sheetPending } from '../record-sheet.js?v=0.1.95';
+import { momAsks, momStrip } from './mom.js?v=0.1.95';
+import { S, memberById, me, go, mdPath, nameOf, playedDays, nextMatchday, captainMatchday, upcomingCancelled } from '../state.js?v=0.1.95';
+import { db, newId } from '../store.js?v=0.1.95';
+import { STATUS } from '../config.js?v=0.1.95';
+import { applicants, rosters, draftState, fmtOf, totals, teamColor, dayStandings, matchNumbers, explicitNo, noLabel, eventTeams, isOpen, closeLabel, closePassed, signupView, captainIds, evCaps, isNoMatch, schedTitle, dateRange, lastDay, whenText } from '../domain.js?v=0.1.95';
+import { icon } from '../icons.js?v=0.1.95';
+import { inSandbox, sandboxRole } from '../sandbox.js?v=0.1.95';
+import { myBox, bindMy } from './apply.js?v=0.1.95';
+import { TEAM_COLORS, DEFAULT_SLOT } from '../config.js?v=0.1.95';
+import { esc, fmtDate, todayISO, toast } from '../util.js?v=0.1.95';
+import { norm } from '../cafe-parser.js?v=0.1.95';
+import { modal, stepper, empty, teamLabel, teamChip } from '../ui.js?v=0.1.95';
+import { formatFields, bindFormatFields, readFormat } from './format-form.js?v=0.1.95';
 
 export function fmtSummary(md) {
   if (isNoMatch(md)) return `${schedTitle(md)} · 경기 없음`;
@@ -62,10 +62,24 @@ export function placeName(venue) {
   return /공원$/.test(cut) ? cut : w;   // "어린이대공원잔디축구장"은 공원까지, "효창운동장"은 그대로
 }
 // 홈 첫 화면 문구: "10월 24일 (토) 14:00 / 어린이대공원에서 만나요" — 시작 시간을 날짜 옆에
+// MT 등 "○○에서 만나요"의 장소: 장소 칸이 일정 이름과 같으면(예: 가을MT) 주소에서 지역 이름(양평군 → 양평)을 씀
+const sq = (x) => String(x || '').replace(/\s/g, '').toLowerCase();
+export function regionOf(addr) {
+  const ws = String(addr || '').trim().split(/\s+/);
+  const gun = ws.find((w) => /^\S+군$/.test(w)); if (gun) return gun.slice(0, -1);
+  const si = ws.find((w) => /^\S+시$/.test(w) && !/(특별|광역|특별자치)시$/.test(w)); if (si) return si.slice(0, -1);
+  const gu = ws.find((w) => /^\S+구$/.test(w)); if (gu) return gu;
+  return '';
+}
+function nmPlace(md) {
+  const v = String(md.venue || '').trim(), t = schedTitle(md);
+  const dup = !v || sq(v) === sq(t) || sq(v).includes(sq(t)) || sq(t).includes(sq(v));
+  return dup ? regionOf(md.addr) : v;
+}
 function headline(md) {
-  if (isNoMatch(md)) {   // MT 등: "11월 14일 (토) ~ 15일 (일)" / "MT · 가평에서 만나요"
-    const place = String(md.venue || '').trim();
-    return `<span class="h2-when">${esc(whenText(md))}</span><br>${esc(md.cancelled ? `${schedTitle(md)} 일정이 취소됐어요` : `${schedTitle(md)}${place ? ` · ${place}에서 만나요` : ''}`)}`;
+  if (isNoMatch(md)) {   // MT 등: "11월 14일 (토) ~ 15일 (일)" / "가을 MT · 양평에서 만나요" (시간은 아래 참석 카드에)
+    const place = nmPlace(md);
+    return `<span class="h2-when">${esc(dateRange(md))}</span><br>${esc(md.cancelled ? `${schedTitle(md)} 일정이 취소됐어요` : `${schedTitle(md)}${place ? ` · ${place}에서 만나요` : ''}`)}`;
   }
   const d = new Date(md.date + 'T00:00:00');
   const start = parseTime(md.time)?.[0];

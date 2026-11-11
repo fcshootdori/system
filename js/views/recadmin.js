@@ -1,11 +1,11 @@
 // 운영 › 기록 관리 — 순위 기준(최소 출전 경기), 승점·승률 계산 방법
 //  저장하면 meta/team.recordRules · meta/team.winRate 에 들어가고, 모든 회원의 기록 화면에 바로 반영돼요
-import { S } from '../state.js?v=0.1.94';
-import { db } from '../store.js?v=0.1.94';
-import { esc, toast } from '../util.js?v=0.1.94';
-import { RULES_DEFAULT, recordRules, RATE_TEXT } from '../domain.js?v=0.1.94';
-import { buildDB, seasons, METRIC, sortedBy } from '../records-data.js?v=0.1.94';
-import { pushRules, canPush } from '../record-sheet.js?v=0.1.94';
+import { S } from '../state.js?v=0.1.95';
+import { db } from '../store.js?v=0.1.95';
+import { esc, toast } from '../util.js?v=0.1.95';
+import { RULES_DEFAULT, recordRules, RATE_TEXT } from '../domain.js?v=0.1.95';
+import { buildDB, seasons, METRIC, sortedBy } from '../records-data.js?v=0.1.95';
+import { pushRules, canPush } from '../record-sheet.js?v=0.1.95';
 
 let draft = null;   // 저장 전 고치는 중인 값 (화면이 다시 그려져도 유지)
 let season = '';
